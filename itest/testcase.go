@@ -45,6 +45,8 @@ func (tc *TestCase) validate() error {
 func assertTypeAndValue(t *testing.T, key string, expected, actual interface{}) {
 	t.Helper()
 
+	t.Logf("asserting type and value for %q:%q (expecting %q of type %T)\n", key, actual, expected, expected)
+
 	switch expectedValue := expected.(type) {
 
 	case JSONMap, map[string]interface{}:
