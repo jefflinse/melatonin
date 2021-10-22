@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"time"
 )
 
 // A TestCase tests a single call to an HTTP endpoint.
@@ -16,34 +15,59 @@ import (
 // All fields in the WantBody map are expected to be present in the
 // response body.
 type TestCase struct {
-	Name              string
-	Setup             func()
-	Method            string
-	URI               string
-	RequestBody       Stringable
-	WantStatus        int
-	WantBody          Stringable
+	// Name is the name of the test case. If not provided, defaults to
+	// METHOD URI (body length), e.g.:
+	//
+	//   POST /users (210)
+	Name string
+
+	// Setup is an optional function that is run before the test is run.
+	// It can be used to perform any prerequisites actions for the test,
+	// such as adding or removing objects in a database.
+	Setup func()
+
+	// Method is the HTTP method to use for the request. Default is "GET".
+	Method string
+
+	// URI is the relative URI to use for the request.
+	URI string
+
+	// RequestBody is the content to send in the body of the HTTP request.
+	RequestBody Stringable
+
+	// WantStatus is the expected HTTP status code of the response. Default is 200.
+	WantStatus int
+
+	// WantBody is the expected HTTP response body content.
+	WantBody Stringable
+
+	// ContinueOnFailure indicates whether the test should continue to the next
+	// test case if the current test fails. Default is false.
 	ContinueOnFailure bool
 }
 
 // Validate ensures that the test case is valid can can be run.
-func (tc *TestCase) validate(index int) error {
-	if tc.Name == "" {
-		tc.Name = fmt.Sprint("Test", index)
-	} else if tc.Method == "" {
+func (tc *TestCase) Validate() error {
+	if tc.Method == "" {
 		return errors.New("missing Method")
 	} else if tc.URI == "" {
 		return errors.New("missing URI")
+	} else if tc.URI[0] != '/' {
+		return errors.New("URI must begin with '/'")
 	} else if tc.WantStatus == 0 {
 		return errors.New("missing WantStatus")
 	} else if tc.WantBody == nil {
 		return errors.New("missing WantBody")
 	}
 
+	if tc.Name == "" {
+		tc.Name = fmt.Sprintf("%s %s (%d)", tc.Method, tc.URI, len(tc.RequestBody.String()))
+	}
+
 	return nil
 }
 
-func assertTypeAndValue(key string, expected, actual interface{}) {
+func assertTypeAndValue(key string, expected, actual interface{}) error {
 	switch expectedValue := expected.(type) {
 
 	case JSONMap, map[string]interface{}:
@@ -51,54 +75,26 @@ func assertTypeAndValue(key string, expected, actual interface{}) {
 		if !ok {
 			expectedMap = JSONMap(expectedValue.(map[string]interface{}))
 		}
-
-		value := requireJSONMap(key, actual)
-		for wantKey, wantVal := range expectedMap {
-			assertTypeAndValue(fmt.Sprintf("%s.%s", key, wantKey), wantVal, value[wantKey])
-		}
+		return requireJSONMapValue(key, expectedMap, actual)
 
 	case JSONArray, []interface{}:
 		expectedArray, ok := expectedValue.(JSONArray)
 		if !ok {
 			expectedArray = JSONArray(expectedValue.([]interface{}))
 		}
-
-		value := requireJSONArray(key, actual)
-		if len(value) != len(expectedArray) {
-			log.Fatalf("expected %d values for field %q, got %d\n", len(expectedArray), key, len(value))
-		}
-
-		for i, wantItem := range expectedArray {
-			assertTypeAndValue(fmt.Sprintf("%s[%d]", key, i), wantItem, value[i])
-		}
+		return requireJSONArray(key, expectedArray, actual)
 
 	case string:
-		value := requireString(key, actual)
-		if expectedValue == "ANY_DATETIME" {
-			if _, err := time.Parse(time.RFC3339, value); err != nil {
-				log.Fatalf("expected valid datetime value for field %q, got %q\n", key, value)
-			}
-		} else if value != expectedValue {
-			failedValueExpectation(key, expectedValue, value)
-		}
+		return requireStringValue(key, expectedValue, actual)
 
 	case int:
-		value := requireInt(key, actual)
-		if value != expectedValue {
-			failedValueExpectation(key, expectedValue, value)
-		}
+		return requireIntValue(key, expectedValue, actual)
 
 	case float64:
-		value := requireFloat(key, actual)
-		if value != expectedValue {
-			failedValueExpectation(key, expectedValue, value)
-		}
+		return requireFloatValue(key, expectedValue, actual)
 
 	case bool:
-		value := requireBool(key, actual)
-		if value != expectedValue {
-			failedValueExpectation(key, expectedValue, value)
-		}
+		return requireBoolValue(key, expectedValue, actual)
 
 	case func(interface{}) bool:
 		if !expectedValue(actual) {
@@ -108,87 +104,97 @@ func assertTypeAndValue(key string, expected, actual interface{}) {
 	default:
 		log.Fatalf("unexpected value type for field %q: %T\n", key, actual)
 	}
+
+	return nil
 }
 
-func failedTypeExpectation(key, expectedType string, actualValue interface{}) {
-	log.Fatalf("expected %s for field %q, got %T\n", expectedType, key, actualValue)
-}
-
-func failedValueExpectation(key string, expectedValue, actualValue interface{}) {
-	log.Fatalf("expected value %q for field %q, got %q\n", expectedValue, key, actualValue)
-}
-
-func failOnError(err error) {
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func requireBool(key string, v interface{}) bool {
-	b, ok := v.(bool)
+func requireBoolValue(key string, expected bool, actual interface{}) error {
+	b, ok := actual.(bool)
 	if !ok {
-		failedTypeExpectation(key, "bool", v)
+		return WrongTypeError(key, expected, actual)
+	} else if b != expected {
+		return WrongValueError(key, expected, actual)
 	}
 
-	return b
+	return nil
 }
 
-func requireInt(key string, v interface{}) int {
-	i, ok := v.(int)
+func requireIntValue(key string, expected int, actual interface{}) error {
+	i, ok := actual.(int)
 	if !ok {
-		f, ok := v.(float64)
+		f, ok := actual.(float64)
 		if !ok || f != float64(int(f)) {
-			failedTypeExpectation(key, "int", v)
+			return WrongTypeError(key, expected, actual)
 		}
 
 		i = int(f)
 	}
 
-	return i
-}
-
-func requireFloat(key string, v interface{}) float64 {
-	f, ok := v.(float64)
-	if !ok {
-		failedTypeExpectation(key, "float", v)
+	if i != expected {
+		return WrongValueError(key, expected, actual)
 	}
 
-	return f
+	return nil
 }
 
-func requireString(key string, v interface{}) string {
-	s, ok := v.(string)
+func requireFloatValue(key string, expected float64, actual interface{}) error {
+	b, ok := actual.(float64)
 	if !ok {
-		failedTypeExpectation(key, "string", v)
+		return WrongTypeError(key, expected, actual)
+	} else if b != expected {
+		return WrongValueError(key, expected, actual)
 	}
 
-	return s
+	return nil
 }
 
-func requireJSONMap(key string, v interface{}) JSONMap {
-	m, ok := v.(JSONMap)
+func requireStringValue(key string, expected string, actual interface{}) error {
+	s, ok := actual.(string)
 	if !ok {
-		m, ok = v.(map[string]interface{})
+		return WrongTypeError(key, expected, actual)
+	} else if s != expected {
+		return WrongValueError(key, expected, actual)
+	}
+
+	return nil
+}
+
+func requireJSONMapValue(key string, expected JSONMap, actual interface{}) error {
+	m, ok := actual.(JSONMap)
+	if !ok {
+		m, ok = actual.(map[string]interface{})
 		if !ok {
-			failedTypeExpectation(key, "map", v)
+			return WrongTypeError(key, expected, actual)
 		}
 
 		m = JSONMap(m)
 	}
 
-	return m
+	for k, v := range expected {
+		if err := assertTypeAndValue(fmt.Sprintf("%s.%s", key, k), v, m[k]); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
-func requireJSONArray(key string, v interface{}) JSONArray {
-	a, ok := v.(JSONArray)
+func requireJSONArray(key string, expected JSONArray, actual interface{}) error {
+	a, ok := actual.(JSONArray)
 	if !ok {
-		a, ok = v.([]interface{})
+		a, ok = actual.([]interface{})
 		if !ok {
-			failedTypeExpectation(key, "array", v)
+			return WrongTypeError(key, expected, actual)
 		}
 
 		a = JSONArray(a)
 	}
 
-	return a
+	for i, v := range expected {
+		if err := assertTypeAndValue(fmt.Sprintf("%s[%d]", key, i), v, a[i]); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

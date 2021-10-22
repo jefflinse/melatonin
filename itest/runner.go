@@ -3,12 +3,13 @@ package itest
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 )
 
+// TestRunner contains configuration for running tests.
 type TestRunner struct {
 	// BaseURL is the base URL for the API, including the port.
 	//
@@ -26,39 +27,97 @@ type TestRunner struct {
 	HTTPClient *http.Client
 }
 
-func (r TestRunner) RunTests(tests []TestCase) {
-	for i, test := range tests {
-		if err := test.validate(i); err != nil {
-			log.Fatalf("test case %q is invalid: %s", test.Name, err)
-		}
-
-		if test.Setup != nil {
-			test.Setup()
-		}
-
-		status, body, err := r.doRequest(test.Method, r.BaseURL+test.URI, test.RequestBody)
-		if err != nil {
-			log.Fatalf("unexpeceted error while running test %q: %s", test.Name, err)
-		}
-
-		if status != test.WantStatus {
-			log.Fatalf("expected status %d, got %d\n", test.WantStatus, status)
-		}
-
-		assertTypeAndValue("", test.WantBody, body)
-	}
-}
-
-func RunTests(baseURL string, tests []TestCase) {
-	runner := TestRunner{
-		BaseURL:           baseURL,
+// DefaultTestRunner creates a new TestRunner with the default settings.
+func DefaultTestRunner() *TestRunner {
+	return &TestRunner{
 		ContinueOnFailure: false,
 		HTTPClient:        http.DefaultClient,
 	}
-	runner.RunTests(tests)
 }
 
-func (r TestRunner) doRequest(method, uri string, body Stringable) (int, JSONMap, error) {
+// WithContinueOnFailure sets the ContinueOnFailure field of the TestRunner and
+// returns the TestRunner.
+func (r TestRunner) WithContinueOnFailure(continueOnFailure bool) *TestRunner {
+	r.ContinueOnFailure = continueOnFailure
+	return &r
+}
+
+// WithBaseURL sets the BaseURL field of the TestRunner and returns the TestRunner.
+func (r *TestRunner) WithBaseURL(baseURL string) *TestRunner {
+	r.BaseURL = baseURL
+	return r
+}
+
+// WithHTTPClient sets the HTTPClient field of the TestRunner and returns the
+// TestRunner.
+func (r *TestRunner) WithHTTPClient(client *http.Client) *TestRunner {
+	r.HTTPClient = client
+	return r
+}
+
+// RunTests runs a set of tests.
+func (r *TestRunner) RunTests(tests []TestCase) {
+	if err := r.Validate(); err != nil {
+		fmt.Println("invalid test runner:", err)
+		return
+	}
+
+	for _, test := range tests {
+		if err := r.RunTest(test); err != nil {
+			fmt.Printf("%s: %s\n", test.Name, err)
+			if !r.ContinueOnFailure {
+				break
+			}
+		}
+	}
+}
+
+// RunTest runs a single test.
+func (r *TestRunner) RunTest(test TestCase) error {
+	if test.Setup != nil {
+		test.Setup()
+	}
+
+	status, body, err := r.doRequest(test.Method, r.BaseURL+test.URI, test.RequestBody)
+	if err != nil {
+		return fmt.Errorf("unexpeceted error while running test %q: %s", test.Name, err)
+	}
+
+	if status != test.WantStatus {
+		return fmt.Errorf("expected status %d, got %d", test.WantStatus, status)
+	}
+
+	return assertTypeAndValue("", test.WantBody, body)
+}
+
+func (r *TestRunner) Validate() error {
+	if r.BaseURL == "" {
+		return fmt.Errorf("BaseURL is required")
+	} else if r.BaseURL[len(r.BaseURL)-1] == '/' {
+		return fmt.Errorf("BaseURL must not end with a slash")
+	} else if r.HTTPClient == nil {
+		return fmt.Errorf("HTTPClient is required")
+	} else if r.HTTPClient.Transport == nil {
+		return fmt.Errorf("HTTPClient.Transport is required")
+	}
+
+	return nil
+}
+
+// ValidateTests validates a set of tests
+func ValidateTests(tests []TestCase) bool {
+	valid := true
+	for _, test := range tests {
+		if err := test.Validate(); err != nil {
+			fmt.Printf("test case %q is invalid: %s", test.Name, err)
+			valid = false
+		}
+	}
+
+	return valid
+}
+
+func (r *TestRunner) doRequest(method, uri string, body Stringable) (int, JSONMap, error) {
 	var reader io.Reader
 	if body != nil {
 		reader = bytes.NewReader([]byte(body.String()))
@@ -88,4 +147,9 @@ func (r TestRunner) doRequest(method, uri string, body Stringable) (int, JSONMap
 	}
 
 	return resp.StatusCode, bodyMap, nil
+}
+
+// RunTests runs a set of tests using the provided base URL and the default TestRunner.
+func RunTests(baseURL string, tests []TestCase) {
+	DefaultTestRunner().WithBaseURL(baseURL).RunTests(tests)
 }
