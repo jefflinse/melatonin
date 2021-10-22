@@ -7,8 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-
-	"github.com/fatih/color"
 )
 
 // TestRunner contains configuration for running tests.
@@ -78,8 +76,7 @@ func (r *TestRunner) RunTests(tests []*TestCase) {
 		r.excuted++
 		if err != nil {
 			r.failed++
-			red := color.New(color.FgRed).SprintFunc()
-			info("%s  %s %s", red("FAIL"), test.Method, test.Path)
+			info("%s  %s %s", redText("FAIL"), test.Method, test.Path)
 			problem("     %s", err)
 			if !r.ContinueOnFailure {
 				warn("skipping remaininig tests")
@@ -89,8 +86,7 @@ func (r *TestRunner) RunTests(tests []*TestCase) {
 
 		} else {
 			r.passed++
-			green := color.New(color.FgGreen).SprintFunc()
-			info("%s  %s %s", green("OK"), test.Method, test.Path)
+			info("%s  %s %s", greenText("OK"), test.Method, test.Path)
 		}
 	}
 
@@ -100,15 +96,15 @@ func (r *TestRunner) RunTests(tests []*TestCase) {
 // RunTest runs a single test.
 func (r *TestRunner) RunTest(test *TestCase) error {
 	if test.Setup != nil {
-		debug("%s: running setup\n", test.Name)
+		debug("%s: running setup\n", test.DisplayName())
 		if err := test.Setup(); err != nil {
-			return fmt.Errorf("test %q failed setup: %s", test.Name, err)
+			return fmt.Errorf("test %q failed setup: %s", test.DisplayName(), err)
 		}
 	}
 
 	status, body, err := r.doRequest(test.Method, r.BaseURL+test.Path, test.RequestHeaders, test.RequestBody)
 	if err != nil {
-		return fmt.Errorf("unexpeceted error while running test %q: %s", test.Name, err)
+		return fmt.Errorf("unexpeceted error while running test %q: %s", test.DisplayName(), err)
 	}
 
 	if status != test.WantStatus {
@@ -135,7 +131,7 @@ func ValidateTests(tests []*TestCase) bool {
 	valid := true
 	for _, test := range tests {
 		if err := test.Validate(); err != nil {
-			problem("test case %q is invalid: %s", test.Name, err)
+			problem("test case %q is invalid: %s", test.DisplayName(), err)
 			valid = false
 		}
 	}

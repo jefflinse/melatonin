@@ -14,6 +14,7 @@ func main() {
 		itest.GET("/foo").
 			WithHeader("Accept", "application/json").
 			ExpectStatus(200).
+			ExpectBody(itest.JSONMap{"response": "Hello, world!"}).
 			ExpectBody(itest.JSONMap{"response": "Hello, world!"}),
 	})
 }

@@ -15,12 +15,6 @@ import (
 // All fields in the WantBody map are expected to be present in the
 // response body.
 type TestCase struct {
-	// Name is the name of the test case. If not provided, defaults to
-	// METHOD Path (body length), e.g.:
-	//
-	//   POST /users (210)
-	Name string
-
 	// Setup is an optional function that is run before the test is run.
 	// It can be used to perform any prerequisites actions for the test,
 	// such as adding or removing objects in a database.
@@ -53,6 +47,15 @@ type TestCase struct {
 	ContinueOnFailure bool
 }
 
+func (tc *TestCase) DisplayName() string {
+	name := fmt.Sprintf("%s %s", tc.Method, tc.Path)
+	if tc.RequestBody != nil {
+		name += fmt.Sprintf(" (%d)", len(tc.RequestBody.String()))
+	}
+
+	return name
+}
+
 func GET(path string) *TestCase {
 	return &TestCase{Method: "GET", Path: path}
 }
@@ -74,8 +77,9 @@ func DELETE(path string) *TestCase {
 }
 
 func (tc *TestCase) WithSetup(setup func() error) *TestCase {
+	tc.requireMethodAndPath("WithSetup")
 	if tc.Setup != nil {
-		fatal("test case %q specifies more than one setup function", underlineText(tc.Name))
+		fatal("test case %q specifies more than one setup function", tc.DisplayName())
 	}
 
 	tc.Setup = setup
@@ -83,8 +87,9 @@ func (tc *TestCase) WithSetup(setup func() error) *TestCase {
 }
 
 func (tc *TestCase) WithHeaders(headers http.Header) *TestCase {
+	tc.requireMethodAndPath("WithHeaders")
 	if tc.RequestHeaders != nil {
-		fatal("test case %q specifies request headers more than once", tc.Name)
+		fatal("test case %q specifies request headers more than once", tc.DisplayName())
 	}
 
 	tc.RequestHeaders = headers
@@ -92,6 +97,7 @@ func (tc *TestCase) WithHeaders(headers http.Header) *TestCase {
 }
 
 func (tc *TestCase) WithHeader(key, value string) *TestCase {
+	tc.requireMethodAndPath("WithHeader")
 	if tc.RequestHeaders == nil {
 		tc.RequestHeaders = http.Header{}
 	}
@@ -101,8 +107,9 @@ func (tc *TestCase) WithHeader(key, value string) *TestCase {
 }
 
 func (tc *TestCase) WithBody(body Stringable) *TestCase {
+	tc.requireMethodAndPath("WithBody")
 	if tc.RequestBody != nil {
-		fatal("test case %q specifies more than one request body", tc.Name)
+		fatal("test case %q specifies more than one request body", tc.DisplayName())
 	}
 
 	tc.RequestBody = body
@@ -110,8 +117,9 @@ func (tc *TestCase) WithBody(body Stringable) *TestCase {
 }
 
 func (tc *TestCase) ExpectStatus(status int) *TestCase {
+	tc.requireMethodAndPath("ExpectStatus")
 	if tc.WantStatus > 0 {
-		fatal("test case %q specifies more than one expected status", tc.Name)
+		fatal("test case %q specifies more than one expected status", tc.DisplayName())
 	}
 
 	tc.WantStatus = status
@@ -119,8 +127,9 @@ func (tc *TestCase) ExpectStatus(status int) *TestCase {
 }
 
 func (tc *TestCase) ExpectHeaders(headers http.Header) *TestCase {
+	tc.requireMethodAndPath("ExpectHeaders")
 	if tc.WantHeaders != nil && len(tc.WantHeaders) > 0 {
-		fatal("test case %q overrides previously defined expected headers", tc.Name)
+		fatal("test case %q overrides previously defined expected headers", tc.DisplayName())
 	}
 
 	tc.WantHeaders = headers
@@ -128,6 +137,7 @@ func (tc *TestCase) ExpectHeaders(headers http.Header) *TestCase {
 }
 
 func (tc *TestCase) ExpectHeader(key, value string) *TestCase {
+	tc.requireMethodAndPath("ExpectHeader")
 	if tc.WantHeaders == nil {
 		tc.WantHeaders = http.Header{}
 	}
@@ -137,8 +147,9 @@ func (tc *TestCase) ExpectHeader(key, value string) *TestCase {
 }
 
 func (tc *TestCase) ExpectBody(body Stringable) *TestCase {
+	tc.requireMethodAndPath("ExpectBody")
 	if tc.WantBody != nil {
-		fatal("test case %q specifies more than one expected body", tc.Name)
+		fatal("test case %q specifies more than one expected body", tc.DisplayName())
 	}
 
 	tc.WantBody = body
@@ -159,14 +170,13 @@ func (tc *TestCase) Validate() error {
 		return errors.New("missing WantBody")
 	}
 
-	if tc.Name == "" {
-		tc.Name = fmt.Sprintf("%s %s", tc.Method, tc.Path)
-		if tc.RequestBody != nil {
-			tc.Name += fmt.Sprintf(" (%d)", len(tc.RequestBody.String()))
-		}
-	}
-
 	return nil
+}
+
+func (tc *TestCase) requireMethodAndPath(caller string) {
+	if tc.Method == "" || tc.Path == "" {
+		fatal("test case must define method and path before specifying %s()", caller)
+	}
 }
 
 func assertTypeAndValue(key string, expected, actual interface{}) error {

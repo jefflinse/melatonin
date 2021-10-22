@@ -10,7 +10,8 @@ import (
 var Verbose bool
 
 var (
-	underlineText = color.New(color.Underline).SprintFunc()
+	greenText = color.New(color.FgGreen).SprintFunc()
+	redText   = color.New(color.FgRed).SprintFunc()
 )
 
 func fatal(format string, a ...interface{}) {
