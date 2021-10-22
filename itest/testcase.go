@@ -152,7 +152,7 @@ func requireFloat(t *testing.T, key string, v interface{}) float64 {
 	t.Helper()
 	f, ok := v.(float64)
 	if !ok {
-		failedTypeExpectation(t, key, "bool", v)
+		failedTypeExpectation(t, key, "float", v)
 	}
 
 	return f
@@ -162,7 +162,7 @@ func requireString(t *testing.T, key string, v interface{}) string {
 	t.Helper()
 	s, ok := v.(string)
 	if !ok {
-		failedTypeExpectation(t, key, "bool", v)
+		failedTypeExpectation(t, key, "string", v)
 	}
 
 	return s

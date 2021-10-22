@@ -19,7 +19,7 @@ func (r TestRunner) RunTests(tests []TestCase) {
 	r.T.Helper()
 	for _, test := range tests {
 		if err := test.validate(); err != nil {
-			r.T.Fatalf("Test case %q is invalid: %s", test.Name, err)
+			r.T.Fatalf("test case %q is invalid: %s", test.Name, err)
 		}
 
 		r.T.Run(test.Name, func(t *testing.T) {
@@ -32,7 +32,7 @@ func (r TestRunner) RunTests(tests []TestCase) {
 				t.Fatalf("expected status %d, got %d\n", test.WantStatus, status)
 			}
 
-			assertTypeAndValue(t, "<root>", body, test.WantBody)
+			assertTypeAndValue(t, ".", test.WantBody, body)
 		})
 	}
 }
