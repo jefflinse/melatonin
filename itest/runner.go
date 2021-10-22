@@ -25,6 +25,10 @@ type TestRunner struct {
 	// HTTPClient is the HTTP client to use for requests.
 	// If left unset, http.DefaultClient will be used.
 	HTTPClient *http.Client
+
+	// Verbose causes the running to print out additional information for each test.
+	// Defaults to false.
+	Verbose bool
 }
 
 // DefaultTestRunner creates a new TestRunner with the default settings.
@@ -35,6 +39,12 @@ func DefaultTestRunner() *TestRunner {
 	}
 }
 
+// WithBaseURL sets the BaseURL field of the TestRunner and returns the TestRunner.
+func (r *TestRunner) WithBaseURL(baseURL string) *TestRunner {
+	r.BaseURL = baseURL
+	return r
+}
+
 // WithContinueOnFailure sets the ContinueOnFailure field of the TestRunner and
 // returns the TestRunner.
 func (r TestRunner) WithContinueOnFailure(continueOnFailure bool) *TestRunner {
@@ -42,16 +52,16 @@ func (r TestRunner) WithContinueOnFailure(continueOnFailure bool) *TestRunner {
 	return &r
 }
 
-// WithBaseURL sets the BaseURL field of the TestRunner and returns the TestRunner.
-func (r *TestRunner) WithBaseURL(baseURL string) *TestRunner {
-	r.BaseURL = baseURL
-	return r
-}
-
 // WithHTTPClient sets the HTTPClient field of the TestRunner and returns the
 // TestRunner.
 func (r *TestRunner) WithHTTPClient(client *http.Client) *TestRunner {
 	r.HTTPClient = client
+	return r
+}
+
+// WithVerbose sets the Verbose field of the TestRunner and returns the TestRunner.
+func (r *TestRunner) WithVerbose(verbose bool) *TestRunner {
+	r.Verbose = verbose
 	return r
 }
 
@@ -68,6 +78,8 @@ func (r *TestRunner) RunTests(tests []TestCase) {
 			if !r.ContinueOnFailure {
 				break
 			}
+		} else {
+			fmt.Printf("OK: %s\n", test.Name)
 		}
 	}
 }
@@ -75,6 +87,7 @@ func (r *TestRunner) RunTests(tests []TestCase) {
 // RunTest runs a single test.
 func (r *TestRunner) RunTest(test TestCase) error {
 	if test.Setup != nil {
+		r.verbose("%s: running setup\n", test.Name)
 		if err := test.Setup(); err != nil {
 			return fmt.Errorf("test %q failed setup: %s", test.Name, err)
 		}
@@ -99,8 +112,6 @@ func (r *TestRunner) Validate() error {
 		return fmt.Errorf("BaseURL must not end with a slash")
 	} else if r.HTTPClient == nil {
 		return fmt.Errorf("HTTPClient is required")
-	} else if r.HTTPClient.Transport == nil {
-		return fmt.Errorf("HTTPClient.Transport is required")
 	}
 
 	return nil
@@ -130,6 +141,7 @@ func (r *TestRunner) doRequest(method, uri string, body Stringable) (int, JSONMa
 		return -1, nil, err
 	}
 
+	r.verbose("%s %s\n", method, uri)
 	resp, err := r.HTTPClient.Do(req)
 	if err != nil {
 		return -1, nil, err
@@ -143,15 +155,22 @@ func (r *TestRunner) doRequest(method, uri string, body Stringable) (int, JSONMa
 
 	var bodyMap JSONMap
 	if len(b) > 0 {
-		if err := json.Unmarshal(b, &bodyMap); err != nil {
-			return -1, nil, err
+		if err := json.Unmarshal(b, &bodyMap); err == nil {
+			r.verbose("%s\n", string(b))
+			return resp.StatusCode, bodyMap, nil
 		}
 	}
 
-	return resp.StatusCode, bodyMap, nil
+	return resp.StatusCode, nil, nil
+}
+
+func (r *TestRunner) verbose(format string, args ...interface{}) {
+	if r.Verbose {
+		fmt.Printf(format, args...)
+	}
 }
 
 // RunTests runs a set of tests using the provided base URL and the default TestRunner.
 func RunTests(baseURL string, tests []TestCase) {
-	DefaultTestRunner().WithBaseURL(baseURL).RunTests(tests)
+	DefaultTestRunner().WithBaseURL(baseURL).WithVerbose(true).RunTests(tests)
 }

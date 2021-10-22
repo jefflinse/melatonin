@@ -13,15 +13,21 @@ type Stringable interface {
 // JSONMap is a shorter name for map[string]interface{} that satisfies the Stringable interface.
 type JSONMap map[string]interface{}
 
-func (m JSONMap) String() (string, error) {
+func (m JSONMap) String() string {
 	b, err := json.Marshal(m)
-	return string(b), err
+	if err != nil {
+		panic("failed to marshal JSONMap to string: " + err.Error())
+	}
+	return string(b)
 }
 
 // JSONArray is a shorter name for []interface{} that satisfies the Stringable interface.
 type JSONArray []interface{}
 
-func (a JSONArray) String() (string, error) {
+func (a JSONArray) String() string {
 	b, err := json.Marshal(a)
-	return string(b), err
+	if err != nil {
+		panic("failed to marshal JSONArray to string: " + err.Error())
+	}
+	return string(b)
 }
