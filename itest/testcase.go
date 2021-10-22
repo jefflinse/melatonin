@@ -179,10 +179,6 @@ func (tc *TestCase) Validate() error {
 		return errors.New("missing Path")
 	} else if tc.Path[0] != '/' {
 		return errors.New("path must begin with '/'")
-	} else if tc.WantStatus == 0 {
-		return errors.New("missing WantStatus")
-	} else if tc.WantBody == nil {
-		return errors.New("missing WantBody")
 	}
 
 	return nil

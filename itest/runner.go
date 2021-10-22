@@ -116,11 +116,15 @@ func (r *TestRunner) RunTest(test *TestCase) error {
 		return fmt.Errorf("test %q failed to perform HTTP request: %s", test.DisplayName(), err)
 	}
 
-	if status != test.WantStatus {
+	if test.WantStatus != 0 && status != test.WantStatus {
 		return fmt.Errorf("expected status %d, got %d", test.WantStatus, status)
 	}
 
-	return assertTypeAndValue("", test.WantBody, body)
+	if test.WantBody != nil {
+		return assertTypeAndValue("", test.WantBody, body)
+	}
+
+	return nil
 }
 
 func (r *TestRunner) Validate() error {
