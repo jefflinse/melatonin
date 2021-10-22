@@ -101,6 +101,11 @@ func assertTypeAndValue(t *testing.T, key string, expected, actual interface{}) 
 			failedValueExpectation(t, key, expectedValue, value)
 		}
 
+	case func(interface{}) bool:
+		if !expectedValue(actual) {
+			t.Fatalf("field %q did not satisfy predicate, got %q\n", key, actual)
+		}
+
 	default:
 		t.Fatalf("unexpected value type for field %q: %T\n", key, actual)
 	}
