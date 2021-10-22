@@ -3,7 +3,7 @@ package itest
 import (
 	"errors"
 	"fmt"
-	"testing"
+	"log"
 	"time"
 )
 
@@ -16,13 +16,14 @@ import (
 // All fields in the WantBody map are expected to be present in the
 // response body.
 type TestCase struct {
-	Name        string
-	Setup       func(t *testing.T)
-	Method      string
-	URI         string
-	RequestBody Stringable
-	WantStatus  int
-	WantBody    Stringable
+	Name              string
+	Setup             func()
+	Method            string
+	URI               string
+	RequestBody       Stringable
+	WantStatus        int
+	WantBody          Stringable
+	ContinueOnFailure bool
 }
 
 // Validate ensures that the test case is valid can can be run.
@@ -42,9 +43,7 @@ func (tc *TestCase) validate(index int) error {
 	return nil
 }
 
-func assertTypeAndValue(t *testing.T, key string, expected, actual interface{}) {
-	t.Helper()
-
+func assertTypeAndValue(key string, expected, actual interface{}) {
 	switch expectedValue := expected.(type) {
 
 	case JSONMap, map[string]interface{}:
@@ -53,9 +52,9 @@ func assertTypeAndValue(t *testing.T, key string, expected, actual interface{}) 
 			expectedMap = JSONMap(expectedValue.(map[string]interface{}))
 		}
 
-		value := requireJSONMap(t, key, actual)
+		value := requireJSONMap(key, actual)
 		for wantKey, wantVal := range expectedMap {
-			assertTypeAndValue(t, fmt.Sprintf("%s.%s", key, wantKey), wantVal, value[wantKey])
+			assertTypeAndValue(fmt.Sprintf("%s.%s", key, wantKey), wantVal, value[wantKey])
 		}
 
 	case JSONArray, []interface{}:
@@ -64,87 +63,82 @@ func assertTypeAndValue(t *testing.T, key string, expected, actual interface{}) 
 			expectedArray = JSONArray(expectedValue.([]interface{}))
 		}
 
-		value := requireJSONArray(t, key, actual)
+		value := requireJSONArray(key, actual)
 		if len(value) != len(expectedArray) {
-			t.Fatalf("expected %d values for field %q, got %d\n", len(expectedArray), key, len(value))
+			log.Fatalf("expected %d values for field %q, got %d\n", len(expectedArray), key, len(value))
 		}
 
 		for i, wantItem := range expectedArray {
-			assertTypeAndValue(t, fmt.Sprintf("%s[%d]", key, i), wantItem, value[i])
+			assertTypeAndValue(fmt.Sprintf("%s[%d]", key, i), wantItem, value[i])
 		}
 
 	case string:
-		value := requireString(t, key, actual)
+		value := requireString(key, actual)
 		if expectedValue == "ANY_DATETIME" {
 			if _, err := time.Parse(time.RFC3339, value); err != nil {
-				t.Fatalf("expected valid datetime value for field %q, got %q\n", key, value)
+				log.Fatalf("expected valid datetime value for field %q, got %q\n", key, value)
 			}
 		} else if value != expectedValue {
-			failedValueExpectation(t, key, expectedValue, value)
+			failedValueExpectation(key, expectedValue, value)
 		}
 
 	case int:
-		value := requireInt(t, key, actual)
+		value := requireInt(key, actual)
 		if value != expectedValue {
-			failedValueExpectation(t, key, expectedValue, value)
+			failedValueExpectation(key, expectedValue, value)
 		}
 
 	case float64:
-		value := requireFloat(t, key, actual)
+		value := requireFloat(key, actual)
 		if value != expectedValue {
-			failedValueExpectation(t, key, expectedValue, value)
+			failedValueExpectation(key, expectedValue, value)
 		}
 
 	case bool:
-		value := requireBool(t, key, actual)
+		value := requireBool(key, actual)
 		if value != expectedValue {
-			failedValueExpectation(t, key, expectedValue, value)
+			failedValueExpectation(key, expectedValue, value)
 		}
 
 	case func(interface{}) bool:
 		if !expectedValue(actual) {
-			t.Fatalf("field %q did not satisfy predicate, got %q\n", key, actual)
+			log.Fatalf("field %q did not satisfy predicate, got %q\n", key, actual)
 		}
 
 	default:
-		t.Fatalf("unexpected value type for field %q: %T\n", key, actual)
+		log.Fatalf("unexpected value type for field %q: %T\n", key, actual)
 	}
 }
 
-func failedTypeExpectation(t *testing.T, key, expectedType string, actualValue interface{}) {
-	t.Helper()
-	t.Fatalf("expected %s for field %q, got %T\n", expectedType, key, actualValue)
+func failedTypeExpectation(key, expectedType string, actualValue interface{}) {
+	log.Fatalf("expected %s for field %q, got %T\n", expectedType, key, actualValue)
 }
 
-func failedValueExpectation(t *testing.T, key string, expectedValue, actualValue interface{}) {
-	t.Helper()
-	t.Fatalf("expected value %q for field %q, got %q\n", expectedValue, key, actualValue)
+func failedValueExpectation(key string, expectedValue, actualValue interface{}) {
+	log.Fatalf("expected value %q for field %q, got %q\n", expectedValue, key, actualValue)
 }
 
-func failOnError(t *testing.T, err error) {
-	t.Helper()
+func failOnError(err error) {
 	if err != nil {
-		t.Fatal(err)
+		log.Fatal(err)
 	}
 }
 
-func requireBool(t *testing.T, key string, v interface{}) bool {
-	t.Helper()
+func requireBool(key string, v interface{}) bool {
 	b, ok := v.(bool)
 	if !ok {
-		failedTypeExpectation(t, key, "bool", v)
+		failedTypeExpectation(key, "bool", v)
 	}
 
 	return b
 }
 
-func requireInt(t *testing.T, key string, v interface{}) int {
-	t.Helper()
+func requireInt(key string, v interface{}) int {
 	i, ok := v.(int)
 	if !ok {
 		f, ok := v.(float64)
 		if !ok || f != float64(int(f)) {
-			failedTypeExpectation(t, key, "int", v)
+			failedTypeExpectation(key, "int", v)
 		}
 
 		i = int(f)
@@ -153,33 +147,30 @@ func requireInt(t *testing.T, key string, v interface{}) int {
 	return i
 }
 
-func requireFloat(t *testing.T, key string, v interface{}) float64 {
-	t.Helper()
+func requireFloat(key string, v interface{}) float64 {
 	f, ok := v.(float64)
 	if !ok {
-		failedTypeExpectation(t, key, "float", v)
+		failedTypeExpectation(key, "float", v)
 	}
 
 	return f
 }
 
-func requireString(t *testing.T, key string, v interface{}) string {
-	t.Helper()
+func requireString(key string, v interface{}) string {
 	s, ok := v.(string)
 	if !ok {
-		failedTypeExpectation(t, key, "string", v)
+		failedTypeExpectation(key, "string", v)
 	}
 
 	return s
 }
 
-func requireJSONMap(t *testing.T, key string, v interface{}) JSONMap {
-	t.Helper()
+func requireJSONMap(key string, v interface{}) JSONMap {
 	m, ok := v.(JSONMap)
 	if !ok {
 		m, ok = v.(map[string]interface{})
 		if !ok {
-			failedTypeExpectation(t, key, "map", v)
+			failedTypeExpectation(key, "map", v)
 		}
 
 		m = JSONMap(m)
@@ -188,13 +179,12 @@ func requireJSONMap(t *testing.T, key string, v interface{}) JSONMap {
 	return m
 }
 
-func requireJSONArray(t *testing.T, key string, v interface{}) JSONArray {
-	t.Helper()
+func requireJSONArray(key string, v interface{}) JSONArray {
 	a, ok := v.(JSONArray)
 	if !ok {
 		a, ok = v.([]interface{})
 		if !ok {
-			failedTypeExpectation(t, key, "array", v)
+			failedTypeExpectation(key, "array", v)
 		}
 
 		a = JSONArray(a)

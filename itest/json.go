@@ -2,27 +2,24 @@ package itest
 
 import (
 	"encoding/json"
-	"testing"
 )
 
 type Stringable interface {
-	String(t *testing.T) string
+	String() string
 }
 
 type JSONMap map[string]interface{}
 
-func (m JSONMap) String(t *testing.T) string {
-	t.Helper()
+func (m JSONMap) String() string {
 	b, err := json.Marshal(m)
-	failOnError(t, err)
+	failOnError(err)
 	return string(b)
 }
 
 type JSONArray []interface{}
 
-func (a JSONArray) String(t *testing.T) string {
-	t.Helper()
+func (a JSONArray) String() string {
 	b, err := json.Marshal(a)
-	failOnError(t, err)
+	failOnError(err)
 	return string(b)
 }

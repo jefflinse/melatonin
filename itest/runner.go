@@ -5,66 +5,87 @@ import (
 	"encoding/json"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
-	"testing"
 )
 
 type TestRunner struct {
-	BaseURL    string
+	// BaseURL is the base URL for the API, including the port.
+	//
+	// Examples:
+	//   http://localhost:8080
+	//   https://api.example.com
+	BaseURL string
+
+	// ContinueOnFailure indicates whether the test runner should continue
+	// executing further tests after a failure. Defaults to false.
+	ContinueOnFailure bool
+
+	// HTTPClient is the HTTP client to use for requests.
+	// If left unset, http.DefaultClient will be used.
 	HTTPClient *http.Client
-	T          *testing.T
 }
 
 func (r TestRunner) RunTests(tests []TestCase) {
-	r.T.Helper()
 	for i, test := range tests {
 		if err := test.validate(i); err != nil {
-			r.T.Fatalf("test case %q is invalid: %s", test.Name, err)
+			log.Fatalf("test case %q is invalid: %s", test.Name, err)
 		}
 
-		r.T.Run(test.Name, func(t *testing.T) {
-			if test.Setup != nil {
-				test.Setup(t)
-			}
+		if test.Setup != nil {
+			test.Setup()
+		}
 
-			status, body := doRequest(t, test.Method, r.BaseURL+test.URI, test.RequestBody)
-			if status != test.WantStatus {
-				t.Fatalf("expected status %d, got %d\n", test.WantStatus, status)
-			}
+		status, body, err := r.doRequest(test.Method, r.BaseURL+test.URI, test.RequestBody)
+		if err != nil {
+			log.Fatalf("unexpeceted error while running test %q: %s", test.Name, err)
+		}
 
-			assertTypeAndValue(t, "", test.WantBody, body)
-		})
+		if status != test.WantStatus {
+			log.Fatalf("expected status %d, got %d\n", test.WantStatus, status)
+		}
+
+		assertTypeAndValue("", test.WantBody, body)
 	}
 }
 
-func RunTests(t *testing.T, baseURL string, tests []TestCase) {
+func RunTests(baseURL string, tests []TestCase) {
 	runner := TestRunner{
-		BaseURL:    baseURL,
-		HTTPClient: http.DefaultClient,
-		T:          t,
+		BaseURL:           baseURL,
+		ContinueOnFailure: false,
+		HTTPClient:        http.DefaultClient,
 	}
 	runner.RunTests(tests)
 }
 
-func doRequest(t *testing.T, method, uri string, body Stringable) (int, JSONMap) {
-	t.Helper()
+func (r TestRunner) doRequest(method, uri string, body Stringable) (int, JSONMap, error) {
 	var reader io.Reader
 	if body != nil {
-		reader = bytes.NewReader([]byte(body.String(t)))
+		reader = bytes.NewReader([]byte(body.String()))
 	}
+
 	req, err := http.NewRequest(method, uri, reader)
-	failOnError(t, err)
-	resp, err := http.DefaultClient.Do(req)
-	failOnError(t, err)
+	if err != nil {
+		return -1, nil, err
+	}
+
+	resp, err := r.HTTPClient.Do(req)
+	if err != nil {
+		return -1, nil, err
+	}
+
 	defer resp.Body.Close()
 	b, err := ioutil.ReadAll(resp.Body)
-	failOnError(t, err)
+	if err != nil {
+		return -1, nil, err
+	}
 
 	var bodyMap JSONMap
 	if len(b) > 0 {
-		err = json.Unmarshal(b, &bodyMap)
-		failOnError(t, err)
+		if err := json.Unmarshal(b, &bodyMap); err != nil {
+			return -1, nil, err
+		}
 	}
 
-	return resp.StatusCode, bodyMap
+	return resp.StatusCode, bodyMap, nil
 }
