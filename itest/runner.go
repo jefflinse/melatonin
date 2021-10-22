@@ -96,7 +96,7 @@ func (r *TestRunner) RunTests(tests []*TestCase) {
 // RunTest runs a single test.
 func (r *TestRunner) RunTest(test *TestCase) error {
 	if test.Setup != nil {
-		debug("%s: running setup\n", test.DisplayName())
+		debug("%s: running setup", test.DisplayName())
 		if err := test.Setup(); err != nil {
 			return fmt.Errorf("test %q failed setup: %s", test.DisplayName(), err)
 		}
@@ -116,12 +116,14 @@ func (r *TestRunner) RunTest(test *TestCase) error {
 		return fmt.Errorf("test %q failed to perform HTTP request: %s", test.DisplayName(), err)
 	}
 
-	if test.WantStatus != 0 && status != test.WantStatus {
-		return fmt.Errorf("expected status %d, got %d", test.WantStatus, status)
+	if test.WantStatus != 0 {
+		if err := expectStatus(status, test.WantStatus); err != nil {
+			return err
+		}
 	}
 
 	if test.WantBody != nil {
-		return assertTypeAndValue("", test.WantBody, body)
+		return expect("", test.WantBody, body)
 	}
 
 	return nil
