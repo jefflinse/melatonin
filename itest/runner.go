@@ -7,6 +7,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/fatih/color"
 )
 
 // TestRunner contains configuration for running tests.
@@ -74,12 +76,15 @@ func (r *TestRunner) RunTests(tests []TestCase) {
 
 	for _, test := range tests {
 		if err := r.RunTest(test); err != nil {
+			color.Set(color.FgRed)
 			fmt.Printf("%s: %s\n", test.Name, err)
+			color.Unset()
 			if !r.ContinueOnFailure {
 				break
 			}
 		} else {
-			fmt.Printf("OK: %s\n", test.Name)
+			green := color.New(color.FgGreen).SprintFunc()
+			fmt.Printf("%s  %s %s\n", green("OK"), test.Method, test.URI)
 		}
 	}
 }
@@ -166,7 +171,9 @@ func (r *TestRunner) doRequest(method, uri string, body Stringable) (int, JSONMa
 
 func (r *TestRunner) verbose(format string, args ...interface{}) {
 	if r.Verbose {
+		color.Set(color.FgBlue)
 		fmt.Printf(format, args...)
+		color.Unset()
 	}
 }
 
