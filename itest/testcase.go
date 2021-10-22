@@ -98,7 +98,7 @@ func assertTypeAndValue(t *testing.T, key string, expected, actual interface{}) 
 
 func failedTypeExpectation(t *testing.T, key, expectedType string, actualValue interface{}) {
 	t.Helper()
-	t.Fatalf("expected %T for field %q, got %T\n", expectedType, key, actualValue)
+	t.Fatalf("expected %s for field %q, got %T\n", expectedType, key, actualValue)
 }
 
 func failedValueExpectation(t *testing.T, key string, expectedValue, actualValue interface{}) {
