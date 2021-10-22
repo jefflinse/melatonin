@@ -24,7 +24,7 @@ type TestCase struct {
 	// Setup is an optional function that is run before the test is run.
 	// It can be used to perform any prerequisites actions for the test,
 	// such as adding or removing objects in a database.
-	Setup func()
+	Setup func() error
 
 	// Method is the HTTP method to use for the request. Default is "GET".
 	Method string

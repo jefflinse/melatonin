@@ -75,7 +75,9 @@ func (r *TestRunner) RunTests(tests []TestCase) {
 // RunTest runs a single test.
 func (r *TestRunner) RunTest(test TestCase) error {
 	if test.Setup != nil {
-		test.Setup()
+		if err := test.Setup(); err != nil {
+			return fmt.Errorf("test %q failed setup: %s", test.Name, err)
+		}
 	}
 
 	status, body, err := r.doRequest(test.Method, r.BaseURL+test.URI, test.RequestBody)
