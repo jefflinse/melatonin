@@ -47,19 +47,21 @@ func assertTypeAndValue(t *testing.T, key string, expected, actual interface{}) 
 
 	switch expectedValue := expected.(type) {
 
-	case map[string]interface{}:
+	case JSONMap, map[string]interface{}:
+		expectedMap := expectedValue.(JSONMap)
 		value := requireJSONMap(t, key, actual)
-		for wantKey, wantVal := range expectedValue {
+		for wantKey, wantVal := range expectedMap {
 			assertTypeAndValue(t, fmt.Sprintf("%s.%s", key, wantKey), wantVal, value[wantKey])
 		}
 
-	case []interface{}:
+	case JSONArray, []interface{}:
+		expectedArray := expectedValue.(JSONArray)
 		value := requireJSONArray(t, key, actual)
-		if len(value) != len(expectedValue) {
-			t.Fatalf("expected %d values for field %q, got %d\n", len(expectedValue), key, len(value))
+		if len(value) != len(expectedArray) {
+			t.Fatalf("expected %d values for field %q, got %d\n", len(expectedArray), key, len(value))
 		}
 
-		for i, wantItem := range expectedValue {
+		for i, wantItem := range expectedArray {
 			assertTypeAndValue(t, fmt.Sprintf("%s[%d]", key, i), wantItem, value[i])
 		}
 
