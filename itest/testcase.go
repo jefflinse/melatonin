@@ -15,10 +15,9 @@ import (
 // All fields in the WantBody map are expected to be present in the
 // response body.
 type TestCase struct {
-	// Setup is an optional function that is run before the test is run.
-	// It can be used to perform any prerequisites actions for the test,
-	// such as adding or removing objects in a database.
-	Setup func() error
+	// ContinueOnFailure indicates whether the test should continue to the next
+	// test case if the current test fails. Default is false.
+	ContinueOnFailure bool
 
 	// Method is the HTTP method to use for the request. Default is "GET".
 	Method string
@@ -32,6 +31,11 @@ type TestCase struct {
 	// RequestBody is the content to send in the body of the HTTP request.
 	RequestBody Stringable
 
+	// Setup is an optional function that is run before the test is run.
+	// It can be used to perform any prerequisites actions for the test,
+	// such as adding or removing objects in a database.
+	Setup func() error
+
 	// WantStatus is the expected HTTP status code of the response. Default is 200.
 	WantStatus int
 
@@ -42,9 +46,8 @@ type TestCase struct {
 	// WantBody is the expected HTTP response body content.
 	WantBody Stringable
 
-	// ContinueOnFailure indicates whether the test should continue to the next
-	// test case if the current test fails. Default is false.
-	ContinueOnFailure bool
+	// Underlying HTTP request for the test case.
+	request *http.Request
 }
 
 func (tc *TestCase) DisplayName() string {
@@ -74,6 +77,18 @@ func PATCH(path string) *TestCase {
 
 func DELETE(path string) *TestCase {
 	return &TestCase{Method: "DELETE", Path: path}
+}
+
+func DO(request *http.Request, err error) *TestCase {
+	if err != nil {
+		fatal("invalid custom request: ", err)
+	}
+
+	return &TestCase{
+		Method:  request.Method,
+		Path:    request.URL.Path,
+		request: request,
+	}
 }
 
 func (tc *TestCase) WithSetup(setup func() error) *TestCase {

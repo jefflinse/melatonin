@@ -102,9 +102,18 @@ func (r *TestRunner) RunTest(test *TestCase) error {
 		}
 	}
 
-	status, body, err := r.doRequest(test.Method, r.BaseURL+test.Path, test.RequestHeaders, test.RequestBody)
+	if test.request == nil {
+		req, err := r.createRequest(test.Method, r.BaseURL+test.Path, test.RequestHeaders, test.RequestBody)
+		if err != nil {
+			return fmt.Errorf("test %q failed to create HTTP request: %s", test.DisplayName(), err)
+		}
+
+		test.request = req
+	}
+
+	status, body, err := r.doRequest(test.request)
 	if err != nil {
-		return fmt.Errorf("unexpeceted error while running test %q: %s", test.DisplayName(), err)
+		return fmt.Errorf("test %q failed to perform HTTP request: %s", test.DisplayName(), err)
 	}
 
 	if status != test.WantStatus {
@@ -139,7 +148,7 @@ func ValidateTests(tests []*TestCase) bool {
 	return valid
 }
 
-func (r *TestRunner) doRequest(method, uri string, headers http.Header, body Stringable) (int, JSONMap, error) {
+func (r *TestRunner) createRequest(method, uri string, headers http.Header, body Stringable) (*http.Request, error) {
 	var reader io.Reader
 	if body != nil {
 		reader = bytes.NewReader([]byte(body.String()))
@@ -147,7 +156,7 @@ func (r *TestRunner) doRequest(method, uri string, headers http.Header, body Str
 
 	req, err := http.NewRequest(method, uri, reader)
 	if err != nil {
-		return -1, nil, err
+		return nil, err
 	}
 
 	if headers != nil {
@@ -156,7 +165,11 @@ func (r *TestRunner) doRequest(method, uri string, headers http.Header, body Str
 		req.Header = http.Header{}
 	}
 
-	debug("%s %s\n", method, uri)
+	return req, nil
+}
+
+func (r *TestRunner) doRequest(req *http.Request) (int, JSONMap, error) {
+	debug("%s %s\n", req.Method, req.URL.RawPath)
 	resp, err := r.HTTPClient.Do(req)
 	if err != nil {
 		return -1, nil, err
