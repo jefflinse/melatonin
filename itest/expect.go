@@ -25,26 +25,26 @@ func expect(key string, expected, actual interface{}) error {
 		if !ok {
 			expectedMap = JSONMap(expectedValue.(map[string]interface{}))
 		}
-		return requireJSONMapValue(key, expectedMap, actual)
+		return expectJSONMap(key, expectedMap, actual)
 
 	case JSONArray, []interface{}:
 		expectedArray, ok := expectedValue.(JSONArray)
 		if !ok {
 			expectedArray = JSONArray(expectedValue.([]interface{}))
 		}
-		return requireJSONArray(key, expectedArray, actual)
+		return expectJSONArray(key, expectedArray, actual)
 
 	case string:
-		return requireStringValue(key, expectedValue, actual)
+		return expectString(key, expectedValue, actual)
 
 	case int:
-		return requireIntValue(key, expectedValue, actual)
+		return expectInt(key, expectedValue, actual)
 
 	case float64:
-		return requireFloatValue(key, expectedValue, actual)
+		return expectFloat(key, expectedValue, actual)
 
 	case bool:
-		return requireBoolValue(key, expectedValue, actual)
+		return expectBool(key, expectedValue, actual)
 
 	case func(interface{}) bool:
 		if !expectedValue(actual) {
@@ -58,7 +58,7 @@ func expect(key string, expected, actual interface{}) error {
 	return nil
 }
 
-func requireBoolValue(key string, expected bool, actual interface{}) error {
+func expectBool(key string, expected bool, actual interface{}) error {
 	b, ok := actual.(bool)
 	if !ok {
 		return WrongTypeError(key, expected, actual)
@@ -69,7 +69,7 @@ func requireBoolValue(key string, expected bool, actual interface{}) error {
 	return nil
 }
 
-func requireIntValue(key string, expected int, actual interface{}) error {
+func expectInt(key string, expected int, actual interface{}) error {
 	i, ok := actual.(int)
 	if !ok {
 		f, ok := actual.(float64)
@@ -87,7 +87,7 @@ func requireIntValue(key string, expected int, actual interface{}) error {
 	return nil
 }
 
-func requireFloatValue(key string, expected float64, actual interface{}) error {
+func expectFloat(key string, expected float64, actual interface{}) error {
 	b, ok := actual.(float64)
 	if !ok {
 		return WrongTypeError(key, expected, actual)
@@ -98,7 +98,7 @@ func requireFloatValue(key string, expected float64, actual interface{}) error {
 	return nil
 }
 
-func requireStringValue(key string, expected string, actual interface{}) error {
+func expectString(key string, expected string, actual interface{}) error {
 	s, ok := actual.(string)
 	if !ok {
 		return WrongTypeError(key, expected, actual)
@@ -109,7 +109,7 @@ func requireStringValue(key string, expected string, actual interface{}) error {
 	return nil
 }
 
-func requireJSONMapValue(key string, expected JSONMap, actual interface{}) error {
+func expectJSONMap(key string, expected JSONMap, actual interface{}) error {
 	m, ok := actual.(JSONMap)
 	if !ok {
 		m, ok = actual.(map[string]interface{})
@@ -129,7 +129,7 @@ func requireJSONMapValue(key string, expected JSONMap, actual interface{}) error
 	return nil
 }
 
-func requireJSONArray(key string, expected JSONArray, actual interface{}) error {
+func expectJSONArray(key string, expected JSONArray, actual interface{}) error {
 	a, ok := actual.(JSONArray)
 	if !ok {
 		a, ok = actual.([]interface{})
