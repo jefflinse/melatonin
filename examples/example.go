@@ -15,7 +15,7 @@ func main() {
 				return nil
 			},
 			Method:     "GET",
-			URI:        "/foo",
+			Path:       "/foo",
 			WantStatus: 200,
 			WantBody:   itest.JSONMap{"response": "Hello, world!"},
 		},

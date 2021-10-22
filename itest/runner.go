@@ -84,7 +84,7 @@ func (r *TestRunner) RunTests(tests []TestCase) {
 			}
 		} else {
 			green := color.New(color.FgGreen).SprintFunc()
-			fmt.Printf("%s  %s %s\n", green("OK"), test.Method, test.URI)
+			fmt.Printf("%s  %s %s\n", green("OK"), test.Method, test.Path)
 		}
 	}
 }
@@ -98,7 +98,7 @@ func (r *TestRunner) RunTest(test TestCase) error {
 		}
 	}
 
-	status, body, err := r.doRequest(test.Method, r.BaseURL+test.URI, test.RequestBody)
+	status, body, err := r.doRequest(test.Method, r.BaseURL+test.Path, test.RequestBody)
 	if err != nil {
 		return fmt.Errorf("unexpeceted error while running test %q: %s", test.Name, err)
 	}

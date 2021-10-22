@@ -16,7 +16,7 @@ import (
 // response body.
 type TestCase struct {
 	// Name is the name of the test case. If not provided, defaults to
-	// METHOD URI (body length), e.g.:
+	// METHOD Path (body length), e.g.:
 	//
 	//   POST /users (210)
 	Name string
@@ -29,8 +29,8 @@ type TestCase struct {
 	// Method is the HTTP method to use for the request. Default is "GET".
 	Method string
 
-	// URI is the relative URI to use for the request.
-	URI string
+	// Path is the relative Path to use for the request.
+	Path string
 
 	// RequestBody is the content to send in the body of the HTTP request.
 	RequestBody Stringable
@@ -50,10 +50,10 @@ type TestCase struct {
 func (tc *TestCase) Validate() error {
 	if tc.Method == "" {
 		return errors.New("missing Method")
-	} else if tc.URI == "" {
-		return errors.New("missing URI")
-	} else if tc.URI[0] != '/' {
-		return errors.New("URI must begin with '/'")
+	} else if tc.Path == "" {
+		return errors.New("missing Path")
+	} else if tc.Path[0] != '/' {
+		return errors.New("Path must begin with '/'")
 	} else if tc.WantStatus == 0 {
 		return errors.New("missing WantStatus")
 	} else if tc.WantBody == nil {
@@ -61,7 +61,7 @@ func (tc *TestCase) Validate() error {
 	}
 
 	if tc.Name == "" {
-		tc.Name = fmt.Sprintf("%s %s (%d)", tc.Method, tc.URI, len(tc.RequestBody.String()))
+		tc.Name = fmt.Sprintf("%s %s (%d)", tc.Method, tc.Path, len(tc.RequestBody.String()))
 	}
 
 	return nil
