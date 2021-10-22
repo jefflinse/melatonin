@@ -17,8 +17,8 @@ type TestRunner struct {
 
 func (r TestRunner) RunTests(tests []TestCase) {
 	r.T.Helper()
-	for _, test := range tests {
-		if err := test.validate(); err != nil {
+	for i, test := range tests {
+		if err := test.validate(i); err != nil {
 			r.T.Fatalf("test case %q is invalid: %s", test.Name, err)
 		}
 

@@ -26,9 +26,9 @@ type TestCase struct {
 }
 
 // Validate ensures that the test case is valid can can be run.
-func (tc *TestCase) validate() error {
+func (tc *TestCase) validate(index int) error {
 	if tc.Name == "" {
-		return errors.New("missing Name")
+		tc.Name = fmt.Sprint("Test", index)
 	} else if tc.Method == "" {
 		return errors.New("missing Method")
 	} else if tc.URI == "" {
