@@ -3,7 +3,6 @@ package itest
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 )
 
@@ -44,7 +43,7 @@ type TestCase struct {
 
 	// WantHeaders is a map of HTTP headers that are expected to be present in
 	// the HTTP response.
-	WantHeaders map[string]string
+	WantHeaders http.Header
 
 	// WantBody is the expected HTTP response body content.
 	WantBody Stringable
@@ -52,6 +51,98 @@ type TestCase struct {
 	// ContinueOnFailure indicates whether the test should continue to the next
 	// test case if the current test fails. Default is false.
 	ContinueOnFailure bool
+}
+
+func GET(path string) *TestCase {
+	return &TestCase{Method: "GET", Path: path}
+}
+
+func POST(path string) *TestCase {
+	return &TestCase{Method: "POST", Path: path}
+}
+
+func PUT(path string) *TestCase {
+	return &TestCase{Method: "PUT", Path: path}
+}
+
+func PATCH(path string) *TestCase {
+	return &TestCase{Method: "PATCH", Path: path}
+}
+
+func DELETE(path string) *TestCase {
+	return &TestCase{Method: "DELETE", Path: path}
+}
+
+func (tc *TestCase) WithSetup(setup func() error) *TestCase {
+	if tc.Setup != nil {
+		fatal("test case %q specifies more than one setup function", underlineText(tc.Name))
+	}
+
+	tc.Setup = setup
+	return tc
+}
+
+func (tc *TestCase) WithHeaders(headers http.Header) *TestCase {
+	if tc.RequestHeaders != nil {
+		fatal("test case %q specifies request headers more than once", tc.Name)
+	}
+
+	tc.RequestHeaders = headers
+	return tc
+}
+
+func (tc *TestCase) WithHeader(key, value string) *TestCase {
+	if tc.RequestHeaders == nil {
+		tc.RequestHeaders = http.Header{}
+	}
+
+	tc.RequestHeaders.Set(key, value)
+	return tc
+}
+
+func (tc *TestCase) WithBody(body Stringable) *TestCase {
+	if tc.RequestBody != nil {
+		fatal("test case %q specifies more than one request body", tc.Name)
+	}
+
+	tc.RequestBody = body
+	return tc
+}
+
+func (tc *TestCase) ExpectStatus(status int) *TestCase {
+	if tc.WantStatus > 0 {
+		fatal("test case %q specifies more than one expected status", tc.Name)
+	}
+
+	tc.WantStatus = status
+	return tc
+}
+
+func (tc *TestCase) ExpectHeaders(headers http.Header) *TestCase {
+	if tc.WantHeaders != nil && len(tc.WantHeaders) > 0 {
+		fatal("test case %q overrides previously defined expected headers", tc.Name)
+	}
+
+	tc.WantHeaders = headers
+	return tc
+}
+
+func (tc *TestCase) ExpectHeader(key, value string) *TestCase {
+	if tc.WantHeaders == nil {
+		tc.WantHeaders = http.Header{}
+	}
+
+	tc.WantHeaders.Set(key, value)
+	return tc
+}
+
+func (tc *TestCase) ExpectBody(body Stringable) *TestCase {
+	if tc.WantBody != nil {
+		fatal("test case %q specifies more than one expected body", tc.Name)
+	}
+
+	tc.WantBody = body
+	return tc
 }
 
 // Validate ensures that the test case is valid can can be run.
@@ -69,7 +160,10 @@ func (tc *TestCase) Validate() error {
 	}
 
 	if tc.Name == "" {
-		tc.Name = fmt.Sprintf("%s %s (%d)", tc.Method, tc.Path, len(tc.RequestBody.String()))
+		tc.Name = fmt.Sprintf("%s %s", tc.Method, tc.Path)
+		if tc.RequestBody != nil {
+			tc.Name += fmt.Sprintf(" (%d)", len(tc.RequestBody.String()))
+		}
 	}
 
 	return nil
@@ -106,11 +200,11 @@ func assertTypeAndValue(key string, expected, actual interface{}) error {
 
 	case func(interface{}) bool:
 		if !expectedValue(actual) {
-			log.Fatalf("field %q did not satisfy predicate, got %q\n", key, actual)
+			fatal("field %q did not satisfy predicate, got %q\n", key, actual)
 		}
 
 	default:
-		log.Fatalf("unexpected value type for field %q: %T\n", key, actual)
+		fatal("unexpected value type for field %q: %T\n", key, actual)
 	}
 
 	return nil

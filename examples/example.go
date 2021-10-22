@@ -8,17 +8,14 @@ import (
 
 func main() {
 	startExampleServer()
-	itest.RunTests("http://localhost:8080", []itest.TestCase{
-		{
-			Name: "foo",
-			Setup: func() error {
+	itest.RunTests("http://localhost:8080", []*itest.TestCase{
+
+		itest.GET("/foo").
+			WithSetup(func() error {
 				return nil
-			},
-			Method:     "GET",
-			Path:       "/foo",
-			WantStatus: 200,
-			WantBody:   itest.JSONMap{"response": "Hello, world!"},
-		},
+			}).
+			ExpectStatus(200).
+			ExpectBody(itest.JSONMap{"response": "Hello, world!"}),
 	})
 }
 

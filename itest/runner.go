@@ -28,9 +28,10 @@ type TestRunner struct {
 	// If left unset, http.DefaultClient will be used.
 	HTTPClient *http.Client
 
-	// Verbose causes the running to print out additional information for each test.
-	// Defaults to false.
-	Verbose bool
+	excuted int
+	passed  int
+	failed  int
+	skipped int
 }
 
 // DefaultTestRunner creates a new TestRunner with the default settings.
@@ -61,43 +62,45 @@ func (r *TestRunner) WithHTTPClient(client *http.Client) *TestRunner {
 	return r
 }
 
-// WithVerbose sets the Verbose field of the TestRunner and returns the TestRunner.
-func (r *TestRunner) WithVerbose(verbose bool) *TestRunner {
-	r.Verbose = verbose
-	return r
-}
-
 // RunTests runs a set of tests.
-func (r *TestRunner) RunTests(tests []TestCase) {
+func (r *TestRunner) RunTests(tests []*TestCase) {
 	if err := r.Validate(); err != nil {
-		fmt.Println("invalid test runner:", err)
+		fatal("invalid test runner:", err)
 		return
 	}
 
 	if !ValidateTests(tests) {
-		fmt.Println("one or more test cases failed validation")
-		return
+		fatal("one or more test cases failed validation")
 	}
 
 	for _, test := range tests {
-		if err := r.RunTest(test); err != nil {
-			color.Set(color.FgRed)
-			fmt.Printf("%s: %s\n", test.Name, err)
-			color.Unset()
+		err := r.RunTest(test)
+		r.excuted++
+		if err != nil {
+			r.failed++
+			red := color.New(color.FgRed).SprintFunc()
+			info("%s  %s %s", red("FAIL"), test.Method, test.Path)
+			problem("     %s", err)
 			if !r.ContinueOnFailure {
+				warn("skipping remaininig tests")
+				r.skipped = len(tests) - r.excuted
 				break
 			}
+
 		} else {
+			r.passed++
 			green := color.New(color.FgGreen).SprintFunc()
-			fmt.Printf("%s  %s %s\n", green("OK"), test.Method, test.Path)
+			info("%s  %s %s", green("OK"), test.Method, test.Path)
 		}
 	}
+
+	info("\n%d passed, %d failed, %d skipped", r.passed, r.failed, r.skipped)
 }
 
 // RunTest runs a single test.
-func (r *TestRunner) RunTest(test TestCase) error {
+func (r *TestRunner) RunTest(test *TestCase) error {
 	if test.Setup != nil {
-		r.verbose("%s: running setup\n", test.Name)
+		debug("%s: running setup\n", test.Name)
 		if err := test.Setup(); err != nil {
 			return fmt.Errorf("test %q failed setup: %s", test.Name, err)
 		}
@@ -128,11 +131,11 @@ func (r *TestRunner) Validate() error {
 }
 
 // ValidateTests validates a set of tests
-func ValidateTests(tests []TestCase) bool {
+func ValidateTests(tests []*TestCase) bool {
 	valid := true
 	for _, test := range tests {
 		if err := test.Validate(); err != nil {
-			fmt.Printf("test case %q is invalid: %s", test.Name, err)
+			problem("test case %q is invalid: %s", test.Name, err)
 			valid = false
 		}
 	}
@@ -157,7 +160,7 @@ func (r *TestRunner) doRequest(method, uri string, headers http.Header, body Str
 		req.Header = http.Header{}
 	}
 
-	r.verbose("%s %s\n", method, uri)
+	debug("%s %s\n", method, uri)
 	resp, err := r.HTTPClient.Do(req)
 	if err != nil {
 		return -1, nil, err
@@ -172,7 +175,7 @@ func (r *TestRunner) doRequest(method, uri string, headers http.Header, body Str
 	var bodyMap JSONMap
 	if len(b) > 0 {
 		if err := json.Unmarshal(b, &bodyMap); err == nil {
-			r.verbose("%s\n", string(b))
+			debug("%s\n", string(b))
 			return resp.StatusCode, bodyMap, nil
 		}
 	}
@@ -180,15 +183,7 @@ func (r *TestRunner) doRequest(method, uri string, headers http.Header, body Str
 	return resp.StatusCode, nil, nil
 }
 
-func (r *TestRunner) verbose(format string, args ...interface{}) {
-	if r.Verbose {
-		color.Set(color.FgBlue)
-		fmt.Printf(format, args...)
-		color.Unset()
-	}
-}
-
 // RunTests runs a set of tests using the provided base URL and the default TestRunner.
-func RunTests(baseURL string, tests []TestCase) {
-	DefaultTestRunner().WithBaseURL(baseURL).WithVerbose(true).RunTests(tests)
+func RunTests(baseURL string, tests []*TestCase) {
+	DefaultTestRunner().WithBaseURL(baseURL).RunTests(tests)
 }
