@@ -11,7 +11,7 @@ var Verbose bool
 
 var (
 	greenText = color.New(color.FgGreen).SprintFunc()
-	redText   = color.New(color.FgRed).SprintFunc()
+	redText   = color.New(color.FgHiRed).SprintFunc()
 )
 
 func fatal(format string, a ...interface{}) {
@@ -20,7 +20,7 @@ func fatal(format string, a ...interface{}) {
 }
 
 func problem(format string, a ...interface{}) {
-	color.Red(format, a...)
+	color.HiRed(format, a...)
 }
 
 func warn(format string, a ...interface{}) {

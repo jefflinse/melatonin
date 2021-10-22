@@ -76,8 +76,8 @@ func (r *TestRunner) RunTests(tests []*TestCase) {
 		r.excuted++
 		if err != nil {
 			r.failed++
-			info("%s  %s %s", redText("FAIL"), test.Method, test.Path)
-			problem("     %s", err)
+			info("%s  %s %s", redText("✘"), test.Method, test.Path)
+			problem("   %s", err)
 			if !r.ContinueOnFailure {
 				warn("skipping remaininig tests")
 				r.skipped = len(tests) - r.excuted
@@ -86,7 +86,7 @@ func (r *TestRunner) RunTests(tests []*TestCase) {
 
 		} else {
 			r.passed++
-			info("%s  %s %s", greenText("OK"), test.Method, test.Path)
+			info("%s  %s %s", greenText("✔"), test.Method, test.Path)
 		}
 	}
 
