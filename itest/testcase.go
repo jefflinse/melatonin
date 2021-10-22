@@ -172,7 +172,12 @@ func requireJSONMap(t *testing.T, key string, v interface{}) JSONMap {
 	t.Helper()
 	m, ok := v.(JSONMap)
 	if !ok {
-		failedTypeExpectation(t, key, "map", v)
+		m, ok = v.(map[string]interface{})
+		if !ok {
+			failedTypeExpectation(t, key, "map", v)
+		}
+
+		m = JSONMap(m)
 	}
 
 	return m
@@ -182,7 +187,12 @@ func requireJSONArray(t *testing.T, key string, v interface{}) JSONArray {
 	t.Helper()
 	a, ok := v.(JSONArray)
 	if !ok {
-		failedTypeExpectation(t, key, "array", v)
+		a, ok = v.([]interface{})
+		if !ok {
+			failedTypeExpectation(t, key, "array", v)
+		}
+
+		a = JSONArray(a)
 	}
 
 	return a

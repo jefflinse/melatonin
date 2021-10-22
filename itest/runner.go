@@ -32,7 +32,7 @@ func (r TestRunner) RunTests(tests []TestCase) {
 				t.Fatalf("expected status %d, got %d\n", test.WantStatus, status)
 			}
 
-			assertTypeAndValue(t, ".", test.WantBody, body)
+			assertTypeAndValue(t, "", test.WantBody, body)
 		})
 	}
 }
