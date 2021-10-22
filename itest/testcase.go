@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 )
 
 // A TestCase tests a single call to an HTTP endpoint.
@@ -32,11 +33,18 @@ type TestCase struct {
 	// Path is the relative Path to use for the request.
 	Path string
 
+	// RequestHeaders is a map of HTTP headers to use for the request.
+	RequestHeaders http.Header
+
 	// RequestBody is the content to send in the body of the HTTP request.
 	RequestBody Stringable
 
 	// WantStatus is the expected HTTP status code of the response. Default is 200.
 	WantStatus int
+
+	// WantHeaders is a map of HTTP headers that are expected to be present in
+	// the HTTP response.
+	WantHeaders map[string]string
 
 	// WantBody is the expected HTTP response body content.
 	WantBody Stringable
@@ -53,7 +61,7 @@ func (tc *TestCase) Validate() error {
 	} else if tc.Path == "" {
 		return errors.New("missing Path")
 	} else if tc.Path[0] != '/' {
-		return errors.New("Path must begin with '/'")
+		return errors.New("path must begin with '/'")
 	} else if tc.WantStatus == 0 {
 		return errors.New("missing WantStatus")
 	} else if tc.WantBody == nil {

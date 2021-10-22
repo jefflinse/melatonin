@@ -74,6 +74,11 @@ func (r *TestRunner) RunTests(tests []TestCase) {
 		return
 	}
 
+	if !ValidateTests(tests) {
+		fmt.Println("one or more test cases failed validation")
+		return
+	}
+
 	for _, test := range tests {
 		if err := r.RunTest(test); err != nil {
 			color.Set(color.FgRed)
@@ -98,7 +103,7 @@ func (r *TestRunner) RunTest(test TestCase) error {
 		}
 	}
 
-	status, body, err := r.doRequest(test.Method, r.BaseURL+test.Path, test.RequestBody)
+	status, body, err := r.doRequest(test.Method, r.BaseURL+test.Path, test.RequestHeaders, test.RequestBody)
 	if err != nil {
 		return fmt.Errorf("unexpeceted error while running test %q: %s", test.Name, err)
 	}
@@ -135,7 +140,7 @@ func ValidateTests(tests []TestCase) bool {
 	return valid
 }
 
-func (r *TestRunner) doRequest(method, uri string, body Stringable) (int, JSONMap, error) {
+func (r *TestRunner) doRequest(method, uri string, headers http.Header, body Stringable) (int, JSONMap, error) {
 	var reader io.Reader
 	if body != nil {
 		reader = bytes.NewReader([]byte(body.String()))
@@ -144,6 +149,12 @@ func (r *TestRunner) doRequest(method, uri string, body Stringable) (int, JSONMa
 	req, err := http.NewRequest(method, uri, reader)
 	if err != nil {
 		return -1, nil, err
+	}
+
+	if headers != nil {
+		req.Header = headers
+	} else {
+		req.Header = http.Header{}
 	}
 
 	r.verbose("%s %s\n", method, uri)
