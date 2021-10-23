@@ -9,7 +9,6 @@ import (
 
 func main() {
 	startExampleServer()
-	// itest.Verbose = true
 
 	customReq, _ := http.NewRequest("GET", "http://localhost:8080/foo", nil)
 

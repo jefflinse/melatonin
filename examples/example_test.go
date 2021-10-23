@@ -10,7 +10,6 @@ import (
 
 func TestAPI(t *testing.T) {
 	startExampleServer()
-	// itest.Verbose = true
 
 	customReq, _ := http.NewRequest("GET", "http://localhost:8080/foo", nil)
 
@@ -22,7 +21,7 @@ func TestAPI(t *testing.T) {
 			ExpectStatus(200).
 			ExpectBody(itest.JSONObject{"response": "Hello, world!"}),
 
-		itest.GET("/bar").
+		itest.GET("/bar?query=foo&other=bar").
 			ExpectStatus(404),
 
 		// Specify a custom *http.Request for a test.
