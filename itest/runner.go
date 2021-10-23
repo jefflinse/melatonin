@@ -41,11 +41,6 @@ type TestRunner struct {
 	//
 	// Default is 5 seconds.
 	RequestTimeout time.Duration
-
-	excuted int
-	passed  int
-	failed  int
-	skipped int
 }
 
 // NewTestRunner creates a new TestRunner with the default settings.
@@ -90,11 +85,12 @@ func (r *TestRunner) RunTests(tests []*TestCase) (results []*TestCaseResult) {
 	}
 
 	info("running %d tests for %s", len(tests), r.BaseURL)
+	var executed, passed, failed, skipped int
 	for _, test := range tests {
 		result := r.RunTest(test)
-		r.excuted++
+		executed++
 		if len(result.Errors) > 0 {
-			r.failed++
+			failed++
 			info("%s  %s %s", redText("✘"), test.request.Method, test.request.URL.Path)
 			for _, err := range result.Errors {
 				problem("   %s", err)
@@ -102,17 +98,17 @@ func (r *TestRunner) RunTests(tests []*TestCase) (results []*TestCaseResult) {
 
 			if !r.ContinueOnFailure {
 				warn("skipping remaininig tests")
-				r.skipped = len(tests) - r.excuted
+				skipped = len(tests) - executed
 				break
 			}
 
 		} else {
-			r.passed++
+			passed++
 			info("%s  %s %s", greenText("✔"), test.request.Method, test.request.URL.Path)
 		}
 	}
 
-	info("\n%d passed, %d failed, %d skipped", r.passed, r.failed, r.skipped)
+	info("\n%d passed, %d failed, %d skipped", passed, failed, skipped)
 	return
 }
 
