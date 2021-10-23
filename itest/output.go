@@ -9,6 +9,16 @@ import (
 
 var Verbose bool
 
+func init() {
+	if os.Getenv("ITEST_VERBOSE") != "" {
+		Verbose = true
+	}
+
+	if os.Getenv("ITEST_NOCOLOR") != "" {
+		color.NoColor = true
+	}
+}
+
 var (
 	greenText = color.New(color.FgGreen).SprintFunc()
 	redText   = color.New(color.FgHiRed).SprintFunc()
