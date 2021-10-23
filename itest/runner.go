@@ -106,7 +106,7 @@ func (r *TestRunner) RunTests(tests []*TestCase) (results []*TestCaseResult) {
 	for _, test := range tests {
 		var result *TestCaseResult
 		if r.T != nil {
-			result = r.RunTestInTestContext(r.T, test)
+			result = r.RunTestT(r.T, test)
 		} else {
 			result = r.RunTest(test)
 		}
@@ -201,7 +201,7 @@ func (r *TestRunner) RunTest(test *TestCase) (result *TestCaseResult) {
 	return
 }
 
-func (r *TestRunner) RunTestInTestContext(t *testing.T, test *TestCase) (result *TestCaseResult) {
+func (r *TestRunner) RunTestT(t *testing.T, test *TestCase) (result *TestCaseResult) {
 	t.Run(test.DisplayName(), func(t *testing.T) {
 		result = r.RunTest(test)
 		if len(result.Errors) > 0 {
