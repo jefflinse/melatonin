@@ -216,7 +216,7 @@ func (r *TestRunner) doRequest(req *http.Request) (int, Stringable, error) {
 	debug("%d\n%s", resp.StatusCode, responseString)
 
 	if len(b) > 0 {
-		var bodyMap JSONMap
+		var bodyMap JSONObject
 		if err := json.Unmarshal(b, &bodyMap); err == nil {
 			return resp.StatusCode, bodyMap, nil
 		}

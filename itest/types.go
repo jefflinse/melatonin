@@ -35,13 +35,13 @@ func (b Bool) String() string {
 	return fmt.Sprintf("%t", b)
 }
 
-// JSONMap is a shorter name for map[string]interface{} that satisfies the Stringable interface.
-type JSONMap map[string]interface{}
+// JSONObject is a shorter name for map[string]interface{} that satisfies the Stringable interface.
+type JSONObject map[string]interface{}
 
-func (m JSONMap) String() string {
+func (m JSONObject) String() string {
 	b, err := json.Marshal(m)
 	if err != nil {
-		panic("failed to marshal JSONMap to string: " + err.Error())
+		panic("failed to marshal JSONObject to string: " + err.Error())
 	}
 	return string(b)
 }

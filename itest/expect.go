@@ -44,12 +44,12 @@ func expectStatus(expected, actual int) error {
 func expect(key string, expected, actual interface{}) error {
 	switch expectedValue := expected.(type) {
 
-	case JSONMap, map[string]interface{}:
-		expectedMap, ok := expectedValue.(JSONMap)
+	case JSONObject, map[string]interface{}:
+		expectedMap, ok := expectedValue.(JSONObject)
 		if !ok {
-			expectedMap = JSONMap(expectedValue.(map[string]interface{}))
+			expectedMap = JSONObject(expectedValue.(map[string]interface{}))
 		}
-		return expectJSONMap(key, expectedMap, actual)
+		return expectJSONObject(key, expectedMap, actual)
 
 	case JSONArray, []interface{}:
 		expectedArray, ok := expectedValue.(JSONArray)
@@ -175,15 +175,15 @@ func expectString(key string, expected String, actual interface{}) error {
 	return nil
 }
 
-func expectJSONMap(key string, expected JSONMap, actual interface{}) error {
-	m, ok := actual.(JSONMap)
+func expectJSONObject(key string, expected JSONObject, actual interface{}) error {
+	m, ok := actual.(JSONObject)
 	if !ok {
 		m, ok = actual.(map[string]interface{})
 		if !ok {
 			return WrongTypeError(key, expected, actual)
 		}
 
-		m = JSONMap(m)
+		m = JSONObject(m)
 	}
 
 	for k, v := range expected {

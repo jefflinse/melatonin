@@ -15,7 +15,7 @@ func main() {
 		itest.GET("/foo").
 			WithHeader("Accept", "application/json").
 			ExpectStatus(200).
-			ExpectBody(itest.JSONMap{"response": "Hello, world!"}),
+			ExpectBody(itest.JSONObject{"response": "Hello, world!"}),
 
 		itest.GET("/bar").
 			ExpectStatus(404),
@@ -23,7 +23,7 @@ func main() {
 		// Specify a custom *http.Request for a test
 		itest.DO(http.NewRequest("GET", "http://localhost:8080/foo", nil)).
 			ExpectStatus(200).
-			ExpectBody(itest.JSONMap{"response": "Hello, world!"}),
+			ExpectBody(itest.JSONObject{"response": "Hello, world!"}),
 	})
 }
 
