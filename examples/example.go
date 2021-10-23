@@ -12,7 +12,8 @@ func main() {
 
 	customReq, _ := http.NewRequest("GET", "http://localhost:8080/foo", nil)
 
-	itest.RunTests("http://localhost:8080", []*itest.TestCase{
+	runner := itest.NewTestRunner().WithBaseURL("http://localhost:8080").WithContinueOnFailure(true)
+	runner.RunTests([]*itest.TestCase{
 
 		itest.GET("/foo").
 			WithHeader("Accept", "application/json").
