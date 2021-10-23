@@ -63,6 +63,7 @@ type TestCase struct {
 	request *http.Request
 }
 
+// NewTestCase creates a new TestCase with the given method and path.
 func NewTestCase(method, path string) *TestCase {
 	return &TestCase{
 		Method: method,
@@ -70,6 +71,7 @@ func NewTestCase(method, path string) *TestCase {
 	}
 }
 
+// DisplayName returns the name of the test case.
 func (tc *TestCase) DisplayName() string {
 	name := fmt.Sprintf("%s %s", tc.Method, tc.Path)
 	if tc.RequestBody != nil {
@@ -79,34 +81,42 @@ func (tc *TestCase) DisplayName() string {
 	return name
 }
 
+// DELETE is a shortcut for NewTestCase("DELETE", path).
 func DELETE(path string) *TestCase {
 	return NewTestCase("DELETE", path)
 }
 
+// HEAD is a shortcut for NewTestCase("HEAD", path).
 func HEAD(path string) *TestCase {
 	return NewTestCase("HEAD", path)
 }
 
+// GET is a shortcut for NewTestCase("GET", path).
 func GET(path string) *TestCase {
 	return NewTestCase("GET", path)
 }
 
+// OPTIONS is a shortcut for NewTestCase("OPTIONS", path).
 func OPTIONS(path string) *TestCase {
 	return NewTestCase("OPTIONS", path)
 }
 
+// PATCH is a shortcut for NewTestCase("PATCH", path).
 func PATCH(path string) *TestCase {
 	return NewTestCase("PATCH", path)
 }
 
+// POST is a shortcut for NewTestCase("POST", path).
 func POST(path string) *TestCase {
 	return NewTestCase("POST", path)
 }
 
+// PUT is a shortcut for NewTestCase("PUT", path).
 func PUT(path string) *TestCase {
 	return NewTestCase("PUT", path)
 }
 
+// DO creates a test case from a custom HTTP request.
 func DO(request *http.Request) *TestCase {
 	return &TestCase{
 		Method:  request.Method,
@@ -115,48 +125,48 @@ func DO(request *http.Request) *TestCase {
 	}
 }
 
+// After registers a function to be run after the test case.
 func (tc *TestCase) After(after func() error) *TestCase {
-	tc.requireMethodAndPath("WithAfter")
 	if tc.AfterFunc != nil {
-		fatal("test case %q specifies more than one after-function", tc.DisplayName())
+		warn("overriding previously defined AfterFunc")
 	}
 
 	tc.AfterFunc = after
 	return tc
 }
 
+// Before registers a function to be run before the test case.
 func (tc *TestCase) Before(before func() error) *TestCase {
-	tc.requireMethodAndPath("WithBefore")
 	if tc.BeforeFunc != nil {
-		fatal("test case %q specifies more than one before function", tc.DisplayName())
+		warn("overriding previously defined BeforeFunc")
 	}
 
 	tc.BeforeFunc = before
 	return tc
 }
 
+// WithBody sets the request body for the test case.
 func (tc *TestCase) WithBody(body Stringable) *TestCase {
-	tc.requireMethodAndPath("WithBody")
 	if tc.RequestBody != nil {
-		fatal("test case %q specifies more than one request body", tc.DisplayName())
+		warn("overriding previously defined request body")
 	}
 
 	tc.RequestBody = body
 	return tc
 }
 
+// WithHeaders sets the request headers for the test case.
 func (tc *TestCase) WithHeaders(headers http.Header) *TestCase {
-	tc.requireMethodAndPath("WithHeaders")
 	if tc.RequestHeaders != nil {
-		fatal("test case %q specifies request headers more than once", tc.DisplayName())
+		warn("overriding previously defined request headers")
 	}
 
 	tc.RequestHeaders = headers
 	return tc
 }
 
+// WithHeader adds a request header to the test case.
 func (tc *TestCase) WithHeader(key, value string) *TestCase {
-	tc.requireMethodAndPath("WithHeader")
 	if tc.RequestHeaders == nil {
 		tc.RequestHeaders = http.Header{}
 	}
@@ -165,38 +175,38 @@ func (tc *TestCase) WithHeader(key, value string) *TestCase {
 	return tc
 }
 
+// WithTimeout sets a timeout for the test case.
 func (tc *TestCase) WithTimeout(timeout time.Duration) *TestCase {
-	tc.requireMethodAndPath("WithTimeout")
 	if tc.Timeout != 0 {
-		fatal("test case %q specifies more than one timeout", tc.DisplayName())
+		warn("overriding previously defined timeout")
 	}
 
 	tc.Timeout = timeout
 	return tc
 }
 
+// ExpectStatus sets the expected HTTP status code for the test case.
 func (tc *TestCase) ExpectStatus(status int) *TestCase {
-	tc.requireMethodAndPath("ExpectStatus")
 	if tc.WantStatus > 0 {
-		fatal("test case %q specifies more than one expected status", tc.DisplayName())
+		warn("overriding previously expected status")
 	}
 
 	tc.WantStatus = status
 	return tc
 }
 
+// ExpectHeaders sets the expected HTTP response headers for the test case.
 func (tc *TestCase) ExpectHeaders(headers http.Header) *TestCase {
-	tc.requireMethodAndPath("ExpectHeaders")
 	if tc.WantHeaders != nil && len(tc.WantHeaders) > 0 {
-		fatal("test case %q overrides previously defined expected headers", tc.DisplayName())
+		warn("overriding previously expected headers")
 	}
 
 	tc.WantHeaders = headers
 	return tc
 }
 
+// ExpectHeader adds an expected HTTP response header for the test case.
 func (tc *TestCase) ExpectHeader(key, value string) *TestCase {
-	tc.requireMethodAndPath("ExpectHeader")
 	if tc.WantHeaders == nil {
 		tc.WantHeaders = http.Header{}
 	}
@@ -205,10 +215,10 @@ func (tc *TestCase) ExpectHeader(key, value string) *TestCase {
 	return tc
 }
 
+// ExpectBody sets the expected HTTP response body for the test case.
 func (tc *TestCase) ExpectBody(body Stringable) *TestCase {
-	tc.requireMethodAndPath("ExpectBody")
 	if tc.WantBody != nil {
-		fatal("test case %q specifies more than one expected body", tc.DisplayName())
+		warn("overriding previously expected body")
 	}
 
 	tc.WantBody = body
@@ -228,8 +238,13 @@ func (tc *TestCase) Validate() error {
 	return nil
 }
 
-func (tc *TestCase) requireMethodAndPath(caller string) {
-	if tc.Method == "" || tc.Path == "" {
-		fatal("test case must define method and path before specifying %s()", caller)
-	}
+// TestCaseResult represents the result of running a single test case.
+type TestCaseResult struct {
+	TestCase *TestCase
+	Errors   []error
+}
+
+// AddError adds an error to the test result.
+func (r *TestCaseResult) AddError(err error) {
+	r.Errors = append(r.Errors, err)
 }
