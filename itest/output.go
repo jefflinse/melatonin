@@ -34,6 +34,6 @@ func info(format string, a ...interface{}) {
 
 func debug(format string, a ...interface{}) {
 	if Verbose {
-		color.Blue(format, a...)
+		color.Cyan(format, a...)
 	}
 }

@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"strings"
 )
 
 // TestRunner contains configuration for running tests.
@@ -17,13 +16,18 @@ type TestRunner struct {
 	// Examples:
 	//   http://localhost:8080
 	//   https://api.example.com
+	//
+	// Required.
 	BaseURL string
 
 	// ContinueOnFailure indicates whether the test runner should continue
-	// executing further tests after a failure. Defaults to false.
+	// executing further tests after a failure.
+	//
+	// Defaults is false.
 	ContinueOnFailure bool
 
 	// HTTPClient is the HTTP client to use for requests.
+	//
 	// If left unset, http.DefaultClient will be used.
 	HTTPClient *http.Client
 
@@ -33,8 +37,8 @@ type TestRunner struct {
 	skipped int
 }
 
-// DefaultTestRunner creates a new TestRunner with the default settings.
-func DefaultTestRunner() *TestRunner {
+// NewTestRunner creates a new TestRunner with the default settings.
+func NewTestRunner() *TestRunner {
 	return &TestRunner{
 		ContinueOnFailure: false,
 		HTTPClient:        http.DefaultClient,
@@ -70,7 +74,7 @@ func (r *TestRunner) RunTests(tests []*TestCase) (results []*TestCaseResult) {
 		return
 	}
 
-	if !ValidateTests(tests) {
+	if !validateTests(tests) {
 		fatal("one or more test cases failed validation")
 	}
 
@@ -160,23 +164,11 @@ func (r *TestRunner) Validate() error {
 	} else if r.BaseURL[len(r.BaseURL)-1] == '/' {
 		return fmt.Errorf("BaseURL must not end with a slash")
 	} else if r.HTTPClient == nil {
-		return fmt.Errorf("HTTPClient is required")
+		debug("HTTPClient is unset, using http.DefaultClient")
+		r.HTTPClient = http.DefaultClient
 	}
 
 	return nil
-}
-
-// ValidateTests validates a set of tests
-func ValidateTests(tests []*TestCase) bool {
-	valid := true
-	for _, test := range tests {
-		if err := test.Validate(); err != nil {
-			problem("test case %q is invalid: %s", test.DisplayName(), err)
-			valid = false
-		}
-	}
-
-	return valid
 }
 
 func (r *TestRunner) createRequest(method, uri string, headers http.Header, body Stringable) (*http.Request, error) {
@@ -200,7 +192,7 @@ func (r *TestRunner) createRequest(method, uri string, headers http.Header, body
 }
 
 func (r *TestRunner) doRequest(req *http.Request) (int, Stringable, error) {
-	debug("%s %s\n", req.Method, req.URL.String())
+	debug("%s %s", req.Method, req.URL.String())
 	resp, err := r.HTTPClient.Do(req)
 	if err != nil {
 		return -1, nil, err
@@ -212,27 +204,50 @@ func (r *TestRunner) doRequest(req *http.Request) (int, Stringable, error) {
 		return -1, nil, err
 	}
 
-	responseString := strings.TrimSuffix(string(b), "\n")
-	debug("%d\n%s", resp.StatusCode, responseString)
+	body := parseResponseBody(b)
+	if body != nil {
+		debug("%d\n%s", resp.StatusCode, body.String())
+	} else {
+		debug("%d", resp.StatusCode)
+	}
 
-	if len(b) > 0 {
+	debug("\n")
+
+	return resp.StatusCode, body, nil
+}
+
+func parseResponseBody(body []byte) Stringable {
+	if len(body) > 0 {
 		var bodyMap JSONObject
-		if err := json.Unmarshal(b, &bodyMap); err == nil {
-			return resp.StatusCode, bodyMap, nil
+		if err := json.Unmarshal(body, &bodyMap); err == nil {
+			return bodyMap
 		}
 
 		var bodyArray JSONArray
-		if err := json.Unmarshal(b, &bodyArray); err == nil {
-			return resp.StatusCode, bodyArray, nil
+		if err := json.Unmarshal(body, &bodyArray); err == nil {
+			return bodyArray
 		}
 
-		return resp.StatusCode, String(responseString), err
+		return String(body)
 	}
 
-	return resp.StatusCode, nil, nil
+	return nil
+}
+
+// validateTests validates a set of tests.
+func validateTests(tests []*TestCase) bool {
+	valid := true
+	for _, test := range tests {
+		if err := test.Validate(); err != nil {
+			problem("test case %q is invalid: %s", test.DisplayName(), err)
+			valid = false
+		}
+	}
+
+	return valid
 }
 
 // RunTests runs a set of tests using the provided base URL and the default TestRunner.
 func RunTests(baseURL string, tests []*TestCase) {
-	DefaultTestRunner().WithBaseURL(baseURL).RunTests(tests)
+	NewTestRunner().WithBaseURL(baseURL).RunTests(tests)
 }
