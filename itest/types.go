@@ -5,8 +5,6 @@ import (
 	"fmt"
 )
 
-const EmptyBody = ""
-
 type Stringable interface {
 	String() string
 }
