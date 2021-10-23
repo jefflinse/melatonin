@@ -2,11 +2,17 @@ package itest
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"time"
+)
+
+const (
+	defaultRequestTimeoutSec = 5
 )
 
 // TestRunner contains configuration for running tests.
@@ -30,6 +36,11 @@ type TestRunner struct {
 	//
 	// If left unset, http.DefaultClient will be used.
 	HTTPClient *http.Client
+
+	// RequestTimeout is the default timeout for HTTP requests.
+	//
+	// Default is 5 seconds.
+	RequestTimeout time.Duration
 
 	excuted int
 	passed  int
@@ -84,7 +95,7 @@ func (r *TestRunner) RunTests(tests []*TestCase) (results []*TestCaseResult) {
 		r.excuted++
 		if len(result.Errors) > 0 {
 			r.failed++
-			info("%s  %s %s", redText("✘"), test.Method, test.Path)
+			info("%s  %s %s", redText("✘"), test.request.Method, test.request.URL.Path)
 			for _, err := range result.Errors {
 				problem("   %s", err)
 			}
@@ -97,7 +108,7 @@ func (r *TestRunner) RunTests(tests []*TestCase) (results []*TestCaseResult) {
 
 		} else {
 			r.passed++
-			info("%s  %s %s", greenText("✔"), test.Method, test.Path)
+			info("%s  %s %s", greenText("✔"), test.request.Method, test.request.URL.Path)
 		}
 	}
 
@@ -112,16 +123,29 @@ func (r *TestRunner) RunTest(test *TestCase) (result *TestCaseResult) {
 		Errors:   []error{},
 	}
 
-	if test.Before != nil {
+	if test.BeforeFunc != nil {
 		debug("%s: running before()", test.DisplayName())
-		if err := test.Before(); err != nil {
+		if err := test.BeforeFunc(); err != nil {
 			result.AddError(fmt.Errorf("before(): %w", err))
 			return
 		}
 	}
 
+	timeout := defaultRequestTimeoutSec * time.Second
+	if test.Timeout > 0 {
+		timeout = test.Timeout
+	} else if r.RequestTimeout > 0 {
+		timeout = r.RequestTimeout
+	}
+
 	if test.request == nil {
-		req, err := r.createRequest(test.Method, r.BaseURL+test.Path, test.RequestHeaders, test.RequestBody)
+		req, cancel, err := r.createRequest(
+			test.Method,
+			r.BaseURL+test.Path,
+			test.RequestHeaders,
+			test.RequestBody,
+			timeout)
+		defer cancel()
 		if err != nil {
 			result.AddError(fmt.Errorf("failed to create HTTP request: %w", err))
 			return
@@ -148,9 +172,9 @@ func (r *TestRunner) RunTest(test *TestCase) (result *TestCaseResult) {
 		}
 	}
 
-	if test.After != nil {
+	if test.AfterFunc != nil {
 		debug("%s: running after()", test.DisplayName())
-		if err := test.After(); err != nil {
+		if err := test.AfterFunc(); err != nil {
 			result.AddError(fmt.Errorf("after(): %w", err))
 		}
 	}
@@ -171,15 +195,21 @@ func (r *TestRunner) Validate() error {
 	return nil
 }
 
-func (r *TestRunner) createRequest(method, uri string, headers http.Header, body Stringable) (*http.Request, error) {
+func (r *TestRunner) createRequest(method, uri string,
+	headers http.Header,
+	body Stringable,
+	timeout time.Duration) (*http.Request, context.CancelFunc, error) {
+
 	var reader io.Reader
 	if body != nil {
 		reader = bytes.NewReader([]byte(body.String()))
 	}
 
-	req, err := http.NewRequest(method, uri, reader)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+
+	req, err := http.NewRequestWithContext(ctx, method, uri, reader)
 	if err != nil {
-		return nil, err
+		return nil, cancel, err
 	}
 
 	if headers != nil {
@@ -188,7 +218,7 @@ func (r *TestRunner) createRequest(method, uri string, headers http.Header, body
 		req.Header = http.Header{}
 	}
 
-	return req, nil
+	return req, cancel, nil
 }
 
 func (r *TestRunner) doRequest(req *http.Request) (int, Stringable, error) {

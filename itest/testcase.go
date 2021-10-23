@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 )
 
 // A TestCase tests a single call to an HTTP endpoint.
@@ -19,7 +20,13 @@ type TestCase struct {
 	// It can be used to perform any cleanup actions after the test,
 	// such as adding or removing objects in a database. Any error
 	// returned by After is treated as a test failure.
-	After func() error
+	AfterFunc func() error
+
+	// Before is an optional function that is run before the test is run.
+	// It can be used to perform any prerequisites actions for the test,
+	// such as adding or removing objects in a database. Any error
+	// returned by Before is treated as a test failure.
+	BeforeFunc func() error
 
 	// ContinueOnFailure indicates whether the test should continue to the next
 	// test case if the current test fails. Default is false.
@@ -37,11 +44,10 @@ type TestCase struct {
 	// RequestBody is the content to send in the body of the HTTP request.
 	RequestBody Stringable
 
-	// Before is an optional function that is run before the test is run.
-	// It can be used to perform any prerequisites actions for the test,
-	// such as adding or removing objects in a database. Any error
-	// returned by Before is treated as a test failure.
-	Before func() error
+	// Timeout is the maximum amount of time to wait for the request to complete.
+	//
+	// Default is 5 seconds.
+	Timeout time.Duration
 
 	// WantStatus is the expected HTTP status code of the response. Default is 200.
 	WantStatus int
@@ -57,6 +63,13 @@ type TestCase struct {
 	request *http.Request
 }
 
+func NewTestCase(method, path string) *TestCase {
+	return &TestCase{
+		Method: method,
+		Path:   path,
+	}
+}
+
 func (tc *TestCase) DisplayName() string {
 	name := fmt.Sprintf("%s %s", tc.Method, tc.Path)
 	if tc.RequestBody != nil {
@@ -66,31 +79,35 @@ func (tc *TestCase) DisplayName() string {
 	return name
 }
 
+func DELETE(path string) *TestCase {
+	return NewTestCase("DELETE", path)
+}
+
+func HEAD(path string) *TestCase {
+	return NewTestCase("HEAD", path)
+}
+
 func GET(path string) *TestCase {
-	return &TestCase{Method: "GET", Path: path}
+	return NewTestCase("GET", path)
 }
 
-func POST(path string) *TestCase {
-	return &TestCase{Method: "POST", Path: path}
-}
-
-func PUT(path string) *TestCase {
-	return &TestCase{Method: "PUT", Path: path}
+func OPTIONS(path string) *TestCase {
+	return NewTestCase("OPTIONS", path)
 }
 
 func PATCH(path string) *TestCase {
-	return &TestCase{Method: "PATCH", Path: path}
+	return NewTestCase("PATCH", path)
 }
 
-func DELETE(path string) *TestCase {
-	return &TestCase{Method: "DELETE", Path: path}
+func POST(path string) *TestCase {
+	return NewTestCase("POST", path)
 }
 
-func DO(request *http.Request, err error) *TestCase {
-	if err != nil {
-		fatal("invalid custom request: ", err)
-	}
+func PUT(path string) *TestCase {
+	return NewTestCase("PUT", path)
+}
 
+func DO(request *http.Request) *TestCase {
 	return &TestCase{
 		Method:  request.Method,
 		Path:    request.URL.Path,
@@ -98,23 +115,33 @@ func DO(request *http.Request, err error) *TestCase {
 	}
 }
 
-func (tc *TestCase) DoAfter(after func() error) *TestCase {
+func (tc *TestCase) After(after func() error) *TestCase {
 	tc.requireMethodAndPath("WithAfter")
-	if tc.After != nil {
+	if tc.AfterFunc != nil {
 		fatal("test case %q specifies more than one after-function", tc.DisplayName())
 	}
 
-	tc.After = after
+	tc.AfterFunc = after
 	return tc
 }
 
-func (tc *TestCase) DoBefore(before func() error) *TestCase {
+func (tc *TestCase) Before(before func() error) *TestCase {
 	tc.requireMethodAndPath("WithBefore")
-	if tc.Before != nil {
+	if tc.BeforeFunc != nil {
 		fatal("test case %q specifies more than one before function", tc.DisplayName())
 	}
 
-	tc.Before = before
+	tc.BeforeFunc = before
+	return tc
+}
+
+func (tc *TestCase) WithBody(body Stringable) *TestCase {
+	tc.requireMethodAndPath("WithBody")
+	if tc.RequestBody != nil {
+		fatal("test case %q specifies more than one request body", tc.DisplayName())
+	}
+
+	tc.RequestBody = body
 	return tc
 }
 
@@ -138,13 +165,13 @@ func (tc *TestCase) WithHeader(key, value string) *TestCase {
 	return tc
 }
 
-func (tc *TestCase) WithBody(body Stringable) *TestCase {
-	tc.requireMethodAndPath("WithBody")
-	if tc.RequestBody != nil {
-		fatal("test case %q specifies more than one request body", tc.DisplayName())
+func (tc *TestCase) WithTimeout(timeout time.Duration) *TestCase {
+	tc.requireMethodAndPath("WithTimeout")
+	if tc.Timeout != 0 {
+		fatal("test case %q specifies more than one timeout", tc.DisplayName())
 	}
 
-	tc.RequestBody = body
+	tc.Timeout = timeout
 	return tc
 }
 
