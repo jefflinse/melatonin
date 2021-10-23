@@ -8,13 +8,31 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 )
 
 const (
-	defaultRequestTimeoutSec = 5
+	defaultRequestTimeoutStr = "5s"
 )
+
+var (
+	defaultRequestTimeout time.Duration
+)
+
+func init() {
+	defaultRequestTimeout, _ = time.ParseDuration(defaultRequestTimeoutStr)
+	envTimeoutStr := os.Getenv("ITEST_DEFAULT_TEST_TIMEOUT")
+	if envTimeoutStr != "" {
+		if timeout, err := time.ParseDuration(envTimeoutStr); err == nil {
+			defaultRequestTimeout = timeout
+		} else {
+			warn("invalid ITEST_DEFAULT_TEST_TIMEOUT value %q in environment, using default of %s",
+				envTimeoutStr, defaultRequestTimeoutStr)
+		}
+	}
+}
 
 // TestRunner contains configuration for running tests.
 type TestRunner struct {
@@ -150,7 +168,7 @@ func (r *TestRunner) RunTest(test *TestCase) (result *TestCaseResult) {
 		}
 	}
 
-	timeout := defaultRequestTimeoutSec * time.Second
+	timeout := defaultRequestTimeout
 	if test.Timeout > 0 {
 		timeout = test.Timeout
 	} else if r.RequestTimeout > 0 {
