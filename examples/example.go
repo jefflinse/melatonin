@@ -8,6 +8,7 @@ import (
 
 func main() {
 	startExampleServer()
+	// itest.Verbose = true
 
 	itest.RunTests("http://localhost:8080", []*itest.TestCase{
 
@@ -17,8 +18,9 @@ func main() {
 			ExpectBody(itest.JSONMap{"response": "Hello, world!"}),
 
 		itest.GET("/bar").
-			ExpectStatus(200),
+			ExpectStatus(404),
 
+		// Specify a custom *http.Request for a test
 		itest.DO(http.NewRequest("GET", "http://localhost:8080/foo", nil)).
 			ExpectStatus(200).
 			ExpectBody(itest.JSONMap{"response": "Hello, world!"}),

@@ -2,12 +2,37 @@ package itest
 
 import (
 	"encoding/json"
+	"fmt"
 )
 
 const EmptyBody = ""
 
 type Stringable interface {
 	String() string
+}
+
+type String string
+
+func (s String) String() string {
+	return string(s)
+}
+
+type Int int64
+
+func (i Int) String() string {
+	return fmt.Sprintf("%d", i)
+}
+
+type Float float64
+
+func (f Float) String() string {
+	return fmt.Sprintf("%f", f)
+}
+
+type Bool bool
+
+func (b Bool) String() string {
+	return fmt.Sprintf("%t", b)
 }
 
 // JSONMap is a shorter name for map[string]interface{} that satisfies the Stringable interface.

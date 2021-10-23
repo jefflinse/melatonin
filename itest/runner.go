@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 // TestRunner contains configuration for running tests.
@@ -61,7 +62,9 @@ func (r *TestRunner) WithHTTPClient(client *http.Client) *TestRunner {
 }
 
 // RunTests runs a set of tests.
-func (r *TestRunner) RunTests(tests []*TestCase) {
+func (r *TestRunner) RunTests(tests []*TestCase) (results []*TestCaseResult) {
+	results = []*TestCaseResult{}
+
 	if err := r.Validate(); err != nil {
 		fatal("invalid test runner:", err)
 		return
@@ -71,13 +74,17 @@ func (r *TestRunner) RunTests(tests []*TestCase) {
 		fatal("one or more test cases failed validation")
 	}
 
+	info("running %d tests for %s", len(tests), r.BaseURL)
 	for _, test := range tests {
-		err := r.RunTest(test)
+		result := r.RunTest(test)
 		r.excuted++
-		if err != nil {
+		if len(result.Errors) > 0 {
 			r.failed++
 			info("%s  %s %s", redText("✘"), test.Method, test.Path)
-			problem("   %s", err)
+			for _, err := range result.Errors {
+				problem("   %s", err)
+			}
+
 			if !r.ContinueOnFailure {
 				warn("skipping remaininig tests")
 				r.skipped = len(tests) - r.excuted
@@ -91,21 +98,29 @@ func (r *TestRunner) RunTests(tests []*TestCase) {
 	}
 
 	info("\n%d passed, %d failed, %d skipped", r.passed, r.failed, r.skipped)
+	return
 }
 
 // RunTest runs a single test.
-func (r *TestRunner) RunTest(test *TestCase) error {
-	if test.Setup != nil {
-		debug("%s: running setup", test.DisplayName())
-		if err := test.Setup(); err != nil {
-			return fmt.Errorf("test %q failed setup: %s", test.DisplayName(), err)
+func (r *TestRunner) RunTest(test *TestCase) (result *TestCaseResult) {
+	result = &TestCaseResult{
+		TestCase: test,
+		Errors:   []error{},
+	}
+
+	if test.Before != nil {
+		debug("%s: running before()", test.DisplayName())
+		if err := test.Before(); err != nil {
+			result.AddError(fmt.Errorf("before(): %w", err))
+			return
 		}
 	}
 
 	if test.request == nil {
 		req, err := r.createRequest(test.Method, r.BaseURL+test.Path, test.RequestHeaders, test.RequestBody)
 		if err != nil {
-			return fmt.Errorf("test %q failed to create HTTP request: %s", test.DisplayName(), err)
+			result.AddError(fmt.Errorf("failed to create HTTP request: %w", err))
+			return
 		}
 
 		test.request = req
@@ -113,20 +128,30 @@ func (r *TestRunner) RunTest(test *TestCase) error {
 
 	status, body, err := r.doRequest(test.request)
 	if err != nil {
-		return fmt.Errorf("test %q failed to perform HTTP request: %s", test.DisplayName(), err)
+		result.AddError(fmt.Errorf("failed to perform HTTP request: %w", err))
+		return
 	}
 
 	if test.WantStatus != 0 {
-		if err := expectStatus(status, test.WantStatus); err != nil {
-			return err
+		if err := expectStatus(test.WantStatus, status); err != nil {
+			result.AddError(err)
 		}
 	}
 
 	if test.WantBody != nil {
-		return expect("", test.WantBody, body)
+		if err := expect("body", test.WantBody, body); err != nil {
+			result.AddError(err)
+		}
 	}
 
-	return nil
+	if test.After != nil {
+		debug("%s: running after()", test.DisplayName())
+		if err := test.After(); err != nil {
+			result.AddError(fmt.Errorf("after(): %w", err))
+		}
+	}
+
+	return
 }
 
 func (r *TestRunner) Validate() error {
@@ -174,8 +199,8 @@ func (r *TestRunner) createRequest(method, uri string, headers http.Header, body
 	return req, nil
 }
 
-func (r *TestRunner) doRequest(req *http.Request) (int, JSONMap, error) {
-	debug("%s %s\n", req.Method, req.URL.RawPath)
+func (r *TestRunner) doRequest(req *http.Request) (int, Stringable, error) {
+	debug("%s %s\n", req.Method, req.URL.String())
 	resp, err := r.HTTPClient.Do(req)
 	if err != nil {
 		return -1, nil, err
@@ -187,12 +212,21 @@ func (r *TestRunner) doRequest(req *http.Request) (int, JSONMap, error) {
 		return -1, nil, err
 	}
 
-	var bodyMap JSONMap
+	responseString := strings.TrimSuffix(string(b), "\n")
+	debug("%d\n%s", resp.StatusCode, responseString)
+
 	if len(b) > 0 {
+		var bodyMap JSONMap
 		if err := json.Unmarshal(b, &bodyMap); err == nil {
-			debug("%s\n", string(b))
 			return resp.StatusCode, bodyMap, nil
 		}
+
+		var bodyArray JSONArray
+		if err := json.Unmarshal(b, &bodyArray); err == nil {
+			return resp.StatusCode, bodyArray, nil
+		}
+
+		return resp.StatusCode, String(responseString), err
 	}
 
 	return resp.StatusCode, nil, nil

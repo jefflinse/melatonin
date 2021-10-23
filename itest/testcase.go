@@ -15,6 +15,12 @@ import (
 // All fields in the WantBody map are expected to be present in the
 // response body.
 type TestCase struct {
+	// After is an optional function that is run after the test is run.
+	// It can be used to perform any cleanup actions after the test,
+	// such as adding or removing objects in a database. Any error
+	// returned by After is treated as a test failure.
+	After func() error
+
 	// ContinueOnFailure indicates whether the test should continue to the next
 	// test case if the current test fails. Default is false.
 	ContinueOnFailure bool
@@ -31,10 +37,11 @@ type TestCase struct {
 	// RequestBody is the content to send in the body of the HTTP request.
 	RequestBody Stringable
 
-	// Setup is an optional function that is run before the test is run.
+	// Before is an optional function that is run before the test is run.
 	// It can be used to perform any prerequisites actions for the test,
-	// such as adding or removing objects in a database.
-	Setup func() error
+	// such as adding or removing objects in a database. Any error
+	// returned by Before is treated as a test failure.
+	Before func() error
 
 	// WantStatus is the expected HTTP status code of the response. Default is 200.
 	WantStatus int
@@ -91,13 +98,23 @@ func DO(request *http.Request, err error) *TestCase {
 	}
 }
 
-func (tc *TestCase) WithSetup(setup func() error) *TestCase {
-	tc.requireMethodAndPath("WithSetup")
-	if tc.Setup != nil {
-		fatal("test case %q specifies more than one setup function", tc.DisplayName())
+func (tc *TestCase) DoAfter(after func() error) *TestCase {
+	tc.requireMethodAndPath("WithAfter")
+	if tc.After != nil {
+		fatal("test case %q specifies more than one after-function", tc.DisplayName())
 	}
 
-	tc.Setup = setup
+	tc.After = after
+	return tc
+}
+
+func (tc *TestCase) DoBefore(before func() error) *TestCase {
+	tc.requireMethodAndPath("WithBefore")
+	if tc.Before != nil {
+		fatal("test case %q specifies more than one before function", tc.DisplayName())
+	}
+
+	tc.Before = before
 	return tc
 }
 
