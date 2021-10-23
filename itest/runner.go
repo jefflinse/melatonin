@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"testing"
 	"time"
 )
 
@@ -41,6 +42,9 @@ type TestRunner struct {
 	//
 	// Default is 5 seconds.
 	RequestTimeout time.Duration
+
+	// T is a testing.T instance to use for running the tests as standard Go tests.
+	T *testing.T
 }
 
 // NewTestRunner creates a new TestRunner with the default settings.
@@ -71,6 +75,19 @@ func (r *TestRunner) WithHTTPClient(client *http.Client) *TestRunner {
 	return r
 }
 
+// WithRequestTimeout sets the RequestTimeout field of the TestRunner and returns
+// the TestRunner.
+func (r *TestRunner) WithRequestTimeout(timeout time.Duration) *TestRunner {
+	r.RequestTimeout = timeout
+	return r
+}
+
+// WithT sets the T field of the TestRunner and returns the TestRunner.
+func (r *TestRunner) WithT(t *testing.T) *TestRunner {
+	r.T = t
+	return r
+}
+
 // RunTests runs a set of tests.
 func (r *TestRunner) RunTests(tests []*TestCase) (results []*TestCaseResult) {
 	results = []*TestCaseResult{}
@@ -87,7 +104,13 @@ func (r *TestRunner) RunTests(tests []*TestCase) (results []*TestCaseResult) {
 	info("running %d tests for %s", len(tests), r.BaseURL)
 	var executed, passed, failed, skipped int
 	for _, test := range tests {
-		result := r.RunTest(test)
+		var result *TestCaseResult
+		if r.T != nil {
+			result = r.RunTestInTestContext(r.T, test)
+		} else {
+			result = r.RunTest(test)
+		}
+
 		executed++
 		if len(result.Errors) > 0 {
 			failed++
@@ -178,12 +201,33 @@ func (r *TestRunner) RunTest(test *TestCase) (result *TestCaseResult) {
 	return
 }
 
+func (r *TestRunner) RunTestInTestContext(t *testing.T, test *TestCase) (result *TestCaseResult) {
+	t.Run(test.DisplayName(), func(t *testing.T) {
+		result = r.RunTest(test)
+		if len(result.Errors) > 0 {
+			for _, err := range result.Errors {
+				t.Log(err)
+			}
+
+			if !r.ContinueOnFailure {
+				t.FailNow()
+			} else {
+				t.Fail()
+			}
+		}
+	})
+
+	return result
+}
+
 func (r *TestRunner) Validate() error {
 	if r.BaseURL == "" {
 		return fmt.Errorf("BaseURL is required")
 	} else if r.BaseURL[len(r.BaseURL)-1] == '/' {
 		return fmt.Errorf("BaseURL must not end with a slash")
-	} else if r.HTTPClient == nil {
+	}
+
+	if r.HTTPClient == nil {
 		debug("HTTPClient is unset, using http.DefaultClient")
 		r.HTTPClient = http.DefaultClient
 	}
@@ -276,4 +320,9 @@ func validateTests(tests []*TestCase) bool {
 // RunTests runs a set of tests using the provided base URL and the default TestRunner.
 func RunTests(baseURL string, tests []*TestCase) {
 	NewTestRunner().WithBaseURL(baseURL).RunTests(tests)
+}
+
+// RunTests runs a set of tests using the provided base URL and the default TestRunner.
+func RunTestsT(t *testing.T, baseURL string, tests []*TestCase) {
+	NewTestRunner().WithT(t).WithBaseURL(baseURL).RunTests(tests)
 }

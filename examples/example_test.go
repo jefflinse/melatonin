@@ -2,18 +2,19 @@ package main
 
 import (
 	"net/http"
+	"testing"
 	"time"
 
 	"github.com/jefflinse/go-itest/itest"
 )
 
-func main() {
+func TestAPI(t *testing.T) {
 	startExampleServer()
 	// itest.Verbose = true
 
 	customReq, _ := http.NewRequest("GET", "http://localhost:8080/foo", nil)
 
-	itest.RunTests("http://localhost:8080", []*itest.TestCase{
+	itest.RunTestsT(t, "http://localhost:8080", []*itest.TestCase{
 
 		itest.GET("/foo").
 			WithHeader("Accept", "application/json").
