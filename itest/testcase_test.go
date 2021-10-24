@@ -1,15 +1,16 @@
-package itest
+package itest_test
 
 import (
 	"net/http"
 	"testing"
 	"time"
 
+	"github.com/jefflinse/go-itest/itest"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewTestCase(t *testing.T) {
-	tc := NewTestCase("method", "path")
+	tc := itest.NewTestCase("method", "path")
 	assert.Equal(t, "method", tc.Method)
 	assert.Equal(t, "path", tc.Path)
 }
@@ -17,22 +18,22 @@ func TestNewTestCase(t *testing.T) {
 func TestDisplayName(t *testing.T) {
 	for _, test := range []struct {
 		name     string
-		testCase *TestCase
+		testCase *itest.TestCase
 		expected string
 	}{
 		{
 			name:     "no body",
-			testCase: NewTestCase("method", "path"),
+			testCase: itest.NewTestCase("method", "path"),
 			expected: "method path",
 		},
 		{
 			name:     "empty body",
-			testCase: NewTestCase("method", "path").WithBody(String("")),
+			testCase: itest.NewTestCase("method", "path").WithBody(itest.String("")),
 			expected: "method path (0)",
 		},
 		{
 			name:     "non-empty body",
-			testCase: NewTestCase("method", "path").WithBody(String("body")),
+			testCase: itest.NewTestCase("method", "path").WithBody(itest.String("body")),
 			expected: "method path (4)",
 		},
 	} {
@@ -44,35 +45,35 @@ func TestDisplayName(t *testing.T) {
 
 func TestConvenienceCtors(t *testing.T) {
 	for _, test := range []struct {
-		testCase       *TestCase
+		testCase       *itest.TestCase
 		expectedMethod string
 	}{
 		{
-			testCase:       DELETE("path"),
+			testCase:       itest.DELETE("path"),
 			expectedMethod: "DELETE",
 		},
 		{
-			testCase:       HEAD("path"),
+			testCase:       itest.HEAD("path"),
 			expectedMethod: "HEAD",
 		},
 		{
-			testCase:       GET("path"),
+			testCase:       itest.GET("path"),
 			expectedMethod: "GET",
 		},
 		{
-			testCase:       OPTIONS("path"),
+			testCase:       itest.OPTIONS("path"),
 			expectedMethod: "OPTIONS",
 		},
 		{
-			testCase:       PATCH("path"),
+			testCase:       itest.PATCH("path"),
 			expectedMethod: "PATCH",
 		},
 		{
-			testCase:       POST("path"),
+			testCase:       itest.POST("path"),
 			expectedMethod: "POST",
 		},
 		{
-			testCase:       PUT("path"),
+			testCase:       itest.PUT("path"),
 			expectedMethod: "PUT",
 		},
 	} {
@@ -84,19 +85,19 @@ func TestConvenienceCtors(t *testing.T) {
 
 func TestDO(t *testing.T) {
 	req, _ := http.NewRequest("GET", "http://example.com", nil)
-	tc := DO(req)
+	tc := itest.DO(req)
 	assert.Equal(t, "GET", tc.Method)
 	assert.Equal(t, "", tc.Path)
 
 	req, _ = http.NewRequest("GET", "http://example.com/foo", nil)
-	tc = DO(req)
+	tc = itest.DO(req)
 	assert.Equal(t, "GET", tc.Method)
 	assert.Equal(t, "/foo", tc.Path)
 }
 
-func TestConvenienceSetters(t *testing.T) {
-	tc := NewTestCase("method", "path")
-	tc.WithBody(String("body"))
+func TestTestCaseConvenienceSetters(t *testing.T) {
+	tc := itest.NewTestCase("method", "path")
+	tc.WithBody(itest.String("body"))
 	assert.Equal(t, "body", tc.RequestBody.String())
 	tc.WithHeaders(map[string][]string{http.CanonicalHeaderKey("header1"): {"value1"}})
 	assert.Equal(t, []string{"value1"}, tc.RequestHeaders[http.CanonicalHeaderKey("header1")])
@@ -106,7 +107,7 @@ func TestConvenienceSetters(t *testing.T) {
 	assert.Equal(t, 1*time.Second, tc.Timeout)
 
 	// setting these again overrides the previous values
-	tc.WithBody(String("body2"))
+	tc.WithBody(itest.String("body2"))
 	assert.Equal(t, "body2", tc.RequestBody.String())
 	tc.WithHeaders(map[string][]string{http.CanonicalHeaderKey("header3"): {"value3"}})
 	assert.Equal(t, []string{"value3"}, tc.RequestHeaders[http.CanonicalHeaderKey("header3")])
@@ -116,13 +117,13 @@ func TestConvenienceSetters(t *testing.T) {
 	assert.Equal(t, 2*time.Second, tc.Timeout)
 
 	// WithHeader creates a new map if one does not exist
-	tc = NewTestCase("method", "path")
+	tc = itest.NewTestCase("method", "path")
 	tc.WithHeader("header1", "value1")
 	assert.Equal(t, []string{"value1"}, tc.RequestHeaders[http.CanonicalHeaderKey("header1")])
 }
 
 func TestBeforeAfter(t *testing.T) {
-	tc := NewTestCase("method", "path")
+	tc := itest.NewTestCase("method", "path")
 	assert.Nil(t, tc.BeforeFunc)
 	assert.Nil(t, tc.AfterFunc)
 
@@ -150,14 +151,14 @@ func TestBeforeAfter(t *testing.T) {
 }
 
 func TestExpectations(t *testing.T) {
-	tc := NewTestCase("method", "path")
+	tc := itest.NewTestCase("method", "path")
 	tc.ExpectStatus(200)
 	assert.Equal(t, 200, tc.WantStatus)
 	tc.ExpectHeaders(map[string][]string{http.CanonicalHeaderKey("header1"): {"value1"}})
 	assert.Equal(t, []string{"value1"}, tc.WantHeaders[http.CanonicalHeaderKey("header1")])
 	tc.ExpectHeader("header2", "value2")
 	assert.Equal(t, []string{"value2"}, tc.WantHeaders[http.CanonicalHeaderKey("header2")])
-	tc.ExpectBody(String("body1"))
+	tc.ExpectBody(itest.String("body1"))
 	assert.Equal(t, "body1", tc.WantBody.String())
 
 	// setting these again overrides the previous values
@@ -167,11 +168,11 @@ func TestExpectations(t *testing.T) {
 	assert.Equal(t, []string{"value3"}, tc.WantHeaders[http.CanonicalHeaderKey("header3")])
 	tc.ExpectHeader("header4", "value4")
 	assert.Equal(t, []string{"value4"}, tc.WantHeaders[http.CanonicalHeaderKey("header4")])
-	tc.ExpectBody(String("body2"))
+	tc.ExpectBody(itest.String("body2"))
 	assert.Equal(t, "body2", tc.WantBody.String())
 
 	// ExpectHeader creates a new map if one does not exist
-	tc = NewTestCase("method", "path")
+	tc = itest.NewTestCase("method", "path")
 	tc.ExpectHeader("header1", "value1")
 	assert.Equal(t, []string{"value1"}, tc.WantHeaders[http.CanonicalHeaderKey("header1")])
 }
@@ -179,27 +180,27 @@ func TestExpectations(t *testing.T) {
 func TestValidate(t *testing.T) {
 	for _, test := range []struct {
 		name        string
-		testCase    *TestCase
+		testCase    *itest.TestCase
 		expectError bool
 	}{
 		{
 			name:        "valid",
-			testCase:    NewTestCase("method", "/path"),
+			testCase:    itest.NewTestCase("method", "/path"),
 			expectError: false,
 		},
 		{
 			name:        "invalid, empty method",
-			testCase:    NewTestCase("", "/path"),
+			testCase:    itest.NewTestCase("", "/path"),
 			expectError: true,
 		},
 		{
 			name:        "invalid, empty path",
-			testCase:    NewTestCase("method", ""),
+			testCase:    itest.NewTestCase("method", ""),
 			expectError: true,
 		},
 		{
 			name:        "invalid, path missing leading slash",
-			testCase:    NewTestCase("method", "path"),
+			testCase:    itest.NewTestCase("method", "path"),
 			expectError: true,
 		},
 	} {
@@ -214,7 +215,7 @@ func TestValidate(t *testing.T) {
 }
 
 func TestResultAddError(t *testing.T) {
-	tr := &TestCaseResult{}
+	tr := &itest.TestCaseResult{}
 	assert.Len(t, tr.Errors, 0)
 	tr.AddError(assert.AnError)
 	assert.Len(t, tr.Errors, 1)

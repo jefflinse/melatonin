@@ -34,6 +34,14 @@ func init() {
 	}
 }
 
+// GoTestContext is a minimal interface for testing.T.
+type GoTestContext interface {
+	Log(args ...interface{})
+	Fail()
+	FailNow()
+	Run(string, func(*testing.T)) bool
+}
+
 // TestRunner contains configuration for running tests.
 type TestRunner struct {
 	// BaseURL is the base URL for the API, including the port.
@@ -62,28 +70,23 @@ type TestRunner struct {
 	RequestTimeout time.Duration
 
 	// T is a testing.T instance to use for running the tests as standard Go tests.
-	T *testing.T
+	T GoTestContext
 }
 
 // NewTestRunner creates a new TestRunner with the default settings.
-func NewTestRunner() *TestRunner {
+func NewTestRunner(baseURL string) *TestRunner {
 	return &TestRunner{
+		BaseURL:           baseURL,
 		ContinueOnFailure: false,
 		HTTPClient:        http.DefaultClient,
 	}
 }
 
-// WithBaseURL sets the BaseURL field of the TestRunner and returns the TestRunner.
-func (r *TestRunner) WithBaseURL(baseURL string) *TestRunner {
-	r.BaseURL = baseURL
-	return r
-}
-
 // WithContinueOnFailure sets the ContinueOnFailure field of the TestRunner and
 // returns the TestRunner.
-func (r TestRunner) WithContinueOnFailure(continueOnFailure bool) *TestRunner {
+func (r *TestRunner) WithContinueOnFailure(continueOnFailure bool) *TestRunner {
 	r.ContinueOnFailure = continueOnFailure
-	return &r
+	return r
 }
 
 // WithHTTPClient sets the HTTPClient field of the TestRunner and returns the
@@ -101,7 +104,7 @@ func (r *TestRunner) WithRequestTimeout(timeout time.Duration) *TestRunner {
 }
 
 // WithT sets the T field of the TestRunner and returns the TestRunner.
-func (r *TestRunner) WithT(t *testing.T) *TestRunner {
+func (r *TestRunner) WithT(t GoTestContext) *TestRunner {
 	r.T = t
 	return r
 }
@@ -113,6 +116,11 @@ func (r *TestRunner) RunTests(tests []*TestCase) (results []*TestCaseResult) {
 	if err := r.Validate(); err != nil {
 		fatal("invalid test runner:", err)
 		return
+	}
+
+	if r.HTTPClient == nil {
+		debug("using default HTTP client")
+		r.HTTPClient = http.DefaultClient
 	}
 
 	if !validateTests(tests) {
@@ -129,7 +137,9 @@ func (r *TestRunner) RunTests(tests []*TestCase) (results []*TestCaseResult) {
 			result = r.RunTest(test)
 		}
 
+		results = append(results, result)
 		executed++
+
 		if len(result.Errors) > 0 {
 			failed++
 			info("%s  %s %s", redText("✘"), test.request.Method, test.request.URL.Path)
@@ -219,18 +229,20 @@ func (r *TestRunner) RunTest(test *TestCase) (result *TestCaseResult) {
 	return
 }
 
-func (r *TestRunner) RunTestT(t *testing.T, test *TestCase) (result *TestCaseResult) {
-	t.Run(test.DisplayName(), func(t *testing.T) {
-		result = r.RunTest(test)
+// RunTestT runs the test case in the context of a Go test.
+func (r *TestRunner) RunTestT(t GoTestContext, test *TestCase) (result *TestCaseResult) {
+	result = r.RunTest(test)
+
+	t.Run(test.DisplayName(), func(tt *testing.T) {
 		if len(result.Errors) > 0 {
 			for _, err := range result.Errors {
-				t.Log(err)
+				tt.Log(err)
 			}
 
 			if !r.ContinueOnFailure {
-				t.FailNow()
+				tt.FailNow()
 			} else {
-				t.Fail()
+				tt.Fail()
 			}
 		}
 	})
@@ -243,11 +255,6 @@ func (r *TestRunner) Validate() error {
 		return fmt.Errorf("BaseURL is required")
 	} else if r.BaseURL[len(r.BaseURL)-1] == '/' {
 		return fmt.Errorf("BaseURL must not end with a slash")
-	}
-
-	if r.HTTPClient == nil {
-		debug("HTTPClient is unset, using http.DefaultClient")
-		r.HTTPClient = http.DefaultClient
 	}
 
 	return nil
@@ -337,10 +344,10 @@ func validateTests(tests []*TestCase) bool {
 
 // RunTests runs a set of tests using the provided base URL and the default TestRunner.
 func RunTests(baseURL string, tests []*TestCase) {
-	NewTestRunner().WithBaseURL(baseURL).RunTests(tests)
+	NewTestRunner(baseURL).RunTests(tests)
 }
 
 // RunTests runs a set of tests using the provided base URL and the default TestRunner.
-func RunTestsT(t *testing.T, baseURL string, tests []*TestCase) {
-	NewTestRunner().WithT(t).WithBaseURL(baseURL).RunTests(tests)
+func RunTestsT(t GoTestContext, baseURL string, tests []*TestCase) {
+	NewTestRunner(baseURL).WithT(t).RunTests(tests)
 }

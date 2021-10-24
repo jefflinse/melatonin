@@ -13,7 +13,7 @@ func TestAPI(t *testing.T) {
 
 	customReq, _ := http.NewRequest("GET", "http://localhost:8080/foo", nil)
 
-	runner := itest.NewTestRunner().WithBaseURL("http://localhost:8080").WithT(t).WithContinueOnFailure(true)
+	runner := itest.NewTestRunner("http://localhost:8080").WithT(t).WithContinueOnFailure(true)
 	runner.RunTests([]*itest.TestCase{
 
 		itest.GET("/foo").
