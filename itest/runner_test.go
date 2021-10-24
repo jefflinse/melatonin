@@ -7,9 +7,7 @@ import (
 	"time"
 
 	"github.com/jefflinse/go-itest/itest"
-	"github.com/jefflinse/go-itest/itest/mocks"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestNewTestRunner(t *testing.T) {
@@ -27,9 +25,6 @@ func TestRunnerConvenienceSetters(t *testing.T) {
 	assert.Same(t, http.DefaultClient, r.HTTPClient)
 	r.WithRequestTimeout(1)
 	assert.Equal(t, time.Duration(1), r.RequestTimeout)
-	tCtx1 := &mocks.GoTestContext{}
-	r.WithT(tCtx1)
-	assert.Same(t, tCtx1, r.T)
 
 	// setting these again overrides the previous values
 	r.WithContinueOnFailure(false)
@@ -38,9 +33,6 @@ func TestRunnerConvenienceSetters(t *testing.T) {
 	assert.Nil(t, r.HTTPClient)
 	r.WithRequestTimeout(2)
 	assert.Equal(t, time.Duration(2), r.RequestTimeout)
-	tCtx2 := &mocks.GoTestContext{}
-	r.WithT(tCtx2)
-	assert.Same(t, tCtx2, r.T)
 }
 
 func TestRunner_RunTests(t *testing.T) {
@@ -67,14 +59,6 @@ func TestRunner_RunTests(t *testing.T) {
 			server := newMockServer(test.statusCode, []byte(test.body.String()))
 			defer server.Close()
 			r := itest.NewTestRunner(server.URL)
-			if test.withT {
-				tCtx := &mocks.GoTestContext{}
-				tCtx.On("Log", mock.Anything, mock.Anything).Return()
-				tCtx.On("Fail").Return()
-				tCtx.On("FailNow").Return()
-				tCtx.On("Run", mock.Anything, mock.Anything).Return(true)
-				r.WithT(tCtx)
-			}
 			tcs := []*itest.TestCase{
 				itest.GET("/foo").ExpectStatus(test.statusCode).ExpectBody(test.body),
 				itest.POST("/foo").ExpectStatus(400).ExpectBody(test.body),

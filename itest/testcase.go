@@ -248,3 +248,8 @@ type TestCaseResult struct {
 func (r *TestCaseResult) AddError(err error) {
 	r.Errors = append(r.Errors, err)
 }
+
+// Failed indicates that the test case failed.
+func (r *TestCaseResult) Failed() bool {
+	return len(r.Errors) > 0
+}

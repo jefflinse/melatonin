@@ -65,9 +65,6 @@ type TestRunner struct {
 	//
 	// Default is 5 seconds.
 	RequestTimeout time.Duration
-
-	// T is a testing.T instance to use for running the tests as standard Go tests.
-	T GoTestContext
 }
 
 // NewTestRunner creates a new TestRunner with the default settings.
@@ -100,14 +97,17 @@ func (r *TestRunner) WithRequestTimeout(timeout time.Duration) *TestRunner {
 	return r
 }
 
-// WithT sets the T field of the TestRunner and returns the TestRunner.
-func (r *TestRunner) WithT(t GoTestContext) *TestRunner {
-	r.T = t
-	return r
+// RunTests runs a set of tests.
+//
+// To run tests within the context of a Go test, use RunTestsT().
+func (r *TestRunner) RunTests(tests []*TestCase) (results []*TestCaseResult) {
+	return r.RunTestsT(nil, tests)
 }
 
-// RunTests runs a set of tests.
-func (r *TestRunner) RunTests(tests []*TestCase) (results []*TestCaseResult) {
+// RunTests runs a set of tests within the context of a Go test.
+//
+// To run tests as a standalone binary without a testing context, use RunTests().
+func (r *TestRunner) RunTestsT(t GoTestContext, tests []*TestCase) (results []*TestCaseResult) {
 	results = []*TestCaseResult{}
 
 	if err := r.Validate(); err != nil {
@@ -127,28 +127,12 @@ func (r *TestRunner) RunTests(tests []*TestCase) (results []*TestCaseResult) {
 	info("running %d tests for %s", len(tests), r.BaseURL)
 	var executed, passed, failed, skipped int
 	for _, test := range tests {
-		result := r.RunTest(test)
-		if r.T != nil {
-			r.T.Run(test.DisplayName(), func(t *testing.T) {
-				if len(result.Errors) > 0 {
-					for _, err := range result.Errors {
-						t.Log(err)
-					}
-
-					t.FailNow()
-				}
-			})
-		}
-
+		result := r.RunTestT(t, test)
 		results = append(results, result)
 		executed++
 
-		if len(result.Errors) > 0 {
+		if result.Failed() {
 			failed++
-			info("%s  %s %s", redText("✘"), test.request.Method, test.request.URL.Path)
-			for _, err := range result.Errors {
-				problem("   %s", err)
-			}
 
 			if !r.ContinueOnFailure {
 				warn("skipping remaininig tests")
@@ -167,7 +151,12 @@ func (r *TestRunner) RunTests(tests []*TestCase) (results []*TestCaseResult) {
 }
 
 // RunTest runs a single test.
-func (r *TestRunner) RunTest(test *TestCase) (result *TestCaseResult) {
+func (r *TestRunner) RunTest(test *TestCase) *TestCaseResult {
+	return r.RunTestT(nil, test)
+}
+
+// RunTest runs a single test within a Go testing context.
+func (r *TestRunner) RunTestT(t GoTestContext, test *TestCase) (result *TestCaseResult) {
 	result = &TestCaseResult{
 		TestCase: test,
 		Errors:   []error{},
@@ -226,6 +215,23 @@ func (r *TestRunner) RunTest(test *TestCase) (result *TestCaseResult) {
 		debug("%s: running after()", test.DisplayName())
 		if err := test.AfterFunc(); err != nil {
 			result.AddError(fmt.Errorf("after(): %w", err))
+		}
+	}
+
+	if result.Failed() {
+		info("%s  %s %s", redText("✘"), test.request.Method, test.request.URL.Path)
+		for _, err := range result.Errors {
+			problem("   %s", err)
+		}
+
+		if t != nil {
+			t.Run(test.DisplayName(), func(t *testing.T) {
+				for _, err := range result.Errors {
+					t.Log(err)
+				}
+
+				t.FailNow()
+			})
 		}
 	}
 
@@ -326,7 +332,7 @@ func validateTests(tests []*TestCase) bool {
 
 // RunTest runs a single test using the provided base URL and the default TestRunner.
 func RunTest(baseURL string, test *TestCase) {
-	RunTests(baseURL, []*TestCase{test})
+	RunTestsT(nil, baseURL, []*TestCase{test})
 }
 
 // RunTestT runs a single test within a Go testing context using the provided
@@ -337,11 +343,11 @@ func RunTestT(t *testing.T, baseURL string, test *TestCase) {
 
 // RunTests runs a set of tests using the provided base URL and the default TestRunner.
 func RunTests(baseURL string, tests []*TestCase) {
-	NewTestRunner(baseURL).RunTests(tests)
+	RunTestsT(nil, baseURL, tests)
 }
 
 // RunTests runs a set of tests within a Go testing context using the provided
 // base URL and the default TestRunner.
 func RunTestsT(t GoTestContext, baseURL string, tests []*TestCase) {
-	NewTestRunner(baseURL).WithT(t).RunTests(tests)
+	NewTestRunner(baseURL).RunTestsT(t, tests)
 }

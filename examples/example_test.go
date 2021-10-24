@@ -13,8 +13,8 @@ func TestAPI(t *testing.T) {
 
 	customReq, _ := http.NewRequest("GET", "http://localhost:8080/foo", nil)
 
-	runner := itest.NewTestRunner("http://localhost:8080").WithT(t).WithContinueOnFailure(true)
-	runner.RunTests([]*itest.TestCase{
+	runner := itest.NewTestRunner("http://localhost:8080").WithContinueOnFailure(true)
+	runner.RunTestsT(t, []*itest.TestCase{
 
 		itest.GET("/foo").
 			WithHeader("Accept", "application/json").
