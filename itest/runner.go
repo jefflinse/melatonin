@@ -96,19 +96,18 @@ func (r *TestRunner) WithRequestTimeout(timeout time.Duration) *TestRunner {
 // RunTests runs a set of tests.
 //
 // To run tests within the context of a Go test, use RunTestsT().
-func (r *TestRunner) RunTests(tests []*TestCase) (results []*TestCaseResult) {
+func (r *TestRunner) RunTests(tests []*TestCase) ([]*TestCaseResult, error) {
 	return r.RunTestsT(nil, tests)
 }
 
 // RunTests runs a set of tests within the context of a Go test.
 //
 // To run tests as a standalone binary without a testing context, use RunTests().
-func (r *TestRunner) RunTestsT(t GoTestContext, tests []*TestCase) (results []*TestCaseResult) {
-	results = []*TestCaseResult{}
+func (r *TestRunner) RunTestsT(t GoTestContext, tests []*TestCase) ([]*TestCaseResult, error) {
+	results := []*TestCaseResult{}
 
 	if err := r.Validate(); err != nil {
-		fatal("invalid test runner:", err)
-		return
+		return nil, fmt.Errorf("invalid test runner: %w", err)
 	}
 
 	if r.HTTPClient == nil {
@@ -117,13 +116,17 @@ func (r *TestRunner) RunTestsT(t GoTestContext, tests []*TestCase) (results []*T
 	}
 
 	if !validateTests(tests) {
-		fatal("one or more test cases failed validation")
+		return nil, fmt.Errorf("one or more test cases failed validation")
 	}
 
 	info("running %d tests for %s", len(tests), r.BaseURL)
 	var executed, passed, failed, skipped int
 	for _, test := range tests {
-		result := r.RunTestT(t, test)
+		result, err := r.RunTestT(t, test)
+		if err != nil {
+			return results, err
+		}
+
 		results = append(results, result)
 		executed++
 
@@ -143,17 +146,17 @@ func (r *TestRunner) RunTestsT(t GoTestContext, tests []*TestCase) (results []*T
 	}
 
 	info("\n%d passed, %d failed, %d skipped", passed, failed, skipped)
-	return
+	return results, nil
 }
 
 // RunTest runs a single test.
-func (r *TestRunner) RunTest(test *TestCase) *TestCaseResult {
+func (r *TestRunner) RunTest(test *TestCase) (*TestCaseResult, error) {
 	return r.RunTestT(nil, test)
 }
 
 // RunTest runs a single test within a Go testing context.
-func (r *TestRunner) RunTestT(t GoTestContext, test *TestCase) (result *TestCaseResult) {
-	result = &TestCaseResult{
+func (r *TestRunner) RunTestT(t GoTestContext, test *TestCase) (*TestCaseResult, error) {
+	result := &TestCaseResult{
 		TestCase: test,
 		Errors:   []error{},
 	}
@@ -162,7 +165,7 @@ func (r *TestRunner) RunTestT(t GoTestContext, test *TestCase) (result *TestCase
 		debug("%s: running before()", test.DisplayName())
 		if err := test.BeforeFunc(); err != nil {
 			result.addErrors(fmt.Errorf("before(): %w", err))
-			return
+			return result, nil
 		}
 	}
 
@@ -188,7 +191,7 @@ func (r *TestRunner) RunTestT(t GoTestContext, test *TestCase) (result *TestCase
 		defer cancel()
 		if err != nil {
 			result.addErrors(fmt.Errorf("failed to create HTTP request: %w", err))
-			return
+			return result, err
 		}
 
 		test.request = req
@@ -197,8 +200,9 @@ func (r *TestRunner) RunTestT(t GoTestContext, test *TestCase) (result *TestCase
 	var err error
 	result.Status, result.Headers, result.Body, err = doRequest(r.HTTPClient, test.request)
 	if err != nil {
+		debug("%s: failed to execute HTTP request: %s", test.DisplayName(), err)
 		result.addErrors(fmt.Errorf("failed to perform HTTP request: %w", err))
-		return
+		return result, err
 	}
 
 	result.validateExpectations()
@@ -227,7 +231,7 @@ func (r *TestRunner) RunTestT(t GoTestContext, test *TestCase) (result *TestCase
 		}
 	}
 
-	return
+	return result, err
 }
 
 func (r *TestRunner) Validate() error {

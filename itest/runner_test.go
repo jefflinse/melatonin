@@ -35,48 +35,83 @@ func TestRunnerConvenienceSetters(t *testing.T) {
 	assert.Equal(t, time.Duration(2), r.RequestTimeout)
 }
 
-func TestRunner_RunTests(t *testing.T) {
+func TestRunner_RunTestsT(t *testing.T) {
+	mockServer := newMockServer(http.StatusOK, nil)
+	mockServer.Start()
+	defer mockServer.Close()
+
 	for _, test := range []struct {
-		name       string
-		statusCode int
-		body       itest.Stringable
-		withT      bool
+		name        string
+		server      *httptest.Server
+		runner      *itest.TestRunner
+		tests       []*itest.TestCase
+		wantResults []*itest.TestCaseResult
+		wantError   bool
 	}{
 		{
-			name:       "success",
-			statusCode: 200,
-			body:       itest.String("foo"),
-			withT:      false,
+			name:      "invalid test runner",
+			runner:    &itest.TestRunner{},
+			wantError: true,
 		},
 		{
-			name:       "success, test context",
-			statusCode: 200,
-			body:       itest.String("foo"),
-			withT:      true,
+			name:      "invalid tests",
+			runner:    &itest.TestRunner{BaseURL: mockServer.URL},
+			tests:     []*itest.TestCase{itest.GET("")},
+			wantError: true,
+		},
+		{
+			name:        "nil HTTP client, use default",
+			server:      mockServer,
+			runner:      &itest.TestRunner{BaseURL: mockServer.URL},
+			tests:       []*itest.TestCase{itest.GET("/path")},
+			wantResults: []*itest.TestCaseResult{{TestCase: itest.GET("/path"), Status: http.StatusOK}},
+		},
+		{
+			name:   "all tests pass",
+			server: mockServer,
+			runner: &itest.TestRunner{BaseURL: mockServer.URL, ContinueOnFailure: true},
+			tests: []*itest.TestCase{
+				itest.GET("/path").ExpectStatus(http.StatusOK),
+				itest.GET("/path").ExpectStatus(http.StatusOK),
+				itest.GET("/path").ExpectStatus(http.StatusOK),
+			},
+			wantResults: []*itest.TestCaseResult{
+				{Status: http.StatusOK},
+				{Status: http.StatusOK},
+				{Status: http.StatusOK},
+			},
+		},
+		{
+			name:   "test failure",
+			server: mockServer,
+			runner: &itest.TestRunner{BaseURL: mockServer.URL, ContinueOnFailure: true},
+			tests: []*itest.TestCase{
+				itest.GET("/path").ExpectStatus(http.StatusOK),
+				itest.GET("/path").ExpectStatus(http.StatusNotFound),
+				itest.GET("/path").ExpectStatus(http.StatusOK),
+			},
+			wantResults: []*itest.TestCaseResult{
+				{Status: http.StatusOK},
+				{Status: http.StatusOK, Errors: []error{assert.AnError}},
+				{Status: http.StatusOK},
+			},
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			server := newMockServer(test.statusCode, []byte(test.body.String()))
-			defer server.Close()
-			r := itest.NewTestRunner(server.URL)
-			tcs := []*itest.TestCase{
-				itest.GET("/foo").ExpectStatus(test.statusCode).ExpectBody(test.body),
-				itest.POST("/foo").ExpectStatus(400).ExpectBody(test.body),
+			results, err := test.runner.RunTests(test.tests)
+			if test.wantError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
 			}
-			results := r.RunTests(tcs)
-			assert.Len(t, results, 2)
-			assert.Empty(t, results[0].Errors)
-			assert.Len(t, results[1].Errors, 1)
+
+			assert.Len(t, results, len(test.wantResults))
+
+			for i := 0; i < len(test.wantResults); i++ {
+				assert.Equal(t, test.wantResults[i].Status, results[i].Status)
+			}
 		})
 	}
-}
-
-func TestRunner_RunTest(t *testing.T) {
-
-}
-
-func TestRunner_RunTestT(t *testing.T) {
-
 }
 
 func TestRunnerValidate(t *testing.T) {
@@ -118,11 +153,13 @@ func TestRunnerValidate(t *testing.T) {
 	}
 }
 
-func newMockServer(statusCode int, body []byte) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		if len(body) > 0 {
-			w.Write(body)
+func newMockServer(statusCode int, respBody []byte) *httptest.Server {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/path", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(statusCode)
+		if len(respBody) > 0 {
+			w.Write(respBody)
 		}
-	}))
+	})
+	return httptest.NewUnstartedServer(mux)
 }
