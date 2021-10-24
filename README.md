@@ -4,7 +4,7 @@ Hassle-free REST API testing for Go.
 
 ## Installation
 
-    go get github.com/go-itest/go-itest
+    go get github.com/jefflinse/go-itest
 
 ## Usage
 
