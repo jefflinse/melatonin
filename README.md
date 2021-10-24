@@ -10,7 +10,7 @@ Hassle-free REST API testing for Go.
 
 Create tests for your API endpoints and run them as a standalone binary or as part of your usual Go tests.
 
-### Standalone
+**Standalone**
 
 ```go
 package main
@@ -34,7 +34,7 @@ func main() {
     
     1 passed, 0 failed, 0 skipped
 
-### Go Test
+**Go Test**
 
 ```go
 package mypackage_test
@@ -67,15 +67,6 @@ func TestAPI(t *testing.T) {
 ```go
 runner := itest.NewTestRunner("http://example.com")
 runner.RunTests(...)
-```
-
-### Create a test runner using a Go test context
-
-```go
-func TestSomething(t *testing.T) {
-    runner := itest.NewTestRunner("http://example.com").WithT(t)
-    runner.RunTests(...)
-}
 ```
 
 ### Define tests using chainable methods
