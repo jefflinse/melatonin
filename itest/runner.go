@@ -130,11 +130,17 @@ func (r *TestRunner) RunTests(tests []*TestCase) (results []*TestCaseResult) {
 	info("running %d tests for %s", len(tests), r.BaseURL)
 	var executed, passed, failed, skipped int
 	for _, test := range tests {
-		var result *TestCaseResult
+		result := r.RunTest(test)
 		if r.T != nil {
-			result = r.RunTestT(r.T, test)
-		} else {
-			result = r.RunTest(test)
+			r.T.Run(test.DisplayName(), func(t *testing.T) {
+				if len(result.Errors) > 0 {
+					for _, err := range result.Errors {
+						t.Log(err)
+					}
+
+					t.FailNow()
+				}
+			})
 		}
 
 		results = append(results, result)
@@ -227,27 +233,6 @@ func (r *TestRunner) RunTest(test *TestCase) (result *TestCaseResult) {
 	}
 
 	return
-}
-
-// RunTestT runs the test case in the context of a Go test.
-func (r *TestRunner) RunTestT(t GoTestContext, test *TestCase) (result *TestCaseResult) {
-	result = r.RunTest(test)
-
-	t.Run(test.DisplayName(), func(tt *testing.T) {
-		if len(result.Errors) > 0 {
-			for _, err := range result.Errors {
-				tt.Log(err)
-			}
-
-			if !r.ContinueOnFailure {
-				tt.FailNow()
-			} else {
-				tt.Fail()
-			}
-		}
-	})
-
-	return result
 }
 
 func (r *TestRunner) Validate() error {
