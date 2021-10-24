@@ -324,12 +324,24 @@ func validateTests(tests []*TestCase) bool {
 	return valid
 }
 
+// RunTest runs a single test using the provided base URL and the default TestRunner.
+func RunTest(baseURL string, test *TestCase) {
+	RunTests(baseURL, []*TestCase{test})
+}
+
+// RunTestT runs a single test within a Go testing context using the provided
+// base URL and the default TestRunner.
+func RunTestT(t *testing.T, baseURL string, test *TestCase) {
+	RunTestsT(t, baseURL, []*TestCase{test})
+}
+
 // RunTests runs a set of tests using the provided base URL and the default TestRunner.
 func RunTests(baseURL string, tests []*TestCase) {
 	NewTestRunner(baseURL).RunTests(tests)
 }
 
-// RunTests runs a set of tests using the provided base URL and the default TestRunner.
+// RunTests runs a set of tests within a Go testing context using the provided
+// base URL and the default TestRunner.
 func RunTestsT(t GoTestContext, baseURL string, tests []*TestCase) {
 	NewTestRunner(baseURL).WithT(t).RunTests(tests)
 }
