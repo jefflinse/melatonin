@@ -36,9 +36,6 @@ func init() {
 
 // GoTestContext is a minimal interface for testing.T.
 type GoTestContext interface {
-	Log(args ...interface{})
-	Fail()
-	FailNow()
 	Run(string, func(*testing.T)) bool
 }
 

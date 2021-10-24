@@ -13,23 +13,6 @@ type GoTestContext struct {
 	mock.Mock
 }
 
-// Fail provides a mock function with given fields:
-func (_m *GoTestContext) Fail() {
-	_m.Called()
-}
-
-// FailNow provides a mock function with given fields:
-func (_m *GoTestContext) FailNow() {
-	_m.Called()
-}
-
-// Log provides a mock function with given fields: args
-func (_m *GoTestContext) Log(args ...interface{}) {
-	var _ca []interface{}
-	_ca = append(_ca, args...)
-	_m.Called(_ca...)
-}
-
 // Run provides a mock function with given fields: _a0, _a1
 func (_m *GoTestContext) Run(_a0 string, _a1 func(*testing.T)) bool {
 	ret := _m.Called(_a0, _a1)
