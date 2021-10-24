@@ -1,12 +1,8 @@
 package itest
 
 import (
-	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"testing"
@@ -182,7 +178,7 @@ func (r *TestRunner) RunTestT(t GoTestContext, test *TestCase) (result *TestCase
 			test.Method,
 			r.BaseURL+test.Path,
 			test.RequestHeaders,
-			test.RequestBody,
+			[]byte(test.RequestBody.String()),
 			timeout)
 		defer cancel()
 		if err != nil {
@@ -193,7 +189,7 @@ func (r *TestRunner) RunTestT(t GoTestContext, test *TestCase) (result *TestCase
 		test.request = req
 	}
 
-	status, body, err := r.doRequest(test.request)
+	status, body, err := doRequest(r.HTTPClient, test.request)
 	if err != nil {
 		result.AddError(fmt.Errorf("failed to perform HTTP request: %w", err))
 		return
@@ -246,57 +242,6 @@ func (r *TestRunner) Validate() error {
 	}
 
 	return nil
-}
-
-func (r *TestRunner) createRequest(method, uri string,
-	headers http.Header,
-	body Stringable,
-	timeout time.Duration) (*http.Request, context.CancelFunc, error) {
-
-	var reader io.Reader
-	if body != nil {
-		reader = bytes.NewReader([]byte(body.String()))
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-
-	req, err := http.NewRequestWithContext(ctx, method, uri, reader)
-	if err != nil {
-		return nil, cancel, err
-	}
-
-	if headers != nil {
-		req.Header = headers
-	} else {
-		req.Header = http.Header{}
-	}
-
-	return req, cancel, nil
-}
-
-func (r *TestRunner) doRequest(req *http.Request) (int, Stringable, error) {
-	debug("%s %s", req.Method, req.URL.String())
-	resp, err := r.HTTPClient.Do(req)
-	if err != nil {
-		return -1, nil, err
-	}
-
-	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return -1, nil, err
-	}
-
-	body := parseResponseBody(b)
-	if body != nil {
-		debug("%d\n%s", resp.StatusCode, body.String())
-	} else {
-		debug("%d", resp.StatusCode)
-	}
-
-	debug("\n")
-
-	return resp.StatusCode, body, nil
 }
 
 func parseResponseBody(body []byte) Stringable {
