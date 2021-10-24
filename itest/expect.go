@@ -3,6 +3,8 @@ package itest
 import (
 	"errors"
 	"fmt"
+	"net/http"
+	"sort"
 )
 
 func WrongTypeError(key string, expected, actual interface{}) error {
@@ -213,4 +215,34 @@ func expectJSONArray(key string, expected JSONArray, actual interface{}) error {
 	}
 
 	return nil
+}
+
+func expectHeaders(expected http.Header, actual http.Header) []error {
+	var errs []error
+	for key, expectedValuesForKey := range expected {
+		actualValuesForKey, ok := actual[key]
+		if !ok {
+			errs = append(errs, fmt.Errorf("expected header %q, got nothing", key))
+			continue
+		}
+
+		sort.Strings(expectedValuesForKey)
+		sort.Strings(actualValuesForKey)
+
+		for _, expectedValue := range expectedValuesForKey {
+			found := false
+			for _, actualValue := range actualValuesForKey {
+				if actualValue == expectedValue {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				errs = append(errs, fmt.Errorf("expected header %q to contain %q, got %q", key, expectedValue, actualValuesForKey))
+			}
+		}
+	}
+
+	return errs
 }

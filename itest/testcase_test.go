@@ -213,11 +213,3 @@ func TestValidate(t *testing.T) {
 		})
 	}
 }
-
-func TestResultAddError(t *testing.T) {
-	tr := &itest.TestCaseResult{}
-	assert.Len(t, tr.Errors, 0)
-	tr.AddError(assert.AnError)
-	assert.Len(t, tr.Errors, 1)
-	assert.Equal(t, assert.AnError, tr.Errors[0])
-}

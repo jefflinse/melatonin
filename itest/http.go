@@ -35,27 +35,20 @@ func (r *TestRunner) createRequest(method, uri string,
 	return req, cancel, nil
 }
 
-func doRequest(c *http.Client, req *http.Request) (int, Stringable, error) {
+func doRequest(c *http.Client, req *http.Request) (int, http.Header, []byte, error) {
 	debug("%s %s", req.Method, req.URL.String())
 	resp, err := c.Do(req)
 	if err != nil {
-		return -1, nil, err
+		return -1, nil, nil, err
 	}
 
 	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return -1, nil, err
-	}
-
-	body := parseResponseBody(b)
-	if body != nil {
-		debug("%d\n%s", resp.StatusCode, body.String())
-	} else {
-		debug("%d", resp.StatusCode)
+		return -1, nil, nil, err
 	}
 
 	debug("\n")
 
-	return resp.StatusCode, body, nil
+	return resp.StatusCode, resp.Header, body, nil
 }

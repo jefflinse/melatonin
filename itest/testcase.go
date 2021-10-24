@@ -241,15 +241,41 @@ func (tc *TestCase) Validate() error {
 // TestCaseResult represents the result of running a single test case.
 type TestCaseResult struct {
 	TestCase *TestCase
+	Status   int
+	Headers  http.Header
+	Body     []byte
 	Errors   []error
-}
-
-// AddError adds an error to the test result.
-func (r *TestCaseResult) AddError(err error) {
-	r.Errors = append(r.Errors, err)
 }
 
 // Failed indicates that the test case failed.
 func (r *TestCaseResult) Failed() bool {
 	return len(r.Errors) > 0
+}
+
+func (r *TestCaseResult) addErrors(errs ...error) {
+	if len(errs) == 0 {
+		return
+	}
+
+	r.Errors = append(r.Errors, errs...)
+}
+
+func (r *TestCaseResult) validateExpectations() {
+	if r.TestCase.WantStatus != 0 {
+		if err := expectStatus(r.TestCase.WantStatus, r.Status); err != nil {
+			r.addErrors(err)
+		}
+	}
+
+	if r.TestCase.WantHeaders != nil {
+		errs := expectHeaders(r.TestCase.WantHeaders, r.Headers)
+		r.addErrors(errs...)
+	}
+
+	if r.TestCase.WantBody != nil {
+		body := parseResponseBody(r.Body)
+		if err := expect("body", r.TestCase.WantBody, body); err != nil {
+			r.addErrors(err)
+		}
+	}
 }

@@ -161,7 +161,7 @@ func (r *TestRunner) RunTestT(t GoTestContext, test *TestCase) (result *TestCase
 	if test.BeforeFunc != nil {
 		debug("%s: running before()", test.DisplayName())
 		if err := test.BeforeFunc(); err != nil {
-			result.AddError(fmt.Errorf("before(): %w", err))
+			result.addErrors(fmt.Errorf("before(): %w", err))
 			return
 		}
 	}
@@ -173,44 +173,40 @@ func (r *TestRunner) RunTestT(t GoTestContext, test *TestCase) (result *TestCase
 		timeout = r.RequestTimeout
 	}
 
+	var reqBody []byte
+	if test.RequestBody != nil {
+		reqBody = []byte(test.RequestBody.String())
+	}
+
 	if test.request == nil {
 		req, cancel, err := r.createRequest(
 			test.Method,
 			r.BaseURL+test.Path,
 			test.RequestHeaders,
-			[]byte(test.RequestBody.String()),
+			reqBody,
 			timeout)
 		defer cancel()
 		if err != nil {
-			result.AddError(fmt.Errorf("failed to create HTTP request: %w", err))
+			result.addErrors(fmt.Errorf("failed to create HTTP request: %w", err))
 			return
 		}
 
 		test.request = req
 	}
 
-	status, body, err := doRequest(r.HTTPClient, test.request)
+	var err error
+	result.Status, result.Headers, result.Body, err = doRequest(r.HTTPClient, test.request)
 	if err != nil {
-		result.AddError(fmt.Errorf("failed to perform HTTP request: %w", err))
+		result.addErrors(fmt.Errorf("failed to perform HTTP request: %w", err))
 		return
 	}
 
-	if test.WantStatus != 0 {
-		if err := expectStatus(test.WantStatus, status); err != nil {
-			result.AddError(err)
-		}
-	}
-
-	if test.WantBody != nil {
-		if err := expect("body", test.WantBody, body); err != nil {
-			result.AddError(err)
-		}
-	}
+	result.validateExpectations()
 
 	if test.AfterFunc != nil {
 		debug("%s: running after()", test.DisplayName())
 		if err := test.AfterFunc(); err != nil {
-			result.AddError(fmt.Errorf("after(): %w", err))
+			result.addErrors(fmt.Errorf("after(): %w", err))
 		}
 	}
 
