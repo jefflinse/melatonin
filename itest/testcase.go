@@ -42,7 +42,7 @@ type TestCase struct {
 	RequestHeaders http.Header
 
 	// RequestBody is the content to send in the body of the HTTP request.
-	RequestBody Stringable
+	RequestBody interface{}
 
 	// Timeout is the maximum amount of time to wait for the request to complete.
 	//
@@ -57,7 +57,7 @@ type TestCase struct {
 	WantHeaders http.Header
 
 	// WantBody is the expected HTTP response body content.
-	WantBody Stringable
+	WantBody interface{}
 
 	// Underlying HTTP request for the test case.
 	request *http.Request
@@ -73,12 +73,7 @@ func NewTestCase(method, path string) *TestCase {
 
 // DisplayName returns the name of the test case.
 func (tc *TestCase) DisplayName() string {
-	name := fmt.Sprintf("%s %s", tc.Method, tc.Path)
-	if tc.RequestBody != nil {
-		name += fmt.Sprintf(" (%d)", len(tc.RequestBody.String()))
-	}
-
-	return name
+	return fmt.Sprintf("%s %s", tc.Method, tc.Path)
 }
 
 // DELETE is a shortcut for NewTestCase("DELETE", path).
@@ -146,7 +141,7 @@ func (tc *TestCase) Before(before func() error) *TestCase {
 }
 
 // WithBody sets the request body for the test case.
-func (tc *TestCase) WithBody(body Stringable) *TestCase {
+func (tc *TestCase) WithBody(body interface{}) *TestCase {
 	if tc.RequestBody != nil {
 		warn("overriding previously defined request body")
 	}
@@ -216,7 +211,7 @@ func (tc *TestCase) ExpectHeader(key, value string) *TestCase {
 }
 
 // ExpectBody sets the expected HTTP response body for the test case.
-func (tc *TestCase) ExpectBody(body Stringable) *TestCase {
+func (tc *TestCase) ExpectBody(body interface{}) *TestCase {
 	if tc.WantBody != nil {
 		warn("overriding previously expected body")
 	}

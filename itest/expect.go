@@ -46,47 +46,22 @@ func expectStatus(expected, actual int) error {
 func expect(key string, expected, actual interface{}) error {
 	switch expectedValue := expected.(type) {
 
-	case JSONObject, map[string]interface{}:
-		expectedMap, ok := expectedValue.(JSONObject)
-		if !ok {
-			expectedMap = JSONObject(expectedValue.(map[string]interface{}))
-		}
-		return expectJSONObject(key, expectedMap, actual)
+	case Object, map[string]interface{}:
+		ev, _ := expectedValue.(map[string]interface{})
+		return expectJSONObject(key, ev, actual)
 
-	case JSONArray, []interface{}:
-		expectedArray, ok := expectedValue.(JSONArray)
-		if !ok {
-			expectedArray = JSONArray(expectedValue.([]interface{}))
-		}
-		return expectJSONArray(key, expectedArray, actual)
+	case Array, []interface{}:
+		ev, _ := expectedValue.([]interface{})
+		return expectJSONArray(key, ev, actual)
 
-	case String, string:
-		expectedString, ok := expectedValue.(String)
-		if !ok {
-			expectedString = String(expectedValue.(string))
-		}
-		return expectString(key, expectedString, actual)
+	case string:
+		return expectString(key, expectedValue, actual)
 
-	case Int, int:
-		expectedInt, ok := expectedValue.(Int)
-		if !ok {
-			expectedInt = Int(expectedValue.(int))
-		}
-		return expectInt(key, expectedInt, actual)
+	case float64:
+		return expectNumber(key, expectedValue, actual)
 
-	case Float, float64:
-		expectedFloat, ok := expectedValue.(Float)
-		if !ok {
-			expectedFloat = Float(expectedValue.(float64))
-		}
-		return expectFloat(key, expectedFloat, actual)
-
-	case Bool, bool:
-		expectedBool, ok := expectedValue.(Bool)
-		if !ok {
-			expectedBool = Bool(expectedValue.(bool))
-		}
-		return expectBool(key, expectedBool, actual)
+	case bool:
+		return expectBool(key, expectedValue, actual)
 
 	case func(interface{}) bool:
 		if !expectedValue(actual) {
@@ -100,15 +75,10 @@ func expect(key string, expected, actual interface{}) error {
 	return nil
 }
 
-func expectBool(key string, expected Bool, actual interface{}) error {
-	b, ok := actual.(Bool)
+func expectBool(key string, expected bool, actual interface{}) error {
+	b, ok := actual.(bool)
 	if !ok {
-		nb, ok := actual.(bool)
-		if !ok {
-			return WrongTypeError(key, expected, actual)
-		}
-
-		b = Bool(nb)
+		return WrongTypeError(key, expected, actual)
 	}
 
 	if b != expected {
@@ -118,56 +88,23 @@ func expectBool(key string, expected Bool, actual interface{}) error {
 	return nil
 }
 
-func expectInt(key string, expected Int, actual interface{}) error {
-	i, ok := actual.(Int)
+func expectNumber(key string, expected float64, actual interface{}) error {
+	n, ok := actual.(float64)
 	if !ok {
-		ni, ok := actual.(int)
-		if !ok {
-			nf := actual.(float64)
-			if !ok || nf != float64(int(nf)) {
-				return WrongTypeError(key, expected, actual)
-			}
-
-			ni = int(nf)
-		}
-
-		i = Int(ni)
+		return WrongTypeError(key, expected, actual)
 	}
 
-	if i != expected {
+	if n != expected {
 		return WrongValueError(key, expected, actual)
 	}
 
 	return nil
 }
 
-func expectFloat(key string, expected Float, actual interface{}) error {
-	f, ok := actual.(Float)
+func expectString(key string, expected string, actual interface{}) error {
+	s, ok := actual.(string)
 	if !ok {
-		nf, ok := actual.(float64)
-		if !ok {
-			return WrongTypeError(key, expected, actual)
-		}
-
-		f = Float(nf)
-	}
-
-	if f != expected {
-		return WrongValueError(key, expected, actual)
-	}
-
-	return nil
-}
-
-func expectString(key string, expected String, actual interface{}) error {
-	s, ok := actual.(String)
-	if !ok {
-		ns, ok := actual.(string)
-		if !ok {
-			return WrongTypeError(key, expected, actual)
-		}
-
-		s = String(ns)
+		return WrongTypeError(key, expected, actual)
 	}
 
 	if s != expected {
@@ -177,15 +114,10 @@ func expectString(key string, expected String, actual interface{}) error {
 	return nil
 }
 
-func expectJSONObject(key string, expected JSONObject, actual interface{}) error {
-	m, ok := actual.(JSONObject)
+func expectJSONObject(key string, expected map[string]interface{}, actual interface{}) error {
+	m, ok := actual.(map[string]interface{})
 	if !ok {
-		m, ok = actual.(map[string]interface{})
-		if !ok {
-			return WrongTypeError(key, expected, actual)
-		}
-
-		m = JSONObject(m)
+		return WrongTypeError(key, expected, actual)
 	}
 
 	for k, v := range expected {
@@ -197,15 +129,10 @@ func expectJSONObject(key string, expected JSONObject, actual interface{}) error
 	return nil
 }
 
-func expectJSONArray(key string, expected JSONArray, actual interface{}) error {
-	a, ok := actual.(JSONArray)
+func expectJSONArray(key string, expected []interface{}, actual interface{}) error {
+	a, ok := actual.([]interface{})
 	if !ok {
-		a, ok = actual.([]interface{})
-		if !ok {
-			return WrongTypeError(key, expected, actual)
-		}
-
-		a = JSONArray(a)
+		return WrongTypeError(key, expected, actual)
 	}
 
 	for i, v := range expected {

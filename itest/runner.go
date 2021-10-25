@@ -178,7 +178,12 @@ func (r *TestRunner) RunTestT(t GoTestContext, test *TestCase) (*TestCaseResult,
 
 	var reqBody []byte
 	if test.RequestBody != nil {
-		reqBody = []byte(test.RequestBody.String())
+		var err error
+		reqBody, err = json.Marshal(test.RequestBody)
+		if err != nil {
+			result.addErrors(fmt.Errorf("error marshaling request body: %w", err))
+			return result, nil
+		}
 	}
 
 	if test.request == nil {
@@ -244,19 +249,19 @@ func (r *TestRunner) Validate() error {
 	return nil
 }
 
-func parseResponseBody(body []byte) Stringable {
+func parseResponseBody(body []byte) interface{} {
 	if len(body) > 0 {
-		var bodyMap JSONObject
+		var bodyMap map[string]interface{}
 		if err := json.Unmarshal(body, &bodyMap); err == nil {
 			return bodyMap
 		}
 
-		var bodyArray JSONArray
+		var bodyArray []interface{}
 		if err := json.Unmarshal(body, &bodyArray); err == nil {
 			return bodyArray
 		}
 
-		return String(body)
+		return string(body)
 	}
 
 	return nil

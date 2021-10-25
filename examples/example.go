@@ -25,14 +25,24 @@ func main() {
 		itest.GET("/foo").
 			WithTimeout(1 * time.Second). // specify a timeout for the test case
 			ExpectStatus(200).
-			ExpectBody(itest.String("Hello, world!")),
+			ExpectBody("Hello, world!"),
+
+		itest.GET("/foo").
+			WithHeader("Accept", "application/json").
+			ExpectStatus(200).
+			ExpectBody(itest.Object{
+				"a_string":       "Hello, world!",
+				"a_number":       42,
+				"another_number": 3.14,
+				"a_bool":         true,
+			}),
 
 		itest.GET("/bar?query=foo&other=bar").
 			ExpectStatus(404),
 
 		itest.POST("/foo").
 			WithHeader("Accept", "application/json"). // add a single header
-			WithBody(itest.JSONObject{                // specify the body using Go types
+			WithBody(map[string]interface{}{          // specify the body using Go types
 				"key": "value",
 			}).
 			ExpectStatus(201),
@@ -42,7 +52,7 @@ func main() {
 				"Accept": []string{"application/json"},
 				"Auth":   []string{"Bearer 12345"},
 			}).
-			WithBody(itest.String(`{"key":"value"}`)). // specify body as a string
+			WithBody(`{"key":"value"}`). // specify body as a string
 			ExpectStatus(201),
 
 		itest.DELETE("/foo").
@@ -51,7 +61,7 @@ func main() {
 		// use any custom *http.Request for a test
 		itest.DO(customReq).
 			ExpectStatus(200).
-			ExpectBody(itest.String("Hello, world!")),
+			ExpectBody("Hello, world!"),
 	})
 }
 
@@ -70,7 +80,7 @@ func startExampleServer() {
 		body := "Hello, world!"
 		if r.Header.Get("Accept") == "application/json" {
 			w.Header().Set("Content-Type", "application/json")
-			body = `{"message":"Hello, World!"}`
+			body = `{"a_string":"Hello, World!","a_number":42,"another_number":3.14,"a_bool":true}`
 		}
 
 		w.Write([]byte(body))

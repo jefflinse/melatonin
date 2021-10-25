@@ -28,13 +28,13 @@ func TestDisplayName(t *testing.T) {
 		},
 		{
 			name:     "empty body",
-			testCase: itest.NewTestCase("method", "path").WithBody(itest.String("")),
-			expected: "method path (0)",
+			testCase: itest.NewTestCase("method", "path").WithBody(""),
+			expected: "method path",
 		},
 		{
 			name:     "non-empty body",
-			testCase: itest.NewTestCase("method", "path").WithBody(itest.String("body")),
-			expected: "method path (4)",
+			testCase: itest.NewTestCase("method", "path").WithBody("body"),
+			expected: "method path",
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -97,8 +97,8 @@ func TestDO(t *testing.T) {
 
 func TestTestCaseConvenienceSetters(t *testing.T) {
 	tc := itest.NewTestCase("method", "path")
-	tc.WithBody(itest.String("body"))
-	assert.Equal(t, "body", tc.RequestBody.String())
+	tc.WithBody("body")
+	assert.Equal(t, "body", tc.RequestBody)
 	tc.WithHeaders(map[string][]string{http.CanonicalHeaderKey("header1"): {"value1"}})
 	assert.Equal(t, []string{"value1"}, tc.RequestHeaders[http.CanonicalHeaderKey("header1")])
 	tc.WithHeader("header2", "value2")
@@ -107,8 +107,8 @@ func TestTestCaseConvenienceSetters(t *testing.T) {
 	assert.Equal(t, 1*time.Second, tc.Timeout)
 
 	// setting these again overrides the previous values
-	tc.WithBody(itest.String("body2"))
-	assert.Equal(t, "body2", tc.RequestBody.String())
+	tc.WithBody("body2")
+	assert.Equal(t, "body2", tc.RequestBody)
 	tc.WithHeaders(map[string][]string{http.CanonicalHeaderKey("header3"): {"value3"}})
 	assert.Equal(t, []string{"value3"}, tc.RequestHeaders[http.CanonicalHeaderKey("header3")])
 	tc.WithHeader("header4", "value4")
@@ -158,8 +158,8 @@ func TestExpectations(t *testing.T) {
 	assert.Equal(t, []string{"value1"}, tc.WantHeaders[http.CanonicalHeaderKey("header1")])
 	tc.ExpectHeader("header2", "value2")
 	assert.Equal(t, []string{"value2"}, tc.WantHeaders[http.CanonicalHeaderKey("header2")])
-	tc.ExpectBody(itest.String("body1"))
-	assert.Equal(t, "body1", tc.WantBody.String())
+	tc.ExpectBody("body1")
+	assert.Equal(t, "body1", tc.WantBody)
 
 	// setting these again overrides the previous values
 	tc.ExpectStatus(201)
@@ -168,8 +168,8 @@ func TestExpectations(t *testing.T) {
 	assert.Equal(t, []string{"value3"}, tc.WantHeaders[http.CanonicalHeaderKey("header3")])
 	tc.ExpectHeader("header4", "value4")
 	assert.Equal(t, []string{"value4"}, tc.WantHeaders[http.CanonicalHeaderKey("header4")])
-	tc.ExpectBody(itest.String("body2"))
-	assert.Equal(t, "body2", tc.WantBody.String())
+	tc.ExpectBody("body2")
+	assert.Equal(t, "body2", tc.WantBody)
 
 	// ExpectHeader creates a new map if one does not exist
 	tc = itest.NewTestCase("method", "path")
