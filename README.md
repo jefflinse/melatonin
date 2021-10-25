@@ -22,17 +22,18 @@ func main() {
     itest.RunTests("http://example.com", []*itest.TestCase{
 
         itest.GET("/endpoint").
+            Describe("Fetch a record successfully").
             ExpectStatus(200).
-            ExpectBody(String("Hello, world!"))
+            ExpectBody("Hello, world!"),
     })
 }
 ```
 
-    $ go run main.go
-    running 3 tests for http://localhost:8080
-    ✔  GET /endpoint
-    
-    1 passed, 0 failed, 0 skipped
+    $ go run example.go
+    running 1 test for http://localhost:8080
+    ✔  Fetch a record successfully      GET   /foo  3.9252ms
+
+    1 passed, 0 failed, 0 skipped in 3.9252ms
 
 **Go Test**
 
@@ -46,19 +47,20 @@ func TestAPI(t *testing.T) {
     itest.RunTestsT(t, "http://example.com", []*itest.TestCase{
 
         itest.GET("/endpoint").
+            Describe("Fetch a record successfully").
             ExpectStatus(200).
-            ExpectBody(String("Hello, World!")).
+            ExpectBody("Hello, world!"),
     })
 }
 ```
 
     $ go test
-    running 3 tests for http://example.com
-    ✔  GET /endpoint
-
-    1 passed, 0 failed, 0 skipped
+    running 1 test for http://localhost:8080
+    ✔  Fetch foo and ensure it takes less than one second      GET   /foo  2.876222ms
+    
+    1 passed, 0 failed, 0 skipped in 2.876222ms
     PASS
-    ok      github.com/user/project/mypackage  0.161s
+    ok      github.com/jefflinse/go-itest/examples    0.135s
 
 ## Examples
 
