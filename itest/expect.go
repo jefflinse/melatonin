@@ -48,11 +48,11 @@ func expect(key string, expected, actual interface{}) error {
 
 	case Object, map[string]interface{}:
 		ev, _ := expectedValue.(map[string]interface{})
-		return expectJSONObject(key, ev, actual)
+		return expectObject(key, ev, actual)
 
 	case Array, []interface{}:
 		ev, _ := expectedValue.([]interface{})
-		return expectJSONArray(key, ev, actual)
+		return expectArray(key, ev, actual)
 
 	case string:
 		return expectString(key, expectedValue, actual)
@@ -114,7 +114,7 @@ func expectString(key string, expected string, actual interface{}) error {
 	return nil
 }
 
-func expectJSONObject(key string, expected map[string]interface{}, actual interface{}) error {
+func expectObject(key string, expected map[string]interface{}, actual interface{}) error {
 	m, ok := actual.(map[string]interface{})
 	if !ok {
 		return wrongTypeError(key, expected, actual)
@@ -129,7 +129,7 @@ func expectJSONObject(key string, expected map[string]interface{}, actual interf
 	return nil
 }
 
-func expectJSONArray(key string, expected []interface{}, actual interface{}) error {
+func expectArray(key string, expected []interface{}, actual interface{}) error {
 	a, ok := actual.([]interface{})
 	if !ok {
 		return wrongTypeError(key, expected, actual)

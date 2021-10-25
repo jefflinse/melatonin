@@ -79,7 +79,7 @@ tests := []*itest.TestCase{
        ExpectBody(String("Hello, World!")),
     
     itest.POST("/endpoint").
-       WithBody(JSONObject{
+       WithBody(Object{
          "name": "Burt Macklin",
          "age":  32,
        }).
@@ -104,7 +104,7 @@ tests := []*itest.TestCase{
     {
         Method: "POST",
         Path: "/endpoint",
-        RequestBody: JSONObject{
+        RequestBody: Object{
             "name": "Burt Macklin",
             "age":  32,
         },
