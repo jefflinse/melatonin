@@ -255,6 +255,8 @@ type TestCaseResult struct {
 	Headers  http.Header
 	Body     []byte
 	Errors   []error
+
+	executionTime time.Duration
 }
 
 // Failed indicates that the test case failed.

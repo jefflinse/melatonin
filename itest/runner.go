@@ -64,6 +64,7 @@ type TestRunner struct {
 	// Default is 5 seconds.
 	RequestTimeout time.Duration
 
+	// Internal
 	outputWriter *ColumnWriter
 }
 
@@ -152,7 +153,13 @@ func (r *TestRunner) RunTestsT(t GoTestContext, tests []*TestCase) ([]*TestCaseR
 
 	r.outputWriter.Flush()
 
-	fmt.Printf("\n%d passed, %d failed, %d skipped\n", passed, failed, skipped)
+	totalExecutionTime := time.Duration(0)
+	for _, result := range results {
+		totalExecutionTime += result.executionTime
+	}
+
+	fmt.Printf("\n%d passed, %d failed, %d skipped %s\n", passed, failed, skipped,
+		faintFG(fmt.Sprintf("in %s", totalExecutionTime.String())))
 	return results, nil
 }
 
@@ -228,7 +235,7 @@ func (r *TestRunner) RunTestT(t GoTestContext, test *TestCase) (*TestCaseResult,
 		}
 	}
 
-	duration := time.Since(startTime)
+	result.executionTime = time.Since(startTime)
 
 	if result.Failed() {
 		r.outputWriter.PrintColumns(
@@ -236,7 +243,7 @@ func (r *TestRunner) RunTestT(t GoTestContext, test *TestCase) (*TestCaseResult,
 			whiteFG(test.Description),
 			blueBG(fmt.Sprintf("%7s ", test.request.Method)),
 			test.request.URL.Path,
-			faintFG(duration.String()))
+			faintFG(result.executionTime.String()))
 
 		for _, err := range result.Errors {
 			r.outputWriter.PrintColumns(redFG(""), redFG(fmt.Sprintf("  %s", err)), blueBG(""), "", faintFG(""))
@@ -257,7 +264,7 @@ func (r *TestRunner) RunTestT(t GoTestContext, test *TestCase) (*TestCaseResult,
 			whiteFG(test.Description),
 			blueBG(fmt.Sprintf("%7s ", test.request.Method)),
 			test.request.URL.Path,
-			faintFG(duration.String()))
+			faintFG(result.executionTime.String()))
 	}
 
 	return result, err
