@@ -30,7 +30,7 @@ func main() {
 ```
 
     $ go run example.go
-    running 1 test for http://localhost:8080
+    running 1 test for http://example.com
     ✔  Fetch a record successfully      GET   /foo  3.9252ms
 
     1 passed, 0 failed, 0 skipped in 3.9252ms
@@ -55,8 +55,8 @@ func TestAPI(t *testing.T) {
 ```
 
     $ go test
-    running 1 test for http://localhost:8080
-    ✔  Fetch foo and ensure it takes less than one second      GET   /foo  2.876222ms
+    running 1 test for http://example.com
+    ✔  Fetch a record successfully second      GET   /foo  2.876222ms
     
     1 passed, 0 failed, 0 skipped in 2.876222ms
     PASS
