@@ -25,8 +25,11 @@ var (
 	greenFG = color.New(color.FgHiGreen, color.Bold).SprintFunc()
 	redFG   = color.New(color.FgHiRed, color.Bold).SprintFunc()
 	whiteFG = color.New(color.Bold).SprintFunc()
+	faintFG = color.New(color.Faint).SprintFunc()
 
 	blueBG = color.New(color.BgBlue, color.FgHiWhite).SprintFunc()
+
+	underline = color.New(color.Underline).SprintFunc()
 )
 
 type ColumnWriter struct {

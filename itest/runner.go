@@ -109,7 +109,7 @@ func (r *TestRunner) RunTests(tests []*TestCase) ([]*TestCaseResult, error) {
 // To run tests as a standalone binary without a testing context, use RunTests().
 func (r *TestRunner) RunTestsT(t GoTestContext, tests []*TestCase) ([]*TestCaseResult, error) {
 	results := []*TestCaseResult{}
-	r.outputWriter = NewColumnWriter(os.Stdout, 4, 2)
+	r.outputWriter = NewColumnWriter(os.Stdout, 5, 2)
 
 	if err := r.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid test runner: %w", err)
@@ -124,7 +124,7 @@ func (r *TestRunner) RunTestsT(t GoTestContext, tests []*TestCase) ([]*TestCaseR
 		return nil, fmt.Errorf("one or more test cases failed validation")
 	}
 
-	fmt.Printf("running %d tests for %s\n", len(tests), r.BaseURL)
+	fmt.Printf("running %d tests for %s\n", len(tests), underline(r.BaseURL))
 	var executed, passed, failed, skipped int
 	for _, test := range tests {
 		result, err := r.RunTestT(t, test)
@@ -167,6 +167,8 @@ func (r *TestRunner) RunTestT(t GoTestContext, test *TestCase) (*TestCaseResult,
 		TestCase: test,
 		Errors:   []error{},
 	}
+
+	startTime := time.Now()
 
 	if test.BeforeFunc != nil {
 		debug("%s: running before()", test.DisplayName())
@@ -226,15 +228,18 @@ func (r *TestRunner) RunTestT(t GoTestContext, test *TestCase) (*TestCaseResult,
 		}
 	}
 
+	duration := time.Since(startTime)
+
 	if result.Failed() {
 		r.outputWriter.PrintColumns(
 			redFG("✘"),
 			whiteFG(test.Description),
 			blueBG(fmt.Sprintf("%7s ", test.request.Method)),
-			test.request.URL.Path)
+			test.request.URL.Path,
+			faintFG(duration.String()))
 
 		for _, err := range result.Errors {
-			r.outputWriter.PrintColumns(redFG(""), redFG(fmt.Sprintf("  %s", err)), blueBG(""), "")
+			r.outputWriter.PrintColumns(redFG(""), redFG(fmt.Sprintf("  %s", err)), blueBG(""), "", faintFG(""))
 		}
 
 		if t != nil {
@@ -251,7 +256,8 @@ func (r *TestRunner) RunTestT(t GoTestContext, test *TestCase) (*TestCaseResult,
 			greenFG("✔"),
 			whiteFG(test.Description),
 			blueBG(fmt.Sprintf("%7s ", test.request.Method)),
-			test.request.URL.Path)
+			test.request.URL.Path,
+			faintFG(duration.String()))
 	}
 
 	return result, err
