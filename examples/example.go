@@ -49,7 +49,8 @@ func main() {
 			WithBody(map[string]interface{}{          // specify the body using Go types
 				"key": "value",
 			}).
-			ExpectStatus(201),
+			ExpectStatus(201).
+			ExpectHeader("My-Custom-Header", "foobar"),
 
 		itest.POST("/foo").
 			Describe("Ensure auth credentials are accepted").

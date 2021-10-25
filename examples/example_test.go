@@ -32,12 +32,12 @@ func TestAPI(t *testing.T) {
 		itest.GET("/foo").
 			Describe("Fetch foo and ensure the returned JSON contains the right values").
 			WithHeader("Accept", "application/json").
-			ExpectStatus(200).
+			ExpectStatus(201).
 			ExpectBody(itest.Object{
 				"a_string":       "Hello, world!",
-				"a_number":       42,
-				"another_number": 3.14,
-				"a_bool":         true,
+				"a_number":       43,
+				"another_number": 3.15,
+				"a_bool":         false,
 			}),
 
 		itest.GET("/bar?query=foo&other=bar").
@@ -59,7 +59,8 @@ func TestAPI(t *testing.T) {
 				"Auth":   []string{"Bearer 12345"},
 			}).
 			WithBody(`{"key":"value"}`). // specify body as a string
-			ExpectStatus(201),
+			ExpectStatus(201).
+			ExpectHeader("My-Custom-Header", "foobar"),
 
 		itest.DELETE("/foo").
 			Describe("Delete a foo").
