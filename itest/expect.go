@@ -7,7 +7,7 @@ import (
 	"sort"
 )
 
-func WrongTypeError(key string, expected, actual interface{}) error {
+func wrongTypeError(key string, expected, actual interface{}) error {
 	var msg string
 	if expected != nil && actual == nil {
 		msg = fmt.Sprintf("expected %T, got nothing", expected)
@@ -21,7 +21,7 @@ func WrongTypeError(key string, expected, actual interface{}) error {
 	return errors.New(msg)
 }
 
-func WrongValueError(key string, expected, actual interface{}) error {
+func wrongValueError(key string, expected, actual interface{}) error {
 	var msg string
 	if expected != nil && actual == nil {
 		msg = fmt.Sprintf("expected %v, got nothing", expected)
@@ -78,11 +78,11 @@ func expect(key string, expected, actual interface{}) error {
 func expectBool(key string, expected bool, actual interface{}) error {
 	b, ok := actual.(bool)
 	if !ok {
-		return WrongTypeError(key, expected, actual)
+		return wrongTypeError(key, expected, actual)
 	}
 
 	if b != expected {
-		return WrongValueError(key, expected, actual)
+		return wrongValueError(key, expected, actual)
 	}
 
 	return nil
@@ -91,11 +91,11 @@ func expectBool(key string, expected bool, actual interface{}) error {
 func expectNumber(key string, expected float64, actual interface{}) error {
 	n, ok := actual.(float64)
 	if !ok {
-		return WrongTypeError(key, expected, actual)
+		return wrongTypeError(key, expected, actual)
 	}
 
 	if n != expected {
-		return WrongValueError(key, expected, actual)
+		return wrongValueError(key, expected, actual)
 	}
 
 	return nil
@@ -104,11 +104,11 @@ func expectNumber(key string, expected float64, actual interface{}) error {
 func expectString(key string, expected string, actual interface{}) error {
 	s, ok := actual.(string)
 	if !ok {
-		return WrongTypeError(key, expected, actual)
+		return wrongTypeError(key, expected, actual)
 	}
 
 	if s != expected {
-		return WrongValueError(key, expected, actual)
+		return wrongValueError(key, expected, actual)
 	}
 
 	return nil
@@ -117,7 +117,7 @@ func expectString(key string, expected string, actual interface{}) error {
 func expectJSONObject(key string, expected map[string]interface{}, actual interface{}) error {
 	m, ok := actual.(map[string]interface{})
 	if !ok {
-		return WrongTypeError(key, expected, actual)
+		return wrongTypeError(key, expected, actual)
 	}
 
 	for k, v := range expected {
@@ -132,7 +132,7 @@ func expectJSONObject(key string, expected map[string]interface{}, actual interf
 func expectJSONArray(key string, expected []interface{}, actual interface{}) error {
 	a, ok := actual.([]interface{})
 	if !ok {
-		return WrongTypeError(key, expected, actual)
+		return wrongTypeError(key, expected, actual)
 	}
 
 	for i, v := range expected {
