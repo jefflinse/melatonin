@@ -23,24 +23,28 @@ func main() {
 	runner.RunTests([]*itest.TestCase{
 
 		itest.GET("/foo").
+			Describe("Fetch foo and ensure it takes less than one second").
 			WithTimeout(1 * time.Second). // specify a timeout for the test case
 			ExpectStatus(200).
 			ExpectBody("Hello, world!"),
 
 		itest.GET("/foo").
+			Describe("Fetch foo and ensure the returned JSON contains the right values").
 			WithHeader("Accept", "application/json").
-			ExpectStatus(200).
+			ExpectStatus(201).
 			ExpectBody(itest.Object{
-				"a_string":       "Hello, world!",
-				"a_number":       42,
-				"another_number": 3.14,
-				"a_bool":         true,
+				"a_string":       "Hello, World!",
+				"a_number":       43,
+				"another_number": 3.15,
+				"a_bool":         false,
 			}),
 
 		itest.GET("/bar?query=foo&other=bar").
+			Describe("Verify that fetching bar returns not-found").
 			ExpectStatus(404),
 
 		itest.POST("/foo").
+			Describe("Create a new foo").
 			WithHeader("Accept", "application/json"). // add a single header
 			WithBody(map[string]interface{}{          // specify the body using Go types
 				"key": "value",
@@ -48,6 +52,7 @@ func main() {
 			ExpectStatus(201),
 
 		itest.POST("/foo").
+			Describe("Ensure auth credentials are accepted").
 			WithHeaders(http.Header{ // set all headers at once
 				"Accept": []string{"application/json"},
 				"Auth":   []string{"Bearer 12345"},
@@ -56,10 +61,12 @@ func main() {
 			ExpectStatus(201),
 
 		itest.DELETE("/foo").
+			Describe("Delete a foo").
 			ExpectStatus(204),
 
 		// use any custom *http.Request for a test
 		itest.DO(customReq).
+			Describe("Fetch foo using a custom HTTP request").
 			ExpectStatus(200).
 			ExpectBody("Hello, world!"),
 	})

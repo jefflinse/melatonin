@@ -7,6 +7,8 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/fatih/color"
 )
 
 const (
@@ -24,7 +26,7 @@ func init() {
 		if timeout, err := time.ParseDuration(envTimeoutStr); err == nil {
 			defaultRequestTimeout = timeout
 		} else {
-			warn("invalid ITEST_DEFAULT_TEST_TIMEOUT value %q in environment, using default of %s",
+			color.HiYellow("invalid ITEST_DEFAULT_TEST_TIMEOUT value %q in environment, using default of %s",
 				envTimeoutStr, defaultRequestTimeoutStr)
 		}
 	}
@@ -61,6 +63,8 @@ type TestRunner struct {
 	//
 	// Default is 5 seconds.
 	RequestTimeout time.Duration
+
+	outputWriter *ColumnWriter
 }
 
 // NewTestRunner creates a new TestRunner with the default settings.
@@ -105,6 +109,7 @@ func (r *TestRunner) RunTests(tests []*TestCase) ([]*TestCaseResult, error) {
 // To run tests as a standalone binary without a testing context, use RunTests().
 func (r *TestRunner) RunTestsT(t GoTestContext, tests []*TestCase) ([]*TestCaseResult, error) {
 	results := []*TestCaseResult{}
+	r.outputWriter = NewColumnWriter(os.Stdout, 4, 2)
 
 	if err := r.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid test runner: %w", err)
@@ -119,7 +124,7 @@ func (r *TestRunner) RunTestsT(t GoTestContext, tests []*TestCase) ([]*TestCaseR
 		return nil, fmt.Errorf("one or more test cases failed validation")
 	}
 
-	info("running %d tests for %s", len(tests), r.BaseURL)
+	fmt.Printf("running %d tests for %s\n", len(tests), r.BaseURL)
 	var executed, passed, failed, skipped int
 	for _, test := range tests {
 		result, err := r.RunTestT(t, test)
@@ -134,18 +139,20 @@ func (r *TestRunner) RunTestsT(t GoTestContext, tests []*TestCase) ([]*TestCaseR
 			failed++
 
 			if !r.ContinueOnFailure {
-				warn("skipping remaininig tests")
+				r.outputWriter.Flush()
+				color.HiYellow("skipping remaininig tests")
 				skipped = len(tests) - executed
 				break
 			}
 
 		} else {
 			passed++
-			info("%s  %s %s", greenText("✔"), test.request.Method, test.request.URL.Path)
 		}
 	}
 
-	info("\n%d passed, %d failed, %d skipped", passed, failed, skipped)
+	r.outputWriter.Flush()
+
+	fmt.Printf("\n%d passed, %d failed, %d skipped\n", passed, failed, skipped)
 	return results, nil
 }
 
@@ -220,9 +227,14 @@ func (r *TestRunner) RunTestT(t GoTestContext, test *TestCase) (*TestCaseResult,
 	}
 
 	if result.Failed() {
-		info("%s  %s %s", redText("✘"), test.request.Method, test.request.URL.Path)
+		r.outputWriter.PrintColumns(
+			redFG("✘"),
+			whiteFG(test.Description),
+			blueBG(fmt.Sprintf("%7s ", test.request.Method)),
+			test.request.URL.Path)
+
 		for _, err := range result.Errors {
-			problem("   %s", err)
+			r.outputWriter.PrintColumns(redFG(""), redFG(fmt.Sprintf("  %s", err)), blueBG(""), "")
 		}
 
 		if t != nil {
@@ -234,6 +246,12 @@ func (r *TestRunner) RunTestT(t GoTestContext, test *TestCase) (*TestCaseResult,
 				t.FailNow()
 			})
 		}
+	} else {
+		r.outputWriter.PrintColumns(
+			greenFG("✔"),
+			whiteFG(test.Description),
+			blueBG(fmt.Sprintf("%7s ", test.request.Method)),
+			test.request.URL.Path)
 	}
 
 	return result, err
@@ -272,7 +290,7 @@ func validateTests(tests []*TestCase) bool {
 	valid := true
 	for _, test := range tests {
 		if err := test.Validate(); err != nil {
-			problem("test case %q is invalid: %s", test.DisplayName(), err)
+			fmt.Printf("test case %q is invalid: %s\n", test.DisplayName(), err)
 			valid = false
 		}
 	}

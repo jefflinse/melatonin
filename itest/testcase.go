@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/fatih/color"
 )
 
 // A TestCase tests a single call to an HTTP endpoint.
@@ -31,6 +33,9 @@ type TestCase struct {
 	// ContinueOnFailure indicates whether the test should continue to the next
 	// test case if the current test fails. Default is false.
 	ContinueOnFailure bool
+
+	// Description is a description of the test case.
+	Description string
 
 	// Method is the HTTP method to use for the request. Default is "GET".
 	Method string
@@ -123,7 +128,7 @@ func DO(request *http.Request) *TestCase {
 // After registers a function to be run after the test case.
 func (tc *TestCase) After(after func() error) *TestCase {
 	if tc.AfterFunc != nil {
-		warn("overriding previously defined AfterFunc")
+		color.HiYellow("overriding previously defined AfterFunc")
 	}
 
 	tc.AfterFunc = after
@@ -133,17 +138,27 @@ func (tc *TestCase) After(after func() error) *TestCase {
 // Before registers a function to be run before the test case.
 func (tc *TestCase) Before(before func() error) *TestCase {
 	if tc.BeforeFunc != nil {
-		warn("overriding previously defined BeforeFunc")
+		color.HiYellow("overriding previously defined BeforeFunc")
 	}
 
 	tc.BeforeFunc = before
 	return tc
 }
 
+// Describe sets a description for the test case.
+func (tc *TestCase) Describe(description string) *TestCase {
+	if tc.Description != "" {
+		color.HiYellow("overriding previous description")
+	}
+
+	tc.Description = description
+	return tc
+}
+
 // WithBody sets the request body for the test case.
 func (tc *TestCase) WithBody(body interface{}) *TestCase {
 	if tc.RequestBody != nil {
-		warn("overriding previously defined request body")
+		color.HiYellow("overriding previously defined request body")
 	}
 
 	tc.RequestBody = body
@@ -153,7 +168,7 @@ func (tc *TestCase) WithBody(body interface{}) *TestCase {
 // WithHeaders sets the request headers for the test case.
 func (tc *TestCase) WithHeaders(headers http.Header) *TestCase {
 	if tc.RequestHeaders != nil {
-		warn("overriding previously defined request headers")
+		color.HiYellow("overriding previously defined request headers")
 	}
 
 	tc.RequestHeaders = headers
@@ -173,7 +188,7 @@ func (tc *TestCase) WithHeader(key, value string) *TestCase {
 // WithTimeout sets a timeout for the test case.
 func (tc *TestCase) WithTimeout(timeout time.Duration) *TestCase {
 	if tc.Timeout != 0 {
-		warn("overriding previously defined timeout")
+		color.HiYellow("overriding previously defined timeout")
 	}
 
 	tc.Timeout = timeout
@@ -183,7 +198,7 @@ func (tc *TestCase) WithTimeout(timeout time.Duration) *TestCase {
 // ExpectStatus sets the expected HTTP status code for the test case.
 func (tc *TestCase) ExpectStatus(status int) *TestCase {
 	if tc.WantStatus > 0 {
-		warn("overriding previously expected status")
+		color.HiYellow("overriding previously expected status")
 	}
 
 	tc.WantStatus = status
@@ -193,7 +208,7 @@ func (tc *TestCase) ExpectStatus(status int) *TestCase {
 // ExpectHeaders sets the expected HTTP response headers for the test case.
 func (tc *TestCase) ExpectHeaders(headers http.Header) *TestCase {
 	if tc.WantHeaders != nil && len(tc.WantHeaders) > 0 {
-		warn("overriding previously expected headers")
+		color.HiYellow("overriding previously expected headers")
 	}
 
 	tc.WantHeaders = headers
@@ -213,7 +228,7 @@ func (tc *TestCase) ExpectHeader(key, value string) *TestCase {
 // ExpectBody sets the expected HTTP response body for the test case.
 func (tc *TestCase) ExpectBody(body interface{}) *TestCase {
 	if tc.WantBody != nil {
-		warn("overriding previously expected body")
+		color.HiYellow("overriding previously expected body")
 	}
 
 	tc.WantBody = body
@@ -263,14 +278,15 @@ func (r *TestCaseResult) validateExpectations() {
 	}
 
 	if r.TestCase.WantHeaders != nil {
-		errs := expectHeaders(r.TestCase.WantHeaders, r.Headers)
-		r.addErrors(errs...)
+		if errs := expectHeaders(r.TestCase.WantHeaders, r.Headers); len(errs) > 0 {
+			r.addErrors(errs...)
+		}
 	}
 
 	if r.TestCase.WantBody != nil {
 		body := parseResponseBody(r.Body)
-		if err := expect("body", r.TestCase.WantBody, body); err != nil {
-			r.addErrors(err)
+		if errs := expect("body", r.TestCase.WantBody, body); len(errs) > 0 {
+			r.addErrors(errs...)
 		}
 	}
 }

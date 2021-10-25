@@ -2,7 +2,9 @@ package itest
 
 import (
 	"fmt"
+	"io"
 	"os"
+	"text/tabwriter"
 
 	"github.com/fatih/color"
 )
@@ -20,26 +22,43 @@ func init() {
 }
 
 var (
-	greenText = color.New(color.FgGreen).SprintFunc()
-	redText   = color.New(color.FgHiRed).SprintFunc()
+	greenFG = color.New(color.FgHiGreen, color.Bold).SprintFunc()
+	redFG   = color.New(color.FgHiRed, color.Bold).SprintFunc()
+	whiteFG = color.New(color.Bold).SprintFunc()
+
+	blueBG = color.New(color.BgBlue, color.FgHiWhite).SprintFunc()
 )
 
-func fatal(format string, a ...interface{}) {
-	problem(format, a...)
-	os.Exit(1)
+type ColumnWriter struct {
+	columns   int
+	format    string
+	tabWriter *tabwriter.Writer
 }
 
-func problem(format string, a ...interface{}) {
-	color.HiRed(format, a...)
+func NewColumnWriter(output io.Writer, columns int, padding int) *ColumnWriter {
+	format := ""
+	for i := 0; i < columns; i++ {
+		format += "%s\t"
+	}
+	format += "\n"
+
+	return &ColumnWriter{
+		columns:   columns,
+		format:    format,
+		tabWriter: tabwriter.NewWriter(output, 0, 0, padding, ' ', 0),
+	}
 }
 
-func warn(format string, a ...interface{}) {
-	color.Yellow(format, a...)
+func (w *ColumnWriter) PrintColumns(columns ...interface{}) {
+	if len(columns) > w.columns {
+		panic(fmt.Sprintf("PrintColumns() called with %d columns, expected at most %d", len(columns), w.columns))
+	}
+
+	fmt.Fprintf(w.tabWriter, w.format, columns...)
 }
 
-func info(format string, a ...interface{}) {
-	fmt.Printf(format, a...)
-	fmt.Println()
+func (w *ColumnWriter) Flush() {
+	w.tabWriter.Flush()
 }
 
 func debug(format string, a ...interface{}) {

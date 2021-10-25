@@ -43,7 +43,7 @@ func expectStatus(expected, actual int) error {
 	return nil
 }
 
-func expect(key string, expected, actual interface{}) error {
+func expect(key string, expected, actual interface{}) []error {
 	switch expectedValue := expected.(type) {
 
 	case Object, map[string]interface{}:
@@ -55,21 +55,30 @@ func expect(key string, expected, actual interface{}) error {
 		return expectArray(key, ev, actual)
 
 	case string:
-		return expectString(key, expectedValue, actual)
+		err := expectString(key, expectedValue, actual)
+		if err != nil {
+			return []error{err}
+		}
 
 	case float64:
-		return expectNumber(key, expectedValue, actual)
+		err := expectNumber(key, expectedValue, actual)
+		if err != nil {
+			return []error{err}
+		}
 
 	case bool:
-		return expectBool(key, expectedValue, actual)
+		err := expectBool(key, expectedValue, actual)
+		if err != nil {
+			return []error{err}
+		}
 
 	case func(interface{}) bool:
 		if !expectedValue(actual) {
-			fatal("field %q did not satisfy predicate, got %q\n", key, actual)
+			return []error{fmt.Errorf("field %q did not satisfy predicate, got %q", key, actual)}
 		}
 
 	default:
-		fatal("unexpected value type for field %q: %T\n", key, actual)
+		return []error{fmt.Errorf("unexpected value type for field %q: %T", key, actual)}
 	}
 
 	return nil
@@ -114,34 +123,36 @@ func expectString(key string, expected string, actual interface{}) error {
 	return nil
 }
 
-func expectObject(key string, expected map[string]interface{}, actual interface{}) error {
+func expectObject(key string, expected map[string]interface{}, actual interface{}) []error {
 	m, ok := actual.(map[string]interface{})
 	if !ok {
-		return wrongTypeError(key, expected, actual)
+		return []error{wrongTypeError(key, expected, actual)}
 	}
 
+	errs := []error{}
 	for k, v := range expected {
-		if err := expect(fmt.Sprintf("%s.%s", key, k), v, m[k]); err != nil {
-			return err
+		if elemErrs := expect(fmt.Sprintf("%s.%s", key, k), v, m[k]); len(elemErrs) > 0 {
+			errs = append(errs, elemErrs...)
 		}
 	}
 
-	return nil
+	return errs
 }
 
-func expectArray(key string, expected []interface{}, actual interface{}) error {
+func expectArray(key string, expected []interface{}, actual interface{}) []error {
 	a, ok := actual.([]interface{})
 	if !ok {
-		return wrongTypeError(key, expected, actual)
+		return []error{wrongTypeError(key, expected, actual)}
 	}
 
+	errs := []error{}
 	for i, v := range expected {
-		if err := expect(fmt.Sprintf("%s[%d]", key, i), v, a[i]); err != nil {
-			return err
+		if elemErrs := expect(fmt.Sprintf("%s[%d]", key, i), v, a[i]); len(elemErrs) > 0 {
+			errs = append(errs, elemErrs...)
 		}
 	}
 
-	return nil
+	return errs
 }
 
 func expectHeaders(expected http.Header, actual http.Header) []error {
