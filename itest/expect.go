@@ -18,6 +18,7 @@ func wrongTypeError(key string, expected, actual interface{}) error {
 	if key != "" {
 		msg = fmt.Sprintf("%s: %s", key, msg)
 	}
+
 	return errors.New(msg)
 }
 
@@ -47,11 +48,17 @@ func expect(key string, expected, actual interface{}) []error {
 	switch expectedValue := expected.(type) {
 
 	case Object, map[string]interface{}:
-		ev, _ := expectedValue.(map[string]interface{})
+		ev, ok := expectedValue.(map[string]interface{})
+		if !ok {
+			ev = map[string]interface{}(expectedValue.(Object))
+		}
 		return expectObject(key, ev, actual)
 
 	case Array, []interface{}:
-		ev, _ := expectedValue.([]interface{})
+		ev, ok := expectedValue.([]interface{})
+		if !ok {
+			ev = []interface{}(expectedValue.(Array))
+		}
 		return expectArray(key, ev, actual)
 
 	case string:
@@ -62,6 +69,17 @@ func expect(key string, expected, actual interface{}) []error {
 
 	case float64:
 		err := expectNumber(key, expectedValue, actual)
+		if err != nil {
+			return []error{err}
+		}
+
+	case int, int64:
+		ev, ok := expectedValue.(int64)
+		if !ok {
+			ev = int64(expectedValue.(int))
+		}
+
+		err := expectNumber(key, float64(ev), actual)
 		if err != nil {
 			return []error{err}
 		}

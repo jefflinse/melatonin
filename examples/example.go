@@ -33,7 +33,7 @@ func main() {
 			WithHeader("Accept", "application/json").
 			ExpectStatus(201).
 			ExpectBody(itest.Object{
-				"a_string":       "Hello, World!",
+				"a_string":       "Hello, world!",
 				"a_number":       43,
 				"another_number": 3.15,
 				"a_bool":         false,
@@ -87,7 +87,7 @@ func startExampleServer() {
 		body := "Hello, world!"
 		if r.Header.Get("Accept") == "application/json" {
 			w.Header().Set("Content-Type", "application/json")
-			body = `{"a_string":"Hello, World!","a_number":42,"another_number":3.14,"a_bool":true}`
+			body = `{"a_string":"Hello, world!","a_number":42,"another_number":3.14,"a_bool":true}`
 		}
 
 		w.Write([]byte(body))
