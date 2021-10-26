@@ -1,7 +1,7 @@
 200
 --- headers
 Content-Type: application/json
-Custom-Header: foo
-Custom-Header: bar
+Some-Header: foo
+Some-Header: bar
 --- body
 Hello, world!

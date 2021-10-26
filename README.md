@@ -156,11 +156,17 @@ itest.DO(req).
     ExpectStatus(200)
 ```
 
+### Load expectations for a test case from a golden file
+
+```go
+itest.GET("/endpoint").
+    ExpectGolden("path/to/file.golden")
+```
+
 ## Planned Features
 
 - Output test results in different formats (e.g. JSON, XML, YAML)
 - Standalone tool for running tests defined in text files
-- Support for sourcing response expectations from golden files
 - Support for running external commands before and after test cases
 
 ## Contributing

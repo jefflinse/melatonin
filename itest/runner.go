@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/spf13/afero"
 )
 
 const (
@@ -16,6 +17,7 @@ const (
 )
 
 var (
+	appFS                 = afero.NewOsFs()
 	defaultRequestTimeout time.Duration
 )
 

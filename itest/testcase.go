@@ -37,6 +37,12 @@ type TestCase struct {
 	// Description is a description of the test case.
 	Description string
 
+	// GoldenFilePath is a path to a golden file defining expectations for the test case.
+	//
+	// If set, any WantStatus, WantHeaders, or WantBody values are overriden with
+	// values from the golden file.
+	GoldenFilePath string
+
 	// Method is the HTTP method to use for the request. Default is "GET".
 	Method string
 
@@ -235,6 +241,15 @@ func (tc *TestCase) ExpectBody(body interface{}) *TestCase {
 	return tc
 }
 
+func (tc *TestCase) ExpectGolden(path string) *TestCase {
+	if tc.GoldenFilePath != "" {
+		color.HiYellow("overriding previously expected golden file")
+	}
+
+	tc.GoldenFilePath = path
+	return tc
+}
+
 // Validate ensures that the test case is valid can can be run.
 func (tc *TestCase) Validate() error {
 	if tc.Method == "" {
@@ -243,6 +258,29 @@ func (tc *TestCase) Validate() error {
 		return errors.New("missing Path")
 	} else if tc.Path[0] != '/' {
 		return errors.New("path must begin with '/'")
+	}
+
+	if tc.GoldenFilePath != "" {
+		golden, err := NewGoldenFromFile(appFS, tc.GoldenFilePath)
+		if err != nil {
+			return err
+		}
+
+		if tc.WantStatus != 0 {
+			color.HiYellow("overriding previously expected status with golden file value")
+		}
+		tc.WantStatus = golden.WantStatus
+
+		if tc.WantHeaders != nil {
+			color.HiYellow("overriding previously expected headers with golden file content")
+		}
+		fmt.Println(golden.WantHeaders)
+		tc.WantHeaders = golden.WantHeaders
+
+		if tc.WantBody != nil {
+			color.HiYellow("overriding previously expected body with golden file content")
+		}
+		tc.WantBody = golden.WantBody
 	}
 
 	return nil

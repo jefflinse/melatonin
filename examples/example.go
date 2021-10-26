@@ -70,6 +70,12 @@ func main() {
 			Describe("Fetch foo using a custom HTTP request").
 			ExpectStatus(200).
 			ExpectBody("Hello, world!"),
+
+		// load expectations from a golden file
+		itest.GET("/foo").
+			Describe("Fetch foo and match expectations from a golden file").
+			WithHeader("Accept", "application/json").
+			ExpectGolden("golden/expect-headers-and-json-body.golden"),
 	})
 }
 
@@ -77,6 +83,9 @@ func main() {
 func startExampleServer() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/foo", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Some-Header", "foo")
+		w.Header().Add("Some-Header", "bar")
+
 		if r.Method == http.MethodPost {
 			w.WriteHeader(http.StatusCreated)
 			return

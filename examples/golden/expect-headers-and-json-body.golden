@@ -1,0 +1,12 @@
+200
+--- headers
+Content-Type: application/json
+Some-Header: foo
+Some-Header: bar
+--- body json
+{
+	"a_string": "Hello, world!",
+	"a_number": 42,
+	"another_number": 3.14,
+	"a_bool": true
+}

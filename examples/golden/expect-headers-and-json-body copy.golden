@@ -1,7 +1,0 @@
-200
---- headers
-Content-Type: application/json
-Custom-Header: foo
-Custom-Header: bar
---- body json
-{"response": "Hello, world!"}
