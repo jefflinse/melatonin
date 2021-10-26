@@ -27,21 +27,21 @@ const (
 
 func NewGoldenFromFile(fs afero.Fs, path string) (*Golden, error) {
 	if exists, err := afero.Exists(fs, path); err != nil {
-		return nil, err
+		return nil, newGoldenFileError(path, err)
 	} else if !exists {
 		return nil, fmt.Errorf("golden file %q: not found", path)
 	}
 
 	f, err := fs.OpenFile(path, os.O_RDONLY, 0)
 	if err != nil {
-		return nil, err
+		return nil, newGoldenFileError(path, err)
 	}
 	defer f.Close()
 
 	golden := &Golden{}
 	var headersLines, bodyLines []string
 	var target *[]string
-	bodyIsJSON := false
+	var foundHeaders, foundBody, bodyIsJSON bool
 
 	scanner := bufio.NewScanner(f)
 	matcher := search.New(language.English, search.IgnoreCase)
@@ -56,23 +56,35 @@ func NewGoldenFromFile(fs afero.Fs, path string) (*Golden, error) {
 		// status must be the first non-empty line encountered
 		if golden.WantStatus == 0 {
 			if err := golden.parseStatusLine(line); err != nil {
-				return nil, err
+				return nil, newGoldenFileError(path, err)
 			}
 			continue
 		}
 
 		if start, _ := matcher.IndexString(line, headersLinePrefix); start != -1 {
-			if err := golden.parseHeaderDirectives(line[2:]); err != nil {
-				return nil, err
+			if foundHeaders {
+				return nil, newGoldenFileError(path, fmt.Errorf("duplicate headers directive"))
+			} else if foundBody {
+				return nil, newGoldenFileError(path, fmt.Errorf("headers directive must come before body directive"))
 			}
 
+			if err := golden.parseHeaderDirectives(line[2:]); err != nil {
+				return nil, newGoldenFileError(path, err)
+			}
+
+			foundHeaders = true
 			target = &headersLines
 			continue
 		} else if start, _ := matcher.IndexString(line, bodyLinePrefix); start != -1 {
-			if bodyIsJSON, err = golden.parseBodyDirectives(line[2:]); err != nil {
-				return nil, err
+			if foundBody {
+				return nil, newGoldenFileError(path, fmt.Errorf("duplicate body directive"))
 			}
 
+			if bodyIsJSON, err = golden.parseBodyDirectives(line[2:]); err != nil {
+				return nil, newGoldenFileError(path, err)
+			}
+
+			foundBody = true
 			target = &bodyLines
 			continue
 		} else {
@@ -85,15 +97,19 @@ func NewGoldenFromFile(fs afero.Fs, path string) (*Golden, error) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, err
+		return nil, newGoldenFileError(path, err)
 	}
 
 	if err := golden.parseHeaderLines(headersLines); err != nil {
-		return nil, err
+		return nil, newGoldenFileError(path, err)
 	}
 
 	if err := golden.parseBodyLines(bodyLines, bodyIsJSON); err != nil {
-		return nil, err
+		return nil, newGoldenFileError(path, err)
+	}
+
+	if golden.WantStatus == 0 && golden.WantHeaders == nil && golden.WantBody == nil {
+		return nil, newGoldenFileError(path, fmt.Errorf("no expected status, headers, or body specified"))
 	}
 
 	return golden, nil
