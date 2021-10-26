@@ -1,6 +1,7 @@
 package itest
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -21,10 +22,8 @@ type Golden struct {
 	WantHeaders http.Header
 	WantBody    interface{}
 
-	headerMatchMode            int
-	bodyMatchMode              int
-	bodyIsJSON                 bool
-	bodyPreserveJSONWhitespace bool
+	headerMatchMode int
+	bodyIsJSON      bool
 }
 
 func ParseGoldenFileFs(fs afero.Fs, filename string) (*Golden, error) {
@@ -90,35 +89,11 @@ func ParseGoldenFileFs(fs afero.Fs, filename string) (*Golden, error) {
 		bodyDirectives := strings.Split(bodyLine, " ")
 		for _, directive := range bodyDirectives[2:] {
 			switch directive {
-			case "exact":
-				if golden.bodyMatchMode != MatchModeUnset {
-					return nil, fmt.Errorf("golden file %q: conflicting body directives", filename)
-				}
-				golden.bodyMatchMode = MatchModeExact
-			case "contains":
-				if golden.bodyMatchMode != MatchModeUnset {
-					return nil, fmt.Errorf("golden file %q: conflicting body directives", filename)
-				}
-				golden.bodyMatchMode = MatchModeContains
 			case "json":
 				golden.bodyIsJSON = true
-			case "preserve-whitespace":
-				golden.bodyPreserveJSONWhitespace = true
 			default:
 				return nil, fmt.Errorf("golden file %q: invalid body directive %q", filename, directive)
 			}
-		}
-
-		if golden.headerMatchMode == MatchModeUnset {
-			golden.headerMatchMode = MatchModeExact
-		}
-
-		if golden.bodyMatchMode == MatchModeUnset {
-			golden.bodyMatchMode = MatchModeExact
-		}
-
-		if !golden.bodyIsJSON && golden.bodyPreserveJSONWhitespace {
-			return nil, fmt.Errorf("golden file %q: body directive %q can only be used with %q directive", filename, "preserve-whitespace", "json")
 		}
 	} else {
 		fmt.Println("no body directive")
@@ -129,6 +104,31 @@ func ParseGoldenFileFs(fs afero.Fs, filename string) (*Golden, error) {
 
 	fmt.Printf("HEADERS CONTENT:\n[%s]\n", headersContent)
 	fmt.Printf("BODY CONTENT\n[%s]\n", bodyContent)
+
+	golden.WantHeaders = http.Header{}
+	headerLines := strings.Split(headersContent, "\n")
+	for _, headerLine := range headerLines {
+		if len(headerLine) == 0 {
+			continue
+		}
+
+		parts := strings.SplitN(headerLine, ":", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("golden file %q: invalid header line %q", filename, headerLine)
+		}
+
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+		golden.WantHeaders.Add(key, value)
+	}
+
+	if golden.bodyIsJSON {
+		if json.Unmarshal([]byte(bodyContent), &golden.WantBody) != nil {
+			return nil, fmt.Errorf("golden file %q: invalid JSON body", filename)
+		}
+	} else {
+		golden.WantBody = bodyContent
+	}
 
 	return golden, nil
 }

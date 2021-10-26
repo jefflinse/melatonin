@@ -1,5 +1,5 @@
 201
 --- headers exact
 Content-Type: application/json
---- body exact
-Hello, world!
+--- body json exact
+["response","Hello, world!"]
