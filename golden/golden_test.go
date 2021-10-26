@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestParseGoldenFile(t *testing.T) {
+func TestLoadFile(t *testing.T) {
 	for _, test := range []struct {
 		name       string
 		content    string
@@ -183,6 +183,113 @@ func TestParseGoldenFile(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.Equal(t, test.wantGolden, g)
+			}
+		})
+	}
+}
+
+func TestSaveFile(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		g         *golden.Golden
+		wantError string
+	}{
+		{
+			name: "success, status only",
+			g: &golden.Golden{
+				WantStatus:  200,
+				WantHeaders: nil,
+				WantBody:    nil,
+			},
+		},
+		{
+			name: "success, status and headers",
+			g: &golden.Golden{
+				WantStatus: 200,
+				WantHeaders: http.Header{
+					"Content-Type": []string{"application/json"},
+					"Some-Header":  []string{"foo", "bar"},
+				},
+			},
+		},
+		{
+			name: "success, status and string body",
+			g: &golden.Golden{
+				WantStatus: 200,
+				WantBody:   "foo\nbar\nbaz",
+			},
+		},
+		{
+			name: "success, status and string body",
+			g: &golden.Golden{
+				WantStatus: 200,
+				WantBody:   "foo\nbar\nbaz",
+			},
+		},
+		{
+			name: "success, status and JSON body",
+			g: &golden.Golden{
+				WantStatus: 200,
+				WantBody:   map[string]interface{}{"foo": []interface{}{"bar"}},
+			},
+		},
+		{
+			name: "success, status headers and body",
+			g: &golden.Golden{
+				WantStatus: 200,
+				WantHeaders: http.Header{
+					"Content-Type": []string{"application/json"},
+					"Some-Header":  []string{"foo", "bar"},
+				},
+				WantBody: "foo\nbar\nbaz",
+			},
+		},
+		{
+			name:      "failure, no status",
+			g:         &golden.Golden{},
+			wantError: `expected status is required`,
+		},
+		{
+			name: "failure, invalid body JSON",
+			g: &golden.Golden{
+				WantStatus: 200,
+				WantBody:   make(chan int),
+			},
+			wantError: "unable to marshal body of type chan int",
+		},
+		{
+			name: "failure, invalid body JSON element",
+			g: &golden.Golden{
+				WantStatus: 200,
+				WantBody:   map[string]interface{}{"foo": make(chan int)},
+			},
+			wantError: "unable to marshal body content: json: unsupported type: chan int",
+		},
+		{
+			name: "failure, can't write file",
+			g: &golden.Golden{
+				WantStatus: 200,
+			},
+			wantError: "operation not permitted",
+		},
+	} {
+		path := "/test.golden"
+		t.Run(test.name, func(t *testing.T) {
+			golden.AppFS = afero.NewMemMapFs()
+
+			// special case
+			if test.name == "failure, can't write file" {
+				golden.AppFS = afero.NewReadOnlyFs(golden.AppFS)
+			}
+
+			err := test.g.SaveFile(path)
+			if test.wantError != "" {
+				assert.EqualError(t, err, fmt.Sprintf("golden file %q: %s", path, test.wantError))
+			} else {
+				assert.NoError(t, err)
+				g, err := golden.LoadFile(path)
+				assert.NoError(t, err)
+				assert.Equal(t, test.g, g)
 			}
 		})
 	}

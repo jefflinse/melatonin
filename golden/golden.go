@@ -139,17 +139,19 @@ func (g *Golden) SaveFile(path string) error {
 		switch bodyVal := g.WantBody.(type) {
 		case string:
 			content = bodyVal
-		case float64:
-			content = fmt.Sprintf("%f", bodyVal)
-		case bool:
-			content = fmt.Sprintf("%t", bodyVal)
 		case map[string]interface{}, []interface{}:
-			b, err := json.Marshal(bodyVal)
-			if err != nil {
-				return newGoldenFileError(path, fmt.Errorf("unable to marshal body: %w", err))
-			}
 			bodyDirectives = append(bodyDirectives, "json")
-			content = string(b)
+			var err error
+			content, err = bodyContentToString(bodyVal)
+			if err != nil {
+				return newGoldenFileError(path, err)
+			}
+		case float64, float32, uint64, int64, uint32, int32, uint, int, bool:
+			var err error
+			content, err = bodyContentToString(bodyVal)
+			if err != nil {
+				return newGoldenFileError(path, err)
+			}
 		default:
 			return newGoldenFileError(path, fmt.Errorf("unable to marshal body of type %T", bodyVal))
 		}
@@ -252,6 +254,15 @@ func (g *Golden) parseBodyLines(lines []string, asJSON bool) error {
 	}
 
 	return nil
+}
+
+func bodyContentToString(body interface{}) (string, error) {
+	b, err := json.Marshal(body)
+	if err != nil {
+		return "", fmt.Errorf("unable to marshal body content: %w", err)
+	}
+
+	return string(b), nil
 }
 
 func newGoldenFileError(path string, err error) error {
