@@ -1,9 +1,12 @@
 package itest
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/afero"
@@ -11,123 +14,123 @@ import (
 	"golang.org/x/text/search"
 )
 
-const (
-	MatchModeUnset = iota
-	MatchModeExact
-	MatchModeContains
-)
-
 type Golden struct {
 	WantStatus  int
 	WantHeaders http.Header
 	WantBody    interface{}
 
-	headerMatchMode int
-	bodyIsJSON      bool
+	bodyIsJSON bool
 }
 
-func ParseGoldenFileFs(fs afero.Fs, filename string) (*Golden, error) {
-	if exists, err := afero.Exists(fs, filename); err != nil {
+func NewParseGoldenFileFs(fs afero.Fs, path string) (*Golden, error) {
+	if exists, err := afero.Exists(fs, path); err != nil {
 		return nil, err
 	} else if !exists {
-		return nil, fmt.Errorf("golden file %q does not exist", filename)
+		return nil, fmt.Errorf("golden file %q does not exist", path)
 	}
 
-	b, err := afero.ReadFile(fs, filename)
+	f, err := fs.OpenFile(path, os.O_RDONLY, 0)
 	if err != nil {
 		return nil, err
-	} else if len(b) == 0 {
-		return nil, fmt.Errorf("golden file %q is empty", filename)
 	}
+	defer f.Close()
 
-	content := string(b)
 	golden := &Golden{}
-
+	statusLine := ""
+	var headersLines, bodyLines []string
+	var target *[]string
+	scanner := bufio.NewScanner(f)
 	matcher := search.New(language.English, search.IgnoreCase)
+	for scanner.Scan() {
+		line := scanner.Text()
 
-	headersLineStart, _ := matcher.IndexString(content, "--- headers")
-	var headersLineEnd int
-	if headersLineStart != -1 {
-		headersLineEnd, _ = matcher.IndexString(content[headersLineStart:], "\n")
-		if headersLineEnd == -1 {
-			return nil, fmt.Errorf("golden file %q contains invalid header directive", filename)
-		}
-
-		headersLine := content[headersLineStart : headersLineStart+headersLineEnd]
-		fmt.Println("HEADERS LINE:", headersLine)
-		headerDirectives := strings.Split(headersLine, " ")
-		for _, directive := range headerDirectives[2:] {
-			switch directive {
-			case "exact":
-				if golden.headerMatchMode != MatchModeUnset {
-					return nil, fmt.Errorf("golden file %q contains conflicting header directives", filename)
-				}
-				golden.headerMatchMode = MatchModeExact
-			case "contains":
-				if golden.headerMatchMode != MatchModeUnset {
-					return nil, fmt.Errorf("golden file %q contains conflicting header directives", filename)
-				}
-				golden.headerMatchMode = MatchModeContains
-			default:
-				return nil, fmt.Errorf("golden file %q contains invalid header directive %q", filename, directive)
-			}
-		}
-	} else {
-		fmt.Println("no header directive")
-	}
-
-	bodyLineStart, _ := matcher.IndexString(content, "--- body")
-	var bodyLineEnd int
-	if bodyLineStart != -1 {
-		bodyLineEnd, _ = matcher.IndexString(content[bodyLineStart:], "\n")
-		if bodyLineEnd == -1 {
-			return nil, fmt.Errorf("golden file %q contains invalid body directive", filename)
-		}
-
-		bodyLine := content[bodyLineStart : bodyLineStart+bodyLineEnd]
-		fmt.Println("BODY LINE:", bodyLine)
-		bodyDirectives := strings.Split(bodyLine, " ")
-		for _, directive := range bodyDirectives[2:] {
-			switch directive {
-			case "json":
-				golden.bodyIsJSON = true
-			default:
-				return nil, fmt.Errorf("golden file %q: invalid body directive %q", filename, directive)
-			}
-		}
-	} else {
-		fmt.Println("no body directive")
-	}
-
-	headersContent := content[headersLineStart+headersLineEnd+1 : bodyLineStart-1]
-	bodyContent := content[bodyLineStart+bodyLineEnd+1:]
-
-	fmt.Printf("HEADERS CONTENT:\n[%s]\n", headersContent)
-	fmt.Printf("BODY CONTENT\n[%s]\n", bodyContent)
-
-	golden.WantHeaders = http.Header{}
-	headerLines := strings.Split(headersContent, "\n")
-	for _, headerLine := range headerLines {
-		if len(headerLine) == 0 {
+		// skip any empty lines that aren't part of the headers or body content
+		if target == nil && len(line) == 0 {
 			continue
 		}
 
-		parts := strings.SplitN(headerLine, ":", 2)
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("golden file %q: invalid header line %q", filename, headerLine)
-		}
+		if start, _ := matcher.IndexString(line, "--- headers"); start != -1 {
+			if statusLine == "" {
+				return nil, fmt.Errorf("no status found before encountering headers")
+			}
 
-		key := strings.TrimSpace(parts[0])
-		value := strings.TrimSpace(parts[1])
-		golden.WantHeaders.Add(key, value)
+			headersDirectives := strings.Split(line, " ")
+			for _, directive := range headersDirectives[2:] {
+				directive = strings.TrimSpace(directive)
+				if directive == "" {
+					continue
+				}
+
+				switch directive {
+				default:
+					return nil, fmt.Errorf("unknown headers directive %q", directive)
+				}
+			}
+
+			target = &headersLines
+			continue
+		} else if start, _ := matcher.IndexString(line, "--- body"); start != -1 {
+			if statusLine == "" {
+				return nil, fmt.Errorf("no status found before encountering body %q", statusLine)
+			}
+
+			bodyDirectives := strings.Split(line, " ")
+			for _, directive := range bodyDirectives[2:] {
+				directive = strings.TrimSpace(directive)
+				if directive == "" {
+					continue
+				}
+
+				switch directive {
+				case "json":
+					golden.bodyIsJSON = true
+				default:
+					return nil, fmt.Errorf("unknown body directive %q", directive)
+				}
+			}
+
+			target = &bodyLines
+			continue
+		} else if statusLine == "" {
+			statusLine = line
+			continue
+		} else {
+			*target = append(*target, line)
+		}
 	}
 
-	if golden.bodyIsJSON {
-		if json.Unmarshal([]byte(bodyContent), &golden.WantBody) != nil {
-			return nil, fmt.Errorf("golden file %q: invalid JSON body", filename)
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	golden.WantStatus, err = strconv.Atoi(statusLine)
+	if err != nil {
+		return nil, fmt.Errorf("invalid status %q: %s", golden.WantStatus, err)
+	}
+
+	if len(headersLines) > 0 {
+		golden.WantHeaders = http.Header{}
+		for _, line := range headersLines {
+			parts := strings.SplitN(line, ":", 2)
+			if len(parts) != 2 {
+				return nil, fmt.Errorf("invalid header %q", line)
+			}
+
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			golden.WantHeaders.Add(key, value)
 		}
-	} else {
-		golden.WantBody = bodyContent
+	}
+
+	if len(bodyLines) > 0 {
+		body := strings.Join(bodyLines, "\n")
+		if golden.bodyIsJSON {
+			if err := json.Unmarshal([]byte(body), &golden.WantBody); err != nil {
+				return nil, fmt.Errorf("invalid JSON body %q: %s", body, err)
+			}
+		} else {
+			golden.WantBody = body
+		}
 	}
 
 	return golden, nil

@@ -1,5 +1,8 @@
-201
---- headers exact
+200
+
+--- headers
 Content-Type: application/json
---- body json exact
+Custom-Header: foo
+Custom-Header: bar
+--- body json
 ["response","Hello, world!"]
