@@ -1,4 +1,4 @@
-package itest
+package golden
 
 import (
 	"bufio"
@@ -25,14 +25,16 @@ const (
 	bodyLinePrefix    = "--- body"
 )
 
-func NewGoldenFromFile(fs afero.Fs, path string) (*Golden, error) {
-	if exists, err := afero.Exists(fs, path); err != nil {
+var AppFS = afero.NewOsFs()
+
+func LoadFile(path string) (*Golden, error) {
+	if exists, err := afero.Exists(AppFS, path); err != nil {
 		return nil, newGoldenFileError(path, err)
 	} else if !exists {
 		return nil, fmt.Errorf("golden file %q: not found", path)
 	}
 
-	f, err := fs.OpenFile(path, os.O_RDONLY, 0)
+	f, err := AppFS.OpenFile(path, os.O_RDONLY, 0)
 	if err != nil {
 		return nil, newGoldenFileError(path, err)
 	}
@@ -113,6 +115,55 @@ func NewGoldenFromFile(fs afero.Fs, path string) (*Golden, error) {
 	}
 
 	return golden, nil
+}
+
+func (g *Golden) SaveFile(path string) error {
+	if g.WantStatus == 0 {
+		return newGoldenFileError(path, fmt.Errorf("expected status is required"))
+	}
+
+	lines := []string{fmt.Sprintf("%d", g.WantStatus)}
+
+	if g.WantHeaders != nil {
+		lines = append(lines, headersLinePrefix)
+		for key, values := range g.WantHeaders {
+			for _, value := range values {
+				lines = append(lines, fmt.Sprintf("%s: %s", key, value))
+			}
+		}
+	}
+
+	if g.WantBody != nil {
+		bodyDirectives := []string{bodyLinePrefix}
+		var content string
+		switch bodyVal := g.WantBody.(type) {
+		case string:
+			content = bodyVal
+		case float64:
+			content = fmt.Sprintf("%f", bodyVal)
+		case bool:
+			content = fmt.Sprintf("%t", bodyVal)
+		case map[string]interface{}, []interface{}:
+			b, err := json.Marshal(bodyVal)
+			if err != nil {
+				return newGoldenFileError(path, fmt.Errorf("unable to marshal body: %w", err))
+			}
+			bodyDirectives = append(bodyDirectives, "json")
+			content = string(b)
+		default:
+			return newGoldenFileError(path, fmt.Errorf("unable to marshal body of type %T", bodyVal))
+		}
+
+		lines = append(lines, strings.Join(bodyDirectives, " "))
+		lines = append(lines, content)
+	}
+
+	content := strings.Join(lines, "\n")
+	if err := afero.WriteFile(AppFS, path, []byte(content), 0644); err != nil {
+		return newGoldenFileError(path, err)
+	}
+
+	return nil
 }
 
 func (g *Golden) parseStatusLine(line string) error {

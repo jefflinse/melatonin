@@ -1,11 +1,11 @@
-package itest_test
+package golden_test
 
 import (
 	"fmt"
 	"net/http"
 	"testing"
 
-	"github.com/jefflinse/go-itest/itest"
+	"github.com/jefflinse/go-itest/golden"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 )
@@ -14,13 +14,13 @@ func TestParseGoldenFile(t *testing.T) {
 	for _, test := range []struct {
 		name       string
 		content    string
-		wantGolden *itest.Golden
+		wantGolden *golden.Golden
 		wantError  string
 	}{
 		{
 			name:    "success, only status specified",
 			content: "200",
-			wantGolden: &itest.Golden{
+			wantGolden: &golden.Golden{
 				WantStatus:  200,
 				WantHeaders: nil,
 				WantBody:    nil,
@@ -30,7 +30,7 @@ func TestParseGoldenFile(t *testing.T) {
 		{
 			name:    "success, status and headers specified",
 			content: "200\n--- headers\nSome-Header: foo\nContent-Type: application/json\nSome-Header: bar",
-			wantGolden: &itest.Golden{
+			wantGolden: &golden.Golden{
 				WantStatus: 200,
 				WantHeaders: http.Header{
 					"Content-Type": []string{"application/json"},
@@ -43,7 +43,7 @@ func TestParseGoldenFile(t *testing.T) {
 		{
 			name:    "success, status and string body specified",
 			content: "200\n--- body\nbody content\nmore content",
-			wantGolden: &itest.Golden{
+			wantGolden: &golden.Golden{
 				WantStatus:  200,
 				WantHeaders: nil,
 				WantBody:    "body content\nmore content",
@@ -53,7 +53,7 @@ func TestParseGoldenFile(t *testing.T) {
 		{
 			name:    "success, status headers and body specified with empty lines discarded",
 			content: "\n\n\n200\n\n\n--- headers\n\n\nSome-Header: foo\n\n\nAnother-Header: bar\n\n\n--- body\n\n\nbody content\n\n\nmore content",
-			wantGolden: &itest.Golden{
+			wantGolden: &golden.Golden{
 				WantStatus: 200,
 				WantHeaders: http.Header{
 					"Some-Header":    []string{"foo"},
@@ -66,7 +66,7 @@ func TestParseGoldenFile(t *testing.T) {
 		{
 			name:    "success, header directives separated by multiple spaces",
 			content: "200\n--- headers     \nSome-Header: foo",
-			wantGolden: &itest.Golden{
+			wantGolden: &golden.Golden{
 				WantStatus: 200,
 				WantHeaders: http.Header{
 					"Some-Header": []string{"foo"},
@@ -78,7 +78,7 @@ func TestParseGoldenFile(t *testing.T) {
 		{
 			name:    "success, body directives separated by multiple spaces",
 			content: "200\n--- body     json\n{}",
-			wantGolden: &itest.Golden{
+			wantGolden: &golden.Golden{
 				WantStatus:  200,
 				WantHeaders: nil,
 				WantBody:    map[string]interface{}{},
@@ -88,7 +88,7 @@ func TestParseGoldenFile(t *testing.T) {
 		{
 			name:    "success, status and JSON body specified",
 			content: "200\n--- body json\n{\"foo\":[\"bar\"]}",
-			wantGolden: &itest.Golden{
+			wantGolden: &golden.Golden{
 				WantStatus:  200,
 				WantHeaders: nil,
 				WantBody:    map[string]interface{}{"foo": []interface{}{"bar"}},
@@ -168,21 +168,21 @@ func TestParseGoldenFile(t *testing.T) {
 	} {
 		path := "/test.golden"
 		t.Run(test.name, func(t *testing.T) {
-			fs := afero.NewMemMapFs()
+			golden.AppFS = afero.NewMemMapFs()
 
 			// special case
 			if test.name != "failure, file not found" {
-				if err := afero.WriteFile(fs, path, []byte(test.content), 0644); err != nil {
+				if err := afero.WriteFile(golden.AppFS, path, []byte(test.content), 0644); err != nil {
 					t.Fatal(err)
 				}
 			}
 
-			golden, err := itest.NewGoldenFromFile(fs, path)
+			g, err := golden.LoadFile(path)
 			if test.wantError != "" {
 				assert.EqualError(t, err, fmt.Sprintf("golden file %q: %s", path, test.wantError))
 			} else {
 				assert.NoError(t, err)
-				assert.Equal(t, test.wantGolden, golden)
+				assert.Equal(t, test.wantGolden, g)
 			}
 		})
 	}

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/jefflinse/go-itest/golden"
 )
 
 // A TestCase tests a single call to an HTTP endpoint.
@@ -261,7 +262,7 @@ func (tc *TestCase) Validate() error {
 	}
 
 	if tc.GoldenFilePath != "" {
-		golden, err := NewGoldenFromFile(appFS, tc.GoldenFilePath)
+		golden, err := golden.LoadFile(tc.GoldenFilePath)
 		if err != nil {
 			return err
 		}
