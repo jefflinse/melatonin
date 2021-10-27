@@ -183,6 +183,7 @@ itest.GET("/endpoint").
 - Standalone tool for running tests defined in text files
 - Support for running external commands before and after test cases
 - Interfaces to allow wrapping of test cases with custom logic (e.g. AWS Lambda, etc.)
+- Generate test cases from an OpenAPI specification
 
 ## Contributing
 
