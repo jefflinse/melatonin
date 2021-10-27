@@ -32,11 +32,6 @@ func init() {
 	}
 }
 
-// GoTestContext is a minimal interface for testing.T.
-type GoTestContext interface {
-	Run(string, func(*testing.T)) bool
-}
-
 // TestRunner contains configuration for running tests.
 type TestRunner struct {
 	// BaseURL is the base URL for the API, including the port.
@@ -108,7 +103,7 @@ func (r *TestRunner) RunTests(tests []*TestCase) ([]*TestCaseResult, error) {
 // RunTests runs a set of tests within the context of a Go test.
 //
 // To run tests as a standalone binary without a testing context, use RunTests().
-func (r *TestRunner) RunTestsT(t GoTestContext, tests []*TestCase) ([]*TestCaseResult, error) {
+func (r *TestRunner) RunTestsT(t *testing.T, tests []*TestCase) ([]*TestCaseResult, error) {
 	results := []*TestCaseResult{}
 	r.outputWriter = NewColumnWriter(os.Stdout, 5, 2)
 
@@ -169,7 +164,7 @@ func (r *TestRunner) RunTest(test *TestCase) (*TestCaseResult, error) {
 }
 
 // RunTest runs a single test within a Go testing context.
-func (r *TestRunner) RunTestT(t GoTestContext, test *TestCase) (*TestCaseResult, error) {
+func (r *TestRunner) RunTestT(t *testing.T, test *TestCase) (*TestCaseResult, error) {
 	result := &TestCaseResult{
 		TestCase: test,
 		Errors:   []error{},
@@ -329,6 +324,6 @@ func RunTests(baseURL string, tests []*TestCase) {
 
 // RunTests runs a set of tests within a Go testing context using the provided
 // base URL and the default TestRunner.
-func RunTestsT(t GoTestContext, baseURL string, tests []*TestCase) {
+func RunTestsT(t *testing.T, baseURL string, tests []*TestCase) {
 	NewTestRunner(baseURL).RunTestsT(t, tests)
 }
