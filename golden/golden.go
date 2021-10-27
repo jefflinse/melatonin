@@ -15,9 +15,28 @@ import (
 )
 
 type Golden struct {
-	WantStatus  int
+	// WantStatus is the expected response status code.
+	WantStatus int
+
+	// WantHeaders are the expected response headers.
+	//
+	// If MatchHeadersExactly is set to true, any unexpected headers will cause
+	// the test utilizing this golden file to fail.
 	WantHeaders http.Header
-	WantBody    interface{}
+
+	// WantBody is the expected response body. If the body is a JSON object
+	// and MatchBodyJSONExactly is set to true, the JSON is expected to exactly
+	// match exactly, and any unexpected JSON keys or values will cause the test
+	// utilizing this golden file to fail.
+	WantBody interface{}
+
+	// MatchHeadersExactly determines whether or not unexpected headers will cause
+	// a test utilizing this golden file to fail.
+	MatchHeadersExactly bool
+
+	// MatchBodyJSONExactly determines whether or not unexpected JSON keys or values
+	// will cause a test utilizing this golden file to fail.
+	MatchBodyJSONExactly bool
 }
 
 const (
@@ -27,6 +46,7 @@ const (
 
 var AppFS = afero.NewOsFs()
 
+// LoadFile loads a golden file from the given path.
 func LoadFile(path string) (*Golden, error) {
 	if exists, err := afero.Exists(AppFS, path); err != nil {
 		return nil, newGoldenFileError(path, err)
@@ -117,6 +137,7 @@ func LoadFile(path string) (*Golden, error) {
 	return golden, nil
 }
 
+// SaveFile saves a golden file to the given path.
 func (g *Golden) SaveFile(path string) error {
 	if g.WantStatus == 0 {
 		return newGoldenFileError(path, fmt.Errorf("expected status is required"))
@@ -125,7 +146,11 @@ func (g *Golden) SaveFile(path string) error {
 	lines := []string{fmt.Sprintf("%d", g.WantStatus)}
 
 	if g.WantHeaders != nil {
-		lines = append(lines, headersLinePrefix)
+		headersDirectives := []string{headersLinePrefix}
+		if g.MatchHeadersExactly {
+			headersDirectives = append(headersDirectives, "exact")
+		}
+		lines = append(lines, strings.Join(headersDirectives, " "))
 		for key, values := range g.WantHeaders {
 			for _, value := range values {
 				lines = append(lines, fmt.Sprintf("%s: %s", key, value))
@@ -141,6 +166,9 @@ func (g *Golden) SaveFile(path string) error {
 			content = bodyVal
 		case map[string]interface{}, []interface{}:
 			bodyDirectives = append(bodyDirectives, "json")
+			if g.MatchBodyJSONExactly {
+				bodyDirectives = append(bodyDirectives, "exact")
+			}
 			var err error
 			content, err = bodyContentToString(bodyVal)
 			if err != nil {
@@ -187,6 +215,8 @@ func (g *Golden) parseHeaderDirectives(line string) error {
 		}
 
 		switch directive {
+		case "exact":
+			g.MatchHeadersExactly = true
 		default:
 			return fmt.Errorf("unknown headers directive %q", directive)
 		}
@@ -224,6 +254,7 @@ func (g *Golden) parseHeaderLines(lines []string) error {
 
 func (g *Golden) parseBodyDirectives(line string) (bool, error) {
 	bodyDirectives := strings.Split(line, " ")
+	bodyIsJSON := false
 	for _, directive := range bodyDirectives[2:] {
 		directive = strings.TrimSpace(directive)
 		if directive == "" {
@@ -232,13 +263,19 @@ func (g *Golden) parseBodyDirectives(line string) (bool, error) {
 
 		switch directive {
 		case "json":
-			return true, nil
+			bodyIsJSON = true
+		case "exact":
+			g.MatchBodyJSONExactly = true
 		default:
 			return false, fmt.Errorf("unknown body directive %q", directive)
 		}
 	}
 
-	return false, nil
+	if !bodyIsJSON && g.MatchBodyJSONExactly {
+		return false, fmt.Errorf("body directive %q requires %q directive", "exact", "json")
+	}
+
+	return bodyIsJSON, nil
 }
 
 func (g *Golden) parseBodyLines(lines []string, asJSON bool) error {

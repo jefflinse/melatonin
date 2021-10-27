@@ -21,11 +21,8 @@ func TestLoadFile(t *testing.T) {
 			name:    "success, only status specified",
 			content: "200",
 			wantGolden: &golden.Golden{
-				WantStatus:  200,
-				WantHeaders: nil,
-				WantBody:    nil,
+				WantStatus: 200,
 			},
-			wantError: "",
 		},
 		{
 			name:    "success, status and headers specified",
@@ -36,19 +33,27 @@ func TestLoadFile(t *testing.T) {
 					"Content-Type": []string{"application/json"},
 					"Some-Header":  []string{"foo", "bar"},
 				},
-				WantBody: nil,
 			},
-			wantError: "",
+		},
+		{
+			name:    "success, status and exact headers specified",
+			content: "200\n--- headers exact\nSome-Header: foo\nContent-Type: application/json\nSome-Header: bar",
+			wantGolden: &golden.Golden{
+				WantStatus: 200,
+				WantHeaders: http.Header{
+					"Content-Type": []string{"application/json"},
+					"Some-Header":  []string{"foo", "bar"},
+				},
+				MatchHeadersExactly: true,
+			},
 		},
 		{
 			name:    "success, status and string body specified",
 			content: "200\n--- body\nbody content\nmore content",
 			wantGolden: &golden.Golden{
-				WantStatus:  200,
-				WantHeaders: nil,
-				WantBody:    "body content\nmore content",
+				WantStatus: 200,
+				WantBody:   "body content\nmore content",
 			},
-			wantError: "",
 		},
 		{
 			name:    "success, status headers and body specified with empty lines discarded",
@@ -61,7 +66,6 @@ func TestLoadFile(t *testing.T) {
 				},
 				WantBody: "\n\nbody content\n\n\nmore content",
 			},
-			wantError: "",
 		},
 		{
 			name:    "success, header directives separated by multiple spaces",
@@ -71,29 +75,41 @@ func TestLoadFile(t *testing.T) {
 				WantHeaders: http.Header{
 					"Some-Header": []string{"foo"},
 				},
-				WantBody: nil,
 			},
-			wantError: "",
 		},
 		{
 			name:    "success, body directives separated by multiple spaces",
 			content: "200\n--- body     json\n{}",
 			wantGolden: &golden.Golden{
-				WantStatus:  200,
-				WantHeaders: nil,
-				WantBody:    map[string]interface{}{},
+				WantStatus: 200,
+				WantBody:   map[string]interface{}{},
 			},
-			wantError: "",
 		},
 		{
 			name:    "success, status and JSON body specified",
 			content: "200\n--- body json\n{\"foo\":[\"bar\"]}",
 			wantGolden: &golden.Golden{
-				WantStatus:  200,
-				WantHeaders: nil,
-				WantBody:    map[string]interface{}{"foo": []interface{}{"bar"}},
+				WantStatus: 200,
+				WantBody:   map[string]interface{}{"foo": []interface{}{"bar"}},
 			},
-			wantError: "",
+		},
+		{
+			name:    "success, status and exact JSON body specified",
+			content: "200\n--- body json exact\n{\"foo\":[\"bar\"]}",
+			wantGolden: &golden.Golden{
+				WantStatus:           200,
+				WantBody:             map[string]interface{}{"foo": []interface{}{"bar"}},
+				MatchBodyJSONExactly: true,
+			},
+		},
+		{
+			name:    "success, json and exact body directives can be specified in any order",
+			content: "200\n--- body exact json\n{\"foo\":[\"bar\"]}",
+			wantGolden: &golden.Golden{
+				WantStatus:           200,
+				WantBody:             map[string]interface{}{"foo": []interface{}{"bar"}},
+				MatchBodyJSONExactly: true,
+			},
 		},
 		{
 			name:      "failure, file not found",
@@ -165,6 +181,16 @@ func TestLoadFile(t *testing.T) {
 			content:   "200\n--- body json\n{foo",
 			wantError: "invalid JSON body: invalid character 'f' looking for beginning of object key string\n---\n{foo\n---",
 		},
+		{
+			name:      "failure, exact body specified without JSON directive or JSON content",
+			content:   "200\n--- body exact\n{foo",
+			wantError: `body directive "exact" requires "json" directive`,
+		},
+		{
+			name:      "failure, exact body specified without JSON directive but with JSON content",
+			content:   "200\n--- body exact\n{\"foo\":[\"bar\"]}",
+			wantError: `body directive "exact" requires "json" directive`,
+		},
 	} {
 		path := "/test.golden"
 		t.Run(test.name, func(t *testing.T) {
@@ -197,9 +223,7 @@ func TestSaveFile(t *testing.T) {
 		{
 			name: "success, status only",
 			g: &golden.Golden{
-				WantStatus:  200,
-				WantHeaders: nil,
-				WantBody:    nil,
+				WantStatus: 200,
 			},
 		},
 		{
@@ -213,10 +237,14 @@ func TestSaveFile(t *testing.T) {
 			},
 		},
 		{
-			name: "success, status and string body",
+			name: "success, status and exact headers",
 			g: &golden.Golden{
 				WantStatus: 200,
-				WantBody:   "foo\nbar\nbaz",
+				WantHeaders: http.Header{
+					"Content-Type": []string{"application/json"},
+					"Some-Header":  []string{"foo", "bar"},
+				},
+				MatchHeadersExactly: true,
 			},
 		},
 		{
@@ -231,6 +259,14 @@ func TestSaveFile(t *testing.T) {
 			g: &golden.Golden{
 				WantStatus: 200,
 				WantBody:   map[string]interface{}{"foo": []interface{}{"bar"}},
+			},
+		},
+		{
+			name: "success, status and exact JSON body",
+			g: &golden.Golden{
+				WantStatus:           200,
+				WantBody:             map[string]interface{}{"foo": []interface{}{"bar"}},
+				MatchBodyJSONExactly: true,
 			},
 		},
 		{

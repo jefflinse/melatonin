@@ -1,0 +1,5 @@
+200
+--- headers exact
+Content-Type: application/json
+Some-Header: foo
+Some-Header: bar

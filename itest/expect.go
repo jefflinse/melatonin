@@ -44,7 +44,7 @@ func expectStatus(expected, actual int) error {
 	return nil
 }
 
-func expect(key string, expected, actual interface{}) []error {
+func expect(key string, expected, actual interface{}, exactJSON bool) []error {
 	switch expectedValue := expected.(type) {
 
 	case Object, map[string]interface{}:
@@ -52,14 +52,14 @@ func expect(key string, expected, actual interface{}) []error {
 		if !ok {
 			ev = map[string]interface{}(expectedValue.(Object))
 		}
-		return expectObject(key, ev, actual)
+		return expectObject(key, ev, actual, exactJSON)
 
 	case Array, []interface{}:
 		ev, ok := expectedValue.([]interface{})
 		if !ok {
 			ev = []interface{}(expectedValue.(Array))
 		}
-		return expectArray(key, ev, actual)
+		return expectArray(key, ev, actual, exactJSON)
 
 	case string:
 		err := expectString(key, expectedValue, actual)
@@ -141,15 +141,40 @@ func expectString(key string, expected string, actual interface{}) error {
 	return nil
 }
 
-func expectObject(key string, expected map[string]interface{}, actual interface{}) []error {
+func expectObject(key string, expected map[string]interface{}, actual interface{}, exact bool) []error {
 	m, ok := actual.(map[string]interface{})
 	if !ok {
 		return []error{wrongTypeError(key, expected, actual)}
 	}
 
+	if exact {
+		if len(m) != len(expected) {
+			return []error{fmt.Errorf("expected %d fields, got %d", len(expected), len(m))}
+		}
+
+		expectedKeys := make([]string, 0, len(expected))
+		for k := range expected {
+			expectedKeys = append(expectedKeys, k)
+		}
+
+		actualKeys := make([]string, 0, len(m))
+		for k := range m {
+			actualKeys = append(actualKeys, k)
+		}
+
+		sort.Strings(expectedKeys)
+		sort.Strings(actualKeys)
+
+		for i := range expectedKeys {
+			if expectedKeys[i] != actualKeys[i] {
+				return []error{fmt.Errorf("expected key %q, got %q", expectedKeys[i], actualKeys[i])}
+			}
+		}
+	}
+
 	errs := []error{}
 	for k, v := range expected {
-		if elemErrs := expect(fmt.Sprintf("%s.%s", key, k), v, m[k]); len(elemErrs) > 0 {
+		if elemErrs := expect(fmt.Sprintf("%s.%s", key, k), v, m[k], exact); len(elemErrs) > 0 {
 			errs = append(errs, elemErrs...)
 		}
 	}
@@ -157,15 +182,19 @@ func expectObject(key string, expected map[string]interface{}, actual interface{
 	return errs
 }
 
-func expectArray(key string, expected []interface{}, actual interface{}) []error {
+func expectArray(key string, expected []interface{}, actual interface{}, exact bool) []error {
 	a, ok := actual.([]interface{})
 	if !ok {
 		return []error{wrongTypeError(key, expected, actual)}
 	}
 
+	if exact && len(a) != len(expected) {
+		return []error{fmt.Errorf("expected %d elements, got %d", len(expected), len(a))}
+	}
+
 	errs := []error{}
 	for i, v := range expected {
-		if elemErrs := expect(fmt.Sprintf("%s[%d]", key, i), v, a[i]); len(elemErrs) > 0 {
+		if elemErrs := expect(fmt.Sprintf("%s[%d]", key, i), v, a[i], exact); len(elemErrs) > 0 {
 			errs = append(errs, elemErrs...)
 		}
 	}

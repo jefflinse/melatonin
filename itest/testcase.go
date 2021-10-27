@@ -61,15 +61,23 @@ type TestCase struct {
 	// Default is 5 seconds.
 	Timeout time.Duration
 
-	// WantStatus is the expected HTTP status code of the response. Default is 200.
-	WantStatus int
+	// WantBody is the expected HTTP response body content.
+	WantBody interface{}
+
+	// WantExactHeaders indicates whether or not any unexpected response headers
+	// should be treated as a test failure.
+	WantExactHeaders bool
+
+	// WantExactJSONBody indicates whether or not the expected JSON should be matched
+	// exactly (true) or treated as a subset of the response JSON (false).
+	WantExactJSONBody bool
 
 	// WantHeaders is a map of HTTP headers that are expected to be present in
 	// the HTTP response.
 	WantHeaders http.Header
 
-	// WantBody is the expected HTTP response body content.
-	WantBody interface{}
+	// WantStatus is the expected HTTP status code of the response. Default is 200.
+	WantStatus int
 
 	// Underlying HTTP request for the test case.
 	request *http.Request
@@ -212,7 +220,19 @@ func (tc *TestCase) ExpectStatus(status int) *TestCase {
 	return tc
 }
 
+// ExpectExactHeaders sets the expected HTTP response headers for the test case.
+//
+// Unlike ExpectHeaders, ExpectExactHeaders willl cause the test case to fail
+// if any unexpected headers are present in the response.
+func (tc *TestCase) ExpectExactHeaders(headers http.Header) *TestCase {
+	tc.WantExactHeaders = true
+	return tc.ExpectHeaders(headers)
+}
+
 // ExpectHeaders sets the expected HTTP response headers for the test case.
+//
+// Unlike ExpectExactHeaders, ExpectHeaders only verifies that the expected
+// headers are present in the response, and ignores any additional headers.
 func (tc *TestCase) ExpectHeaders(headers http.Header) *TestCase {
 	if tc.WantHeaders != nil && len(tc.WantHeaders) > 0 {
 		color.HiYellow("overriding previously expected headers")
@@ -240,6 +260,18 @@ func (tc *TestCase) ExpectBody(body interface{}) *TestCase {
 
 	tc.WantBody = body
 	return tc
+}
+
+// ExpectExactBody sets the expected HTTP response body for the test case.
+//
+// Unlike ExpectBody, ExpectExactBody willl cause the test case to fail
+// if the expected response body is a JSON object or array and contains any
+// additional fields or values not present in the expected JSON content.
+//
+// For non-JSON values, ExpectExactBody behaves identically to ExpectBody.
+func (tc *TestCase) ExpectExactBody(body interface{}) *TestCase {
+	tc.WantExactJSONBody = true
+	return tc.ExpectBody(body)
 }
 
 func (tc *TestCase) ExpectGolden(path string) *TestCase {
@@ -275,7 +307,6 @@ func (tc *TestCase) Validate() error {
 		if tc.WantHeaders != nil {
 			color.HiYellow("overriding previously expected headers with golden file content")
 		}
-		fmt.Println(golden.WantHeaders)
 		tc.WantHeaders = golden.WantHeaders
 
 		if tc.WantBody != nil {
@@ -326,7 +357,7 @@ func (r *TestCaseResult) validateExpectations() {
 
 	if r.TestCase.WantBody != nil {
 		body := parseResponseBody(r.Body)
-		if errs := expect("body", r.TestCase.WantBody, body); len(errs) > 0 {
+		if errs := expect("body", r.TestCase.WantBody, body, r.TestCase.WantExactJSONBody); len(errs) > 0 {
 			r.addErrors(errs...)
 		}
 	}
