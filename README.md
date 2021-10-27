@@ -156,6 +156,20 @@ itest.DO(req).
     ExpectStatus(200)
 ```
 
+### Expect exact headers and JSON body content
+
+Any unexpected headers or JSON keys or values present in the response will cause the test case to fail.
+
+```go
+itest.GET("/endpoint").
+    ExpectExactHeaders(http.Header{
+        "Content-Type": []string{"application/json"},
+    }).
+    ExpectExactBody(itest.Object{
+        "foo": "bar",
+    })
+```
+
 ### Load expectations for a test case from a golden file
 
 ```go
