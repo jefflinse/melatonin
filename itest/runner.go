@@ -198,7 +198,7 @@ func (r *TestRunner) RunTestT(t *testing.T, test *TestCase) (*TestCaseResult, er
 	}
 
 	if test.request == nil {
-		req, cancel, err := r.createRequest(
+		req, cancel, err := createRequest(
 			test.Method,
 			r.BaseURL+test.Path,
 			test.RequestHeaders,

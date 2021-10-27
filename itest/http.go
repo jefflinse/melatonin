@@ -15,7 +15,7 @@ type Object map[string]interface{}
 // Array is a type alias for []interface{}.
 type Array []interface{}
 
-func (r *TestRunner) createRequest(method, uri string,
+func createRequest(method, uri string,
 	headers http.Header,
 	body []byte,
 	timeout time.Duration) (*http.Request, context.CancelFunc, error) {
