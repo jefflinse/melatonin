@@ -201,6 +201,7 @@ func (r *TestRunner) RunTestT(t *testing.T, test *TestCase) (*TestCaseResult, er
 		req, cancel, err := createRequest(
 			test.Method,
 			r.BaseURL+test.Path,
+			test.QueryParams,
 			test.RequestHeaders,
 			reqBody,
 			timeout)
@@ -232,12 +233,17 @@ func (r *TestRunner) RunTestT(t *testing.T, test *TestCase) (*TestCaseResult, er
 
 	result.executionTime = time.Since(startTime)
 
+	queryParamsStr := ""
+	if l := len(test.request.URL.Query()); l > 0 {
+		queryParamsStr = fmt.Sprintf("? (%d params)", l)
+	}
+
 	if result.Failed() {
 		r.outputWriter.PrintColumns(
 			redFG("✘"),
 			whiteFG(test.Description),
 			blueBG(fmt.Sprintf("%7s ", test.request.Method)),
-			test.request.URL.Path,
+			test.request.URL.Path+queryParamsStr,
 			faintFG(result.executionTime.String()))
 
 		for _, err := range result.Errors {
@@ -258,7 +264,7 @@ func (r *TestRunner) RunTestT(t *testing.T, test *TestCase) (*TestCaseResult, er
 			greenFG("✔"),
 			whiteFG(test.Description),
 			blueBG(fmt.Sprintf("%7s ", test.request.Method)),
-			test.request.URL.Path,
+			test.request.URL.Path+queryParamsStr,
 			faintFG(result.executionTime.String()))
 	}
 

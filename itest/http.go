@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -15,7 +16,8 @@ type Object map[string]interface{}
 // Array is a type alias for []interface{}.
 type Array []interface{}
 
-func createRequest(method, uri string,
+func createRequest(method, path string,
+	query url.Values,
 	headers http.Header,
 	body []byte,
 	timeout time.Duration) (*http.Request, context.CancelFunc, error) {
@@ -27,9 +29,13 @@ func createRequest(method, uri string,
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
-	req, err := http.NewRequestWithContext(ctx, method, uri, reader)
+	req, err := http.NewRequestWithContext(ctx, method, path, reader)
 	if err != nil {
 		return nil, cancel, err
+	}
+
+	if query != nil {
+		req.URL.RawQuery = query.Encode()
 	}
 
 	if headers != nil {

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -50,6 +51,9 @@ type TestCase struct {
 
 	// Path is the relative Path to use for the request.
 	Path string
+
+	// QueryParams is a map of query string parameters.
+	QueryParams url.Values
 
 	// RequestHeaders is a map of HTTP headers to use for the request.
 	RequestHeaders http.Header
@@ -199,6 +203,24 @@ func (tc *TestCase) WithHeader(key, value string) *TestCase {
 	}
 
 	tc.RequestHeaders.Set(key, value)
+	return tc
+}
+
+func (tc *TestCase) WithQueryParams(params url.Values) *TestCase {
+	if tc.QueryParams != nil {
+		color.HiYellow("overriding previously defined query params")
+	}
+
+	tc.QueryParams = params
+	return tc
+}
+
+func (tc *TestCase) WithQueryParam(key, value string) *TestCase {
+	if tc.QueryParams == nil {
+		tc.QueryParams = url.Values{}
+	}
+
+	tc.QueryParams.Add(key, value)
 	return tc
 }
 

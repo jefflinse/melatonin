@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/jefflinse/go-itest/itest"
@@ -42,8 +43,22 @@ func main() {
 				"a_bool":         false,
 			}),
 
-		itest.GET("/bar?query=foo&other=bar").
-			Describe("Verify that fetching bar returns not-found").
+		itest.GET("/bar?first=foo&second=bar").
+			Describe("Fetch bar specifying a query string directly").
+			ExpectStatus(404),
+
+		itest.GET("/bar").
+			Describe("Fetch bar specifying query parameters all at once").
+			WithQueryParams(url.Values{
+				"first":  []string{"foo"},
+				"second": []string{"bar"},
+			}).
+			ExpectStatus(404),
+
+		itest.GET("/bar").
+			Describe("Fetch bar specifying query parameters individually").
+			WithQueryParam("first", "foo").
+			WithQueryParam("second", "bar").
 			ExpectStatus(404),
 
 		itest.POST("/foo").
