@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/fatih/color"
@@ -84,10 +85,11 @@ type TestCase struct {
 }
 
 // NewTestCase creates a new TestCase with the given method and path.
-func NewTestCase(method, path string) *TestCase {
+func NewTestCase(method, path string, description ...string) *TestCase {
 	return &TestCase{
-		Method: method,
-		Path:   path,
+		Description: strings.Join(description, " "),
+		Method:      method,
+		Path:        path,
 	}
 }
 
@@ -96,43 +98,43 @@ func (tc *TestCase) DisplayName() string {
 	return fmt.Sprintf("%s %s", tc.Method, tc.Path)
 }
 
-// DELETE is a shortcut for NewTestCase("DELETE", path).
-func DELETE(path string) *TestCase {
-	return NewTestCase("DELETE", path)
+// DELETE is a shortcut for NewTestCase(http.MethodDelete, path).
+func DELETE(path string, description ...string) *TestCase {
+	return NewTestCase(http.MethodDelete, path, description...)
 }
 
-// HEAD is a shortcut for NewTestCase("HEAD", path).
-func HEAD(path string) *TestCase {
-	return NewTestCase("HEAD", path)
+// HEAD is a shortcut for NewTestCase(http.MethodHead, path, description...).
+func HEAD(path string, description ...string) *TestCase {
+	return NewTestCase(http.MethodHead, path, description...)
 }
 
-// GET is a shortcut for NewTestCase("GET", path).
-func GET(path string) *TestCase {
-	return NewTestCase("GET", path)
+// GET is a shortcut for NewTestCase(http.MethodGet, path, description...).
+func GET(path string, description ...string) *TestCase {
+	return NewTestCase(http.MethodGet, path, description...)
 }
 
-// OPTIONS is a shortcut for NewTestCase("OPTIONS", path).
-func OPTIONS(path string) *TestCase {
-	return NewTestCase("OPTIONS", path)
+// OPTIONS is a shortcut for NewTestCase(http.MethodOptions, path, description...).
+func OPTIONS(path string, description ...string) *TestCase {
+	return NewTestCase(http.MethodOptions, path, description...)
 }
 
-// PATCH is a shortcut for NewTestCase("PATCH", path).
-func PATCH(path string) *TestCase {
-	return NewTestCase("PATCH", path)
+// PATCH is a shortcut for NewTestCase(http.MethodPatch, path, description...).
+func PATCH(path string, description ...string) *TestCase {
+	return NewTestCase(http.MethodPatch, path, description...)
 }
 
-// POST is a shortcut for NewTestCase("POST", path).
-func POST(path string) *TestCase {
-	return NewTestCase("POST", path)
+// POST is a shortcut for NewTestCase(http.MethodPost, path, description...).
+func POST(path string, description ...string) *TestCase {
+	return NewTestCase(http.MethodPost, path, description...)
 }
 
-// PUT is a shortcut for NewTestCase("PUT", path).
-func PUT(path string) *TestCase {
-	return NewTestCase("PUT", path)
+// PUT is a shortcut for NewTestCase(http.MethodPut, path, description...).
+func PUT(path string, description ...string) *TestCase {
+	return NewTestCase(http.MethodPut, path, description...)
 }
 
 // DO creates a test case from a custom HTTP request.
-func DO(request *http.Request) *TestCase {
+func DO(request *http.Request, description ...string) *TestCase {
 	return &TestCase{
 		Method:  request.Method,
 		Path:    request.URL.Path,

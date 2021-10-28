@@ -29,6 +29,9 @@ func TestAPI(t *testing.T) {
 			ExpectStatus(200).
 			ExpectBody("Hello, world!"),
 
+		itest.GET("/foo", "The test description can be specified here instead").
+			ExpectBody("Hello, world!"),
+
 		itest.GET("/foo").
 			Describe("Fetch foo and ensure the returned JSON contains the right values").
 			WithHeader("Accept", "application/json").
