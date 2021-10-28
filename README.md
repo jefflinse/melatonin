@@ -141,6 +141,32 @@ itest.GET("/endpoint").
     ExpectStatus(200).
 ```
 
+### Specify query parameters for a test
+
+Inline:
+
+```go
+itest.GET("/endpoint?first=foo&second=bar")
+```
+
+Individually:
+
+```go
+itest.GET("/endpoint").
+    WithQueryParam("first", "foo").
+    WithQueryParam("second", "bar")
+```
+
+All At Once:
+
+```go
+itest.GET("/endpoint").
+    WithQueryParams(url.Values{
+        "first": []string{"foo"},
+        "second": []string{"bar"},
+    })
+```
+
 ### Allow or disallow further tests to run after a failure
 
 ```go
