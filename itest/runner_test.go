@@ -14,7 +14,6 @@ func TestNewTestRunner(t *testing.T) {
 	r := itest.NewEndpointTester("http://example.com")
 	assert.NotNil(t, r)
 	assert.False(t, r.ContinueOnFailure)
-	assert.Same(t, http.DefaultClient, r.HTTPClient)
 }
 
 func TestRunnerConvenienceSetters(t *testing.T) {
@@ -24,7 +23,7 @@ func TestRunnerConvenienceSetters(t *testing.T) {
 	r.WithHTTPClient(http.DefaultClient)
 	assert.Same(t, http.DefaultClient, r.HTTPClient)
 	r.WithRequestTimeout(1)
-	assert.Equal(t, time.Duration(1), r.RequestTimeout)
+	assert.Equal(t, time.Duration(1), r.TestTimeout)
 
 	// setting these again overrides the previous values
 	r.WithContinueOnFailure(false)
@@ -32,7 +31,7 @@ func TestRunnerConvenienceSetters(t *testing.T) {
 	r.WithHTTPClient(nil)
 	assert.Nil(t, r.HTTPClient)
 	r.WithRequestTimeout(2)
-	assert.Equal(t, time.Duration(2), r.RequestTimeout)
+	assert.Equal(t, time.Duration(2), r.TestTimeout)
 }
 
 func TestRunner_RunTestsT(t *testing.T) {
@@ -55,21 +54,21 @@ func TestRunner_RunTestsT(t *testing.T) {
 		},
 		{
 			name:      "invalid tests",
-			runner:    &itest.TestRunner{BaseURL: mockServer.URL},
+			runner:    itest.NewEndpointTester(mockServer.URL),
 			tests:     []*itest.TestCase{itest.GET("")},
 			wantError: true,
 		},
 		{
 			name:        "nil HTTP client, use default",
 			server:      mockServer,
-			runner:      &itest.TestRunner{BaseURL: mockServer.URL},
+			runner:      itest.NewEndpointTester(mockServer.URL),
 			tests:       []*itest.TestCase{itest.GET("/path")},
 			wantResults: []*itest.TestCaseResult{{TestCase: itest.GET("/path"), Status: http.StatusOK}},
 		},
 		{
 			name:   "all tests pass",
 			server: mockServer,
-			runner: &itest.TestRunner{BaseURL: mockServer.URL, ContinueOnFailure: true},
+			runner: itest.NewEndpointTester(mockServer.URL).WithContinueOnFailure(true),
 			tests: []*itest.TestCase{
 				itest.GET("/path").ExpectStatus(http.StatusOK),
 				itest.GET("/path").ExpectStatus(http.StatusOK),
@@ -84,7 +83,7 @@ func TestRunner_RunTestsT(t *testing.T) {
 		{
 			name:   "test failure",
 			server: mockServer,
-			runner: &itest.TestRunner{BaseURL: mockServer.URL, ContinueOnFailure: true},
+			runner: itest.NewEndpointTester(mockServer.URL).WithContinueOnFailure(true),
 			tests: []*itest.TestCase{
 				itest.GET("/path").ExpectStatus(http.StatusOK),
 				itest.GET("/path").ExpectStatus(http.StatusNotFound),
@@ -121,24 +120,18 @@ func TestRunnerValidate(t *testing.T) {
 		expectError bool
 	}{
 		{
-			name: "valid",
-			runner: &itest.TestRunner{
-				BaseURL: "http://example.com",
-			},
+			name:        "valid",
+			runner:      itest.NewEndpointTester("http://example.com"),
 			expectError: false,
 		},
 		{
-			name: "invalid, empty base URL",
-			runner: &itest.TestRunner{
-				BaseURL: "",
-			},
+			name:        "invalid, empty base URL",
+			runner:      itest.NewEndpointTester(""),
 			expectError: true,
 		},
 		{
-			name: "invalid, base URL contains trailing slash",
-			runner: &itest.TestRunner{
-				BaseURL: "http://example.com/",
-			},
+			name:        "invalid, base URL contains trailing slash",
+			runner:      itest.NewEndpointTester("http://example.com/"),
 			expectError: true,
 		},
 	} {

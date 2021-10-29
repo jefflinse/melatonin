@@ -14,7 +14,13 @@ import (
 )
 
 const (
-	defaultRequestTimeoutStr = "5s"
+	modeNone = iota
+	modeBaseURL
+	modeHandler
+)
+
+const (
+	defaultRequestTimeoutStr = "10s"
 )
 
 var (
@@ -34,57 +40,58 @@ func init() {
 	}
 }
 
-// TestRunner contains configuration for running tests.
+// A TestRunner runs a set of tests against an HTTP endpoint or handler.
+//
+// Use NewEndpointTester() to create a test runner that makes real HTTP
+// requests to an actual server (local or remote). This is typically used
+// to defice and run E2E tests against a running web service.
+//
+// Use NewHandlerTester() to create a test runner to perform in-memory
+// functional tests against a Go HTTP handler (such as a router or mux).
+// This is typically used for unit testing.
+// .
 type TestRunner struct {
-	// BaseURL is the base URL for the API, including the port.
-	//
-	// Examples:
-	//   http://localhost:8080
-	//   https://api.example.com
-	//
-	// Required if HTTPHandler is not set.
-	BaseURL string
-
 	// ContinueOnFailure indicates whether the test runner should continue
 	// executing further tests after a failure.
 	//
-	// Defaults is false.
+	// Default is false.
 	ContinueOnFailure bool
 
-	// HTTPClient is the HTTP client to use for requests.
+	// HTTPClient is the HTTP client used for requests.
 	//
-	// If left unset, http.DefaultClient will be used.
+	// Default is http.DefaultClient.
 	HTTPClient *http.Client
 
-	// HTTPHandler is the HTTP handler for the API.
+	// TestTimeout the the amount of time to wait for a test to complete.
 	//
-	// Required if BaseURL is not set.
-	HTTPHandler http.Handler
-
-	// RequestTimeout is the default timeout for HTTP requests.
-	//
-	// Default is 5 seconds.
-	RequestTimeout time.Duration
+	// Default is 10 seconds.
+	TestTimeout time.Duration
 
 	// Internal
+	baseURL      string
+	handler      http.Handler
 	outputWriter *ColumnWriter
 }
 
 // NewEndpointTester creates a new TestRunner for testing an HTTP endpoint.
 // targeting a base URL.
 func NewEndpointTester(baseURL string) *TestRunner {
-	return &TestRunner{
-		BaseURL:    baseURL,
-		HTTPClient: http.DefaultClient,
-	}
+	return (&TestRunner{}).WithBaseURL(baseURL)
 }
 
 // NewHandlerTester creates a new TestRunner for testing an HTTP handler.
 func NewHandlerTester(handler http.Handler) *TestRunner {
-	return &TestRunner{
-		HTTPHandler: handler,
-		HTTPClient:  http.DefaultClient,
-	}
+	return (&TestRunner{}).WithHTTPHandler(handler)
+}
+
+func (r *TestRunner) WithBaseURL(baseURL string) *TestRunner {
+	r.baseURL = baseURL
+	return r
+}
+
+func (r *TestRunner) WithHTTPHandler(handler http.Handler) *TestRunner {
+	r.handler = handler
+	return r
 }
 
 // WithContinueOnFailure sets the ContinueOnFailure field of the TestRunner and
@@ -104,7 +111,7 @@ func (r *TestRunner) WithHTTPClient(client *http.Client) *TestRunner {
 // WithRequestTimeout sets the RequestTimeout field of the TestRunner and returns
 // the TestRunner.
 func (r *TestRunner) WithRequestTimeout(timeout time.Duration) *TestRunner {
-	r.RequestTimeout = timeout
+	r.TestTimeout = timeout
 	return r
 }
 
@@ -119,15 +126,11 @@ func (r *TestRunner) RunTests(tests []*TestCase) ([]*TestCaseResult, error) {
 //
 // To run tests as a standalone binary without a testing context, use RunTests().
 func (r *TestRunner) RunTestsT(t *testing.T, tests []*TestCase) ([]*TestCaseResult, error) {
-	results := []*TestCaseResult{}
-	r.outputWriter = NewColumnWriter(os.Stdout, 5, 2)
-
 	if err := r.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid test runner: %w", err)
 	}
 
 	if r.HTTPClient == nil {
-		debug("using default HTTP client")
 		r.HTTPClient = http.DefaultClient
 	}
 
@@ -135,7 +138,15 @@ func (r *TestRunner) RunTestsT(t *testing.T, tests []*TestCase) ([]*TestCaseResu
 		return nil, fmt.Errorf("one or more test cases failed validation")
 	}
 
-	fmt.Printf("running %d tests for %s\n", len(tests), underline(r.BaseURL))
+	r.outputWriter = NewColumnWriter(os.Stdout, 5, 2)
+	results := []*TestCaseResult{}
+
+	if r.mode() == modeBaseURL {
+		fmt.Printf("running %d tests for %s\n", len(tests), underline(r.baseURL))
+	} else {
+		fmt.Printf("running %d tests for %v\n", len(tests), underline("HTTP handler"))
+	}
+
 	var executed, passed, failed, skipped int
 	for _, test := range tests {
 		result, err := r.RunTestT(t, test)
@@ -199,8 +210,8 @@ func (r *TestRunner) RunTestT(t *testing.T, test *TestCase) (*TestCaseResult, er
 	timeout := defaultRequestTimeout
 	if test.Timeout > 0 {
 		timeout = test.Timeout
-	} else if r.RequestTimeout > 0 {
-		timeout = r.RequestTimeout
+	} else if r.TestTimeout > 0 {
+		timeout = r.TestTimeout
 	}
 
 	var reqBody []byte
@@ -216,7 +227,7 @@ func (r *TestRunner) RunTestT(t *testing.T, test *TestCase) (*TestCaseResult, er
 	if test.request == nil {
 		req, cancel, err := createRequest(
 			test.Method,
-			r.BaseURL+test.Path,
+			r.baseURL+test.Path,
 			test.QueryParams,
 			test.RequestHeaders,
 			reqBody,
@@ -231,18 +242,16 @@ func (r *TestRunner) RunTestT(t *testing.T, test *TestCase) (*TestCaseResult, er
 	}
 
 	var err error
-	if r.BaseURL != "" {
-		debug("testing against base URL")
+	if r.mode() == modeBaseURL {
 		result.Status, result.Headers, result.Body, err = doRequest(r.HTTPClient, test.request)
 		if err != nil {
 			debug("%s: failed to execute HTTP request: %s", test.DisplayName(), err)
 			result.addErrors(fmt.Errorf("failed to perform HTTP request: %w", err))
 			return nil, err
 		}
-	} else if r.HTTPHandler != nil {
-		debug("testing against HTTP handler")
+	} else if r.mode() == modeHandler {
 		w := httptest.NewRecorder()
-		r.HTTPHandler.ServeHTTP(w, test.request)
+		r.handler.ServeHTTP(w, test.request)
 		resp := w.Result()
 		result.Status = resp.StatusCode
 		result.Headers = resp.Header
@@ -304,17 +313,25 @@ func (r *TestRunner) RunTestT(t *testing.T, test *TestCase) (*TestCaseResult, er
 }
 
 func (r *TestRunner) Validate() error {
-	if r.BaseURL == "" && r.HTTPHandler == nil {
-		return fmt.Errorf("BaseURL or HTTPHandler is required")
-	}
-
-	if r.BaseURL != "" {
-		if r.BaseURL[len(r.BaseURL)-1] == '/' {
-			return fmt.Errorf("BaseURL must not end with a slash")
+	if r.mode() == modeNone {
+		return fmt.Errorf("runner must be configured with a base URL or HTTP handler")
+	} else if r.mode() == modeBaseURL {
+		if r.baseURL[len(r.baseURL)-1] == '/' {
+			return fmt.Errorf("base URL must not end with a slash")
 		}
 	}
 
 	return nil
+}
+
+func (r *TestRunner) mode() int {
+	if r.handler != nil {
+		return modeHandler
+	} else if r.baseURL != "" {
+		return modeBaseURL
+	}
+
+	return modeNone
 }
 
 func parseResponseBody(body []byte) interface{} {

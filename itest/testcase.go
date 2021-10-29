@@ -33,10 +33,6 @@ type TestCase struct {
 	// returned by Before is treated as a test failure.
 	BeforeFunc func() error
 
-	// ContinueOnFailure indicates whether the test should continue to the next
-	// test case if the current test fails. Default is false.
-	ContinueOnFailure bool
-
 	// Description is a description of the test case.
 	Description string
 
@@ -49,7 +45,7 @@ type TestCase struct {
 	// Method is the HTTP method to use for the request. Default is "GET".
 	Method string
 
-	// Path is the relative Path to use for the request.
+	// Path is the relative Path to use for the request. Must begin with "/".
 	Path string
 
 	// QueryParams is a map of query string parameters.
