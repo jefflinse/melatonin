@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/fatih/color"
@@ -35,19 +36,16 @@ var (
 type ColumnWriter struct {
 	columns   int
 	format    string
+	stdout    io.Writer
 	tabWriter *tabwriter.Writer
+	written   int
 }
 
 func NewColumnWriter(output io.Writer, columns int, padding int) *ColumnWriter {
-	format := ""
-	for i := 0; i < columns; i++ {
-		format += "%s\t"
-	}
-	format += "\n"
-
 	return &ColumnWriter{
 		columns:   columns,
-		format:    format,
+		format:    strings.Repeat("%s\t", columns) + "\n",
+		stdout:    output,
 		tabWriter: tabwriter.NewWriter(output, 0, 0, padding, ' ', 0),
 	}
 }
@@ -62,6 +60,9 @@ func (w *ColumnWriter) PrintColumns(columns ...interface{}) {
 
 func (w *ColumnWriter) Flush() {
 	w.tabWriter.Flush()
+	if w.stdout != io.Discard {
+		fmt.Println()
+	}
 }
 
 func debug(format string, a ...interface{}) {

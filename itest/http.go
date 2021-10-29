@@ -61,8 +61,6 @@ func doRequest(c *http.Client, req *http.Request) (int, http.Header, []byte, err
 		return -1, nil, nil, err
 	}
 
-	debug("\n")
-
 	return resp.StatusCode, resp.Header, body, nil
 }
 

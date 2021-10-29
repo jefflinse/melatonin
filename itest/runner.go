@@ -3,6 +3,7 @@ package itest
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"testing"
@@ -131,8 +132,12 @@ func (r *TestRunner) RunTestsT(t *testing.T, tests []*TestCase) ([]*TestCaseResu
 		return nil, fmt.Errorf("one or more test cases failed validation")
 	}
 
-	r.outputWriter = NewColumnWriter(os.Stdout, 5, 2)
-	results := []*TestCaseResult{}
+	outputTarget := io.Discard
+	if t == nil {
+		outputTarget = os.Stdout
+	}
+
+	r.outputWriter = NewColumnWriter(outputTarget, 5, 2)
 
 	if r.mode() == modeBaseURL {
 		fmt.Printf("running %d tests for %s\n", len(tests), underline(r.baseURL))
@@ -141,6 +146,7 @@ func (r *TestRunner) RunTestsT(t *testing.T, tests []*TestCase) ([]*TestCaseResu
 	}
 
 	var executed, passed, failed, skipped int
+	results := []*TestCaseResult{}
 	for _, test := range tests {
 		result, err := r.RunTestT(t, test)
 		if err != nil {
@@ -172,7 +178,7 @@ func (r *TestRunner) RunTestsT(t *testing.T, tests []*TestCase) ([]*TestCaseResu
 		totalExecutionTime += result.executionTime
 	}
 
-	fmt.Printf("\n%d passed, %d failed, %d skipped %s\n", passed, failed, skipped,
+	fmt.Printf("%d passed, %d failed, %d skipped %s\n", passed, failed, skipped,
 		faintFG(fmt.Sprintf("in %s", totalExecutionTime.String())))
 
 	return results, nil
