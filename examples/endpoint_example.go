@@ -8,14 +8,17 @@ import (
 	"github.com/jefflinse/go-itest/itest"
 )
 
-func main() {
+// This example shows how to use itest to test an actual service endpoint.
+func EndpointExample() {
 	startExampleServer()
 
-	// A custom HTTP request provides complete control over
-	// all aspects of the request when needed.
+	// A custom HTTP request can be created to provide complete control over
+	// all aspects of a particular test case, if needed.
 	customReq, _ := http.NewRequest("GET", "http://localhost:8080/foo", nil)
 
-	// Create a test runner to configure how the tests are run.
+	// Use NewEndpointTesterr() to test actual service endpoints.
+	// Real network calls are made, making this suitable for E2E testing
+	// of actual service endpoints running locally or remotely.
 	runner := itest.NewEndpointTester("http://localhost:8080").
 		WithHTTPClient(http.DefaultClient).
 		WithRequestTimeout(time.Second * 5).
@@ -95,48 +98,4 @@ func main() {
 			WithHeader("Accept", "application/json").
 			ExpectGolden("golden/expect-headers-and-json-body.golden"),
 	})
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/foo", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(200)
-		w.Write([]byte("Hello, world!"))
-	})
-
-	utRunner := itest.NewHandlerTester(mux).WithContinueOnFailure(true)
-	utRunner.RunTests([]*itest.TestCase{
-
-		itest.GET("/foo", "Fetch foo by testing a local handler").
-			ExpectStatus(200).
-			ExpectBody("Hello, world!"),
-
-		itest.GET("/bar", "This should be a 404").
-			ExpectStatus(200),
-	})
-}
-
-// Simple static webserver for example purposes.
-func startExampleServer() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/foo", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Some-Header", "foo")
-		w.Header().Add("Some-Header", "bar")
-
-		if r.Method == http.MethodPost {
-			w.WriteHeader(http.StatusCreated)
-			return
-		} else if r.Method == http.MethodDelete {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-
-		body := "Hello, world!"
-		if r.Header.Get("Accept") == "application/json" {
-			w.Header().Set("Content-Type", "application/json")
-			body = `{"a_string":"Hello, world!","a_number":42,"another_number":3.14,"a_bool":true}`
-		}
-
-		w.Write([]byte(body))
-	})
-
-	go http.ListenAndServe("localhost:8080", mux)
 }

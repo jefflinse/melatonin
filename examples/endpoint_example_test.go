@@ -9,14 +9,17 @@ import (
 	"github.com/jefflinse/go-itest/itest"
 )
 
-func TestAPI(t *testing.T) {
+// This example shows how to use itest to test an actual service endoint.
+func TestEndpoint(t *testing.T) {
 	startExampleServer()
 
-	// A custom HTTP request provides complete control over
-	// all aspects of the request when needed.
+	// A custom HTTP request can be created to provide complete control over
+	// all aspects of a particular test case, if needed.
 	customReq, _ := http.NewRequest("GET", "http://localhost:8080/foo", nil)
 
-	// Create a test runner to configure how the tests are run.
+	// Use NewEndpointTesterr() to test actual service endpoints.
+	// Real network calls are made, making this suitable for E2E testing
+	// of actual service endpoints running locally or remotely.
 	runner := itest.NewEndpointTester("http://localhost:8080").
 		WithHTTPClient(http.DefaultClient).
 		WithRequestTimeout(time.Second * 5).
@@ -95,22 +98,5 @@ func TestAPI(t *testing.T) {
 			Describe("Fetch foo and match expectations from a golden file").
 			WithHeader("Accept", "application/json").
 			ExpectGolden("golden/expect-headers-and-json-body.golden"),
-	})
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/foo", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(200)
-		w.Write([]byte("Hello, world!"))
-	})
-
-	utRunner := itest.NewHandlerTester(mux).WithContinueOnFailure(true)
-	utRunner.RunTestsT(t, []*itest.TestCase{
-
-		itest.GET("/foo", "Fetch foo by testing a local handler").
-			ExpectStatus(200).
-			ExpectBody("Hello, world!"),
-
-		itest.GET("/bar", "This should be a 404").
-			ExpectStatus(200),
 	})
 }

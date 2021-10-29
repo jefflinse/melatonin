@@ -1,13 +1,14 @@
 # Examples
 
+`cd` into this directory and then:
+
 ## To run the examples as a standalone Go program
 
-    $ go run example.go
+    $ go run .
 
 or
 
-    $ go build
-    $ ./example
+    $ go build && ./examples
 
 ## To run the examples as Go tests
 
