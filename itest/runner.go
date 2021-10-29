@@ -3,7 +3,9 @@ package itest
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -40,7 +42,7 @@ type TestRunner struct {
 	//   http://localhost:8080
 	//   https://api.example.com
 	//
-	// Required.
+	// Required if HTTPHandler is not set.
 	BaseURL string
 
 	// ContinueOnFailure indicates whether the test runner should continue
@@ -54,6 +56,11 @@ type TestRunner struct {
 	// If left unset, http.DefaultClient will be used.
 	HTTPClient *http.Client
 
+	// HTTPHandler is the HTTP handler for the API.
+	//
+	// Required if BaseURL is not set.
+	HTTPHandler http.Handler
+
 	// RequestTimeout is the default timeout for HTTP requests.
 	//
 	// Default is 5 seconds.
@@ -63,12 +70,20 @@ type TestRunner struct {
 	outputWriter *ColumnWriter
 }
 
-// NewTestRunner creates a new TestRunner with the default settings.
-func NewTestRunner(baseURL string) *TestRunner {
+// NewEndpointTester creates a new TestRunner for testing an HTTP endpoint.
+// targeting a base URL.
+func NewEndpointTester(baseURL string) *TestRunner {
 	return &TestRunner{
-		BaseURL:           baseURL,
-		ContinueOnFailure: false,
-		HTTPClient:        http.DefaultClient,
+		BaseURL:    baseURL,
+		HTTPClient: http.DefaultClient,
+	}
+}
+
+// NewHandlerTester creates a new TestRunner for testing an HTTP handler.
+func NewHandlerTester(handler http.Handler) *TestRunner {
+	return &TestRunner{
+		HTTPHandler: handler,
+		HTTPClient:  http.DefaultClient,
 	}
 }
 
@@ -155,6 +170,7 @@ func (r *TestRunner) RunTestsT(t *testing.T, tests []*TestCase) ([]*TestCaseResu
 
 	fmt.Printf("\n%d passed, %d failed, %d skipped %s\n", passed, failed, skipped,
 		faintFG(fmt.Sprintf("in %s", totalExecutionTime.String())))
+
 	return results, nil
 }
 
@@ -215,11 +231,27 @@ func (r *TestRunner) RunTestT(t *testing.T, test *TestCase) (*TestCaseResult, er
 	}
 
 	var err error
-	result.Status, result.Headers, result.Body, err = doRequest(r.HTTPClient, test.request)
-	if err != nil {
-		debug("%s: failed to execute HTTP request: %s", test.DisplayName(), err)
-		result.addErrors(fmt.Errorf("failed to perform HTTP request: %w", err))
-		return result, err
+	if r.BaseURL != "" {
+		debug("testing against base URL")
+		result.Status, result.Headers, result.Body, err = doRequest(r.HTTPClient, test.request)
+		if err != nil {
+			debug("%s: failed to execute HTTP request: %s", test.DisplayName(), err)
+			result.addErrors(fmt.Errorf("failed to perform HTTP request: %w", err))
+			return nil, err
+		}
+	} else if r.HTTPHandler != nil {
+		debug("testing against HTTP handler")
+		w := httptest.NewRecorder()
+		r.HTTPHandler.ServeHTTP(w, test.request)
+		resp := w.Result()
+		result.Status = resp.StatusCode
+		result.Headers = resp.Header
+		result.Body, err = io.ReadAll(resp.Body)
+		if err != nil {
+			debug("%s: failed to execute HTTP request: %s", test.DisplayName(), err)
+			result.addErrors(fmt.Errorf("failed to perform HTTP request: %w", err))
+			return nil, err
+		}
 	}
 
 	result.validateExpectations()
@@ -272,10 +304,14 @@ func (r *TestRunner) RunTestT(t *testing.T, test *TestCase) (*TestCaseResult, er
 }
 
 func (r *TestRunner) Validate() error {
-	if r.BaseURL == "" {
-		return fmt.Errorf("BaseURL is required")
-	} else if r.BaseURL[len(r.BaseURL)-1] == '/' {
-		return fmt.Errorf("BaseURL must not end with a slash")
+	if r.BaseURL == "" && r.HTTPHandler == nil {
+		return fmt.Errorf("BaseURL or HTTPHandler is required")
+	}
+
+	if r.BaseURL != "" {
+		if r.BaseURL[len(r.BaseURL)-1] == '/' {
+			return fmt.Errorf("BaseURL must not end with a slash")
+		}
 	}
 
 	return nil
@@ -312,24 +348,24 @@ func validateTests(tests []*TestCase) bool {
 	return valid
 }
 
-// RunTest runs a single test using the provided base URL and the default TestRunner.
-func RunTest(baseURL string, test *TestCase) {
-	RunTestsT(nil, baseURL, []*TestCase{test})
-}
-
-// RunTestT runs a single test within a Go testing context using the provided
-// base URL and the default TestRunner.
-func RunTestT(t *testing.T, baseURL string, test *TestCase) {
-	RunTestsT(t, baseURL, []*TestCase{test})
-}
-
-// RunTests runs a set of tests using the provided base URL and the default TestRunner.
-func RunTests(baseURL string, tests []*TestCase) {
-	RunTestsT(nil, baseURL, tests)
+// TestEndpoint runs a set of tests using the provided base URL and the default TestRunner.
+func TestEndpoint(baseURL string, tests []*TestCase) {
+	TestEndpointT(nil, baseURL, tests)
 }
 
 // RunTests runs a set of tests within a Go testing context using the provided
 // base URL and the default TestRunner.
-func RunTestsT(t *testing.T, baseURL string, tests []*TestCase) {
-	NewTestRunner(baseURL).RunTestsT(t, tests)
+func TestEndpointT(t *testing.T, baseURL string, tests []*TestCase) {
+	NewEndpointTester(baseURL).RunTestsT(t, tests)
+}
+
+// TestEndpoint runs a set of tests using the provided base URL and the default TestRunner.
+func TestHandler(handler http.Handler, tests []*TestCase) {
+	TestHandlerT(nil, handler, tests)
+}
+
+// RunTests runs a set of tests within a Go testing context using the provided
+// base URL and the default TestRunner.
+func TestHandlerT(t *testing.T, handler http.Handler, tests []*TestCase) {
+	NewHandlerTester(handler).RunTestsT(t, tests)
 }

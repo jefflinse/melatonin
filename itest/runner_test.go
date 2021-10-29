@@ -11,14 +11,14 @@ import (
 )
 
 func TestNewTestRunner(t *testing.T) {
-	r := itest.NewTestRunner("http://example.com")
+	r := itest.NewEndpointTester("http://example.com")
 	assert.NotNil(t, r)
 	assert.False(t, r.ContinueOnFailure)
 	assert.Same(t, http.DefaultClient, r.HTTPClient)
 }
 
 func TestRunnerConvenienceSetters(t *testing.T) {
-	r := itest.NewTestRunner("http://example.com")
+	r := itest.NewEndpointTester("http://example.com")
 	r.WithContinueOnFailure(true)
 	assert.True(t, r.ContinueOnFailure)
 	r.WithHTTPClient(http.DefaultClient)

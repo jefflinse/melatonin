@@ -17,7 +17,7 @@ func TestAPI(t *testing.T) {
 	customReq, _ := http.NewRequest("GET", "http://localhost:8080/foo", nil)
 
 	// Create a test runner to configure how the tests are run.
-	runner := itest.NewTestRunner("http://localhost:8080").
+	runner := itest.NewEndpointTester("http://localhost:8080").
 		WithHTTPClient(http.DefaultClient).
 		WithRequestTimeout(time.Second * 5).
 		WithContinueOnFailure(true)
@@ -95,5 +95,19 @@ func TestAPI(t *testing.T) {
 			Describe("Fetch foo and match expectations from a golden file").
 			WithHeader("Accept", "application/json").
 			ExpectGolden("golden/expect-headers-and-json-body.golden"),
+	})
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/foo", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		w.Write([]byte("Hello, world!"))
+	})
+
+	utRunner := itest.NewHandlerTester(mux).WithContinueOnFailure(true)
+	utRunner.RunTests([]*itest.TestCase{
+
+		itest.GET("/foo", "Fetch foo by testing a local handler").
+			ExpectStatus(200).
+			ExpectBody("Hello, world!"),
 	})
 }
