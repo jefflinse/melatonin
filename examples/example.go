@@ -110,7 +110,7 @@ func main() {
 			ExpectBody("Hello, world!"),
 
 		itest.GET("/bar", "This should be a 404").
-			ExpectStatus(404),
+			ExpectStatus(200),
 	})
 }
 
