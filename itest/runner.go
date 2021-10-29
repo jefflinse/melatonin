@@ -148,7 +148,7 @@ func (r *TestRunner) RunTestsT(t *testing.T, tests []*TestCase) ([]*TestCaseResu
 	var executed, passed, failed, skipped int
 	results := []*TestCaseResult{}
 	for _, test := range tests {
-		result, err := r.RunTestT(t, test)
+		result, err := r.runTest(t, test)
 		if err != nil {
 			return nil, err
 		}
@@ -184,13 +184,7 @@ func (r *TestRunner) RunTestsT(t *testing.T, tests []*TestCase) ([]*TestCaseResu
 	return results, nil
 }
 
-// RunTest runs a single test.
-func (r *TestRunner) RunTest(test *TestCase) (*TestCaseResult, error) {
-	return r.RunTestT(nil, test)
-}
-
-// RunTest runs a single test within a Go testing context.
-func (r *TestRunner) RunTestT(t *testing.T, test *TestCase) (*TestCaseResult, error) {
+func (r *TestRunner) runTest(t *testing.T, test *TestCase) (*TestCaseResult, error) {
 	result := &TestCaseResult{
 		TestCase: test,
 		Errors:   []error{},

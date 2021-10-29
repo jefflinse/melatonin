@@ -38,7 +38,6 @@ type ColumnWriter struct {
 	format    string
 	stdout    io.Writer
 	tabWriter *tabwriter.Writer
-	written   int
 }
 
 func NewColumnWriter(output io.Writer, columns int, padding int) *ColumnWriter {
