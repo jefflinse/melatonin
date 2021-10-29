@@ -57,11 +57,6 @@ type TestRunner struct {
 	// Default is false.
 	ContinueOnFailure bool
 
-	// HTTPClient is the HTTP client used for requests.
-	//
-	// Default is http.DefaultClient.
-	HTTPClient *http.Client
-
 	// TestTimeout the the amount of time to wait for a test to complete.
 	//
 	// Default is 10 seconds.
@@ -69,6 +64,7 @@ type TestRunner struct {
 
 	// Internal
 	baseURL      string
+	client       *http.Client
 	handler      http.Handler
 	outputWriter *ColumnWriter
 }
@@ -79,16 +75,26 @@ func NewEndpointTester(baseURL string) *TestRunner {
 	return (&TestRunner{}).WithBaseURL(baseURL)
 }
 
+// NewEndpointTesterWithClient creates a new TestRunner for testing an HTTP
+// endpoint using the provided http.Client.
+// targeting a base URL.
+func NewEndpointTesterWithClient(baseURL string, client *http.Client) *TestRunner {
+	return (&TestRunner{}).WithBaseURL(baseURL).WithHTTPClient(client)
+}
+
 // NewHandlerTester creates a new TestRunner for testing an HTTP handler.
 func NewHandlerTester(handler http.Handler) *TestRunner {
 	return (&TestRunner{}).WithHTTPHandler(handler)
 }
 
+// WithBaseURL sets the base URL for the runner and returns the TestRunner.
 func (r *TestRunner) WithBaseURL(baseURL string) *TestRunner {
 	r.baseURL = baseURL
 	return r
 }
 
+// WithHTTPHandler sets the HTTP handler for the runner and returns the
+// TestRunner.
 func (r *TestRunner) WithHTTPHandler(handler http.Handler) *TestRunner {
 	r.handler = handler
 	return r
@@ -101,10 +107,10 @@ func (r *TestRunner) WithContinueOnFailure(continueOnFailure bool) *TestRunner {
 	return r
 }
 
-// WithHTTPClient sets the HTTPClient field of the TestRunner and returns the
+// WithHTTPClient sets the HTTP client used for HTTP requests and  returns the
 // TestRunner.
 func (r *TestRunner) WithHTTPClient(client *http.Client) *TestRunner {
-	r.HTTPClient = client
+	r.client = client
 	return r
 }
 
@@ -130,10 +136,6 @@ func (r *TestRunner) RunTestsT(t *testing.T, tests []*TestCase) ([]*TestCaseResu
 		return nil, fmt.Errorf("invalid test runner: %w", err)
 	}
 
-	if r.HTTPClient == nil {
-		r.HTTPClient = http.DefaultClient
-	}
-
 	if !validateTests(tests) {
 		return nil, fmt.Errorf("one or more test cases failed validation")
 	}
@@ -151,7 +153,7 @@ func (r *TestRunner) RunTestsT(t *testing.T, tests []*TestCase) ([]*TestCaseResu
 	for _, test := range tests {
 		result, err := r.RunTestT(t, test)
 		if err != nil {
-			return results, err
+			return nil, err
 		}
 
 		results = append(results, result)
@@ -243,7 +245,7 @@ func (r *TestRunner) RunTestT(t *testing.T, test *TestCase) (*TestCaseResult, er
 
 	var err error
 	if r.mode() == modeBaseURL {
-		result.Status, result.Headers, result.Body, err = doRequest(r.HTTPClient, test.request)
+		result.Status, result.Headers, result.Body, err = doRequest(r.client, test.request)
 		if err != nil {
 			debug("%s: failed to execute HTTP request: %s", test.DisplayName(), err)
 			result.addErrors(fmt.Errorf("failed to perform HTTP request: %w", err))
@@ -319,6 +321,10 @@ func (r *TestRunner) Validate() error {
 		if r.baseURL[len(r.baseURL)-1] == '/' {
 			return fmt.Errorf("base URL must not end with a slash")
 		}
+	}
+
+	if r.client == nil {
+		r.client = http.DefaultClient
 	}
 
 	return nil

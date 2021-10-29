@@ -21,7 +21,6 @@ func TestRunnerConvenienceSetters(t *testing.T) {
 	r.WithContinueOnFailure(true)
 	assert.True(t, r.ContinueOnFailure)
 	r.WithHTTPClient(http.DefaultClient)
-	assert.Same(t, http.DefaultClient, r.HTTPClient)
 	r.WithRequestTimeout(1)
 	assert.Equal(t, time.Duration(1), r.TestTimeout)
 
@@ -29,7 +28,6 @@ func TestRunnerConvenienceSetters(t *testing.T) {
 	r.WithContinueOnFailure(false)
 	assert.False(t, r.ContinueOnFailure)
 	r.WithHTTPClient(nil)
-	assert.Nil(t, r.HTTPClient)
 	r.WithRequestTimeout(2)
 	assert.Equal(t, time.Duration(2), r.TestTimeout)
 }
