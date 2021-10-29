@@ -108,6 +108,9 @@ func main() {
 		itest.GET("/foo", "Fetch foo by testing a local handler").
 			ExpectStatus(200).
 			ExpectBody("Hello, world!"),
+
+		itest.GET("/bar", "This should be a 404").
+			ExpectStatus(404),
 	})
 }
 

@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"time"
 )
@@ -63,4 +64,12 @@ func doRequest(c *http.Client, req *http.Request) (int, http.Header, []byte, err
 	debug("\n")
 
 	return resp.StatusCode, resp.Header, body, nil
+}
+
+func handleRequest(h http.Handler, req *http.Request) (int, http.Header, []byte, error) {
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+	resp := w.Result()
+	b, err := ioutil.ReadAll(resp.Body)
+	return resp.StatusCode, resp.Header, b, err
 }

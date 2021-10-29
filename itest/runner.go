@@ -3,9 +3,7 @@ package itest
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -248,19 +246,14 @@ func (r *TestRunner) RunTestT(t *testing.T, test *TestCase) (*TestCaseResult, er
 		result.Status, result.Headers, result.Body, err = doRequest(r.client, test.request)
 		if err != nil {
 			debug("%s: failed to execute HTTP request: %s", test.DisplayName(), err)
-			result.addErrors(fmt.Errorf("failed to perform HTTP request: %w", err))
+			result.addErrors(fmt.Errorf("failed to execute HTTP request: %w", err))
 			return nil, err
 		}
 	} else if r.mode() == modeHandler {
-		w := httptest.NewRecorder()
-		r.handler.ServeHTTP(w, test.request)
-		resp := w.Result()
-		result.Status = resp.StatusCode
-		result.Headers = resp.Header
-		result.Body, err = io.ReadAll(resp.Body)
+		result.Status, result.Headers, result.Body, err = handleRequest(r.handler, test.request)
 		if err != nil {
-			debug("%s: failed to execute HTTP request: %s", test.DisplayName(), err)
-			result.addErrors(fmt.Errorf("failed to perform HTTP request: %w", err))
+			debug("%s: failed to handle HTTP request: %s", test.DisplayName(), err)
+			result.addErrors(fmt.Errorf("failed to handle HTTP request: %w", err))
 			return nil, err
 		}
 	}
@@ -283,7 +276,7 @@ func (r *TestRunner) RunTestT(t *testing.T, test *TestCase) (*TestCaseResult, er
 
 	if result.Failed() {
 		r.outputWriter.PrintColumns(
-			redFG("✘"),
+			redFG(" ✘"),
 			whiteFG(test.Description),
 			blueBG(fmt.Sprintf("%7s ", test.request.Method)),
 			test.request.URL.Path+queryParamsStr,
@@ -304,7 +297,7 @@ func (r *TestRunner) RunTestT(t *testing.T, test *TestCase) (*TestCaseResult, er
 		}
 	} else {
 		r.outputWriter.PrintColumns(
-			greenFG("✔"),
+			greenFG(" ✔"),
 			whiteFG(test.Description),
 			blueBG(fmt.Sprintf("%7s ", test.request.Method)),
 			test.request.URL.Path+queryParamsStr,
