@@ -73,13 +73,6 @@ func NewEndpointTester(baseURL string) *TestRunner {
 	return (&TestRunner{}).WithBaseURL(baseURL)
 }
 
-// NewEndpointTesterWithClient creates a new TestRunner for testing an HTTP
-// endpoint using the provided http.Client.
-// targeting a base URL.
-func NewEndpointTesterWithClient(baseURL string, client *http.Client) *TestRunner {
-	return (&TestRunner{}).WithBaseURL(baseURL).WithHTTPClient(client)
-}
-
 // NewHandlerTester creates a new TestRunner for testing an HTTP handler.
 func NewHandlerTester(handler http.Handler) *TestRunner {
 	return (&TestRunner{}).WithHTTPHandler(handler)
