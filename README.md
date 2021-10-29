@@ -19,9 +19,9 @@ import "github.com/jefflinse/go-itest"
 
 func main() {
 
-    itest.RunTests("http://example.com", []*itest.TestCase{
+    itest.TestEndpoint("http://example.com", []*itest.TestCase{
 
-        itest.GET("/endpoint").
+        itest.GET("/resource").
             Describe("Fetch a record successfully").
             ExpectStatus(200).
             ExpectBody("Hello, world!"),
@@ -44,9 +44,9 @@ import "github.com/jefflinse/go-itest"
 
 func TestAPI(t *testing.T) {
 
-    itest.RunTestsT(t, "http://example.com", []*itest.TestCase{
+    itest.TestEndpointT(t, "http://example.com", []*itest.TestCase{
 
-        itest.GET("/endpoint").
+        itest.GET("/resource").
             Describe("Fetch a record successfully").
             ExpectStatus(200).
             ExpectBody("Hello, world!"),
@@ -64,10 +64,17 @@ func TestAPI(t *testing.T) {
 
 ## Examples
 
-### Create a test runner
+### Test a service runnnig locally or remotely (E2E tests)
 
 ```go
-runner := itest.NewTestRunner("http://example.com")
+runner := itest.NewEndpointTester("http://example.com")
+runner.RunTests(...)
+```
+
+### Test an HTTP handler directly (unit tests)
+
+```go
+runner := itest.NewHandlerTester(http.NewServeMux())
 runner.RunTests(...)
 ```
 
@@ -76,18 +83,18 @@ runner.RunTests(...)
 ```go
 tests := []*itest.TestCase{
 
-    itest.GET("/endpoint").
+    itest.GET("/resource").
        ExpectStatus(200).
        ExpectBody(String("Hello, World!")),
     
-    itest.POST("/endpoint").
+    itest.POST("/resource").
        WithBody(Object{
          "name": "Burt Macklin",
          "age":  32,
        }).
        ExpectStatus(201),
     
-    itest.DELETE("/endpoint/42").
+    itest.DELETE("/resource/42").
        ExpectStatus(204),
 }
 ```
@@ -99,13 +106,13 @@ tests := []*itest.TestCase{
 
     {
         Method: "GET",
-        Path: "/endpoint",
+        Path: "/resource",
         WantStatus: 200,
         WantBody: String("Hello, World!"),
     },
     {
         Method: "POST",
-        Path: "/endpoint",
+        Path: "/resource",
         RequestBody: Object{
             "name": "Burt Macklin",
             "age":  32,
@@ -114,29 +121,29 @@ tests := []*itest.TestCase{
     },
     {
         Method: "DELETE",
-        Path: "/endpoint/42",
+        Path: "/resource/42",
         WantStatus: 204,
     },
 }
 ```
 
-### Specify a custom HTTP client for requests
+### Use a custom HTTP client for requests
 
 ```go
 client, err := &http.Client{}
-runner := itest.NewRunner("http://example.com").WithHTTPClient(client)
+runner := itest.NewEndpointTester("http://example.com").WithHTTPClient(client)
 ```
 
-### Specify a custom timeout for all tests
+### Use a custom timeout for all tests
 
 ```go
-runner := itest.NewRunner("http://example.com").WithTimeout(5 * time.Second)
+runner := itest.NewEndpointTester("http://example.com").WithTimeout(5 * time.Second)
 ```
 
 ### Specify a timeout for a specific test
 
 ```go
-itest.GET("/endpoint").
+itest.GET("/resource").
     WithTimeout(5 * time.Second).
     ExpectStatus(200).
 ```
@@ -146,13 +153,13 @@ itest.GET("/endpoint").
 Inline:
 
 ```go
-itest.GET("/endpoint?first=foo&second=bar")
+itest.GET("/resource?first=foo&second=bar")
 ```
 
 Individually:
 
 ```go
-itest.GET("/endpoint").
+itest.GET("/resource").
     WithQueryParam("first", "foo").
     WithQueryParam("second", "bar")
 ```
@@ -160,7 +167,7 @@ itest.GET("/endpoint").
 All At Once:
 
 ```go
-itest.GET("/endpoint").
+itest.GET("/resource").
     WithQueryParams(url.Values{
         "first": []string{"foo"},
         "second": []string{"bar"},
@@ -170,13 +177,13 @@ itest.GET("/endpoint").
 ### Allow or disallow further tests to run after a failure
 
 ```go
-runner := itest.NewRunner("http://example.com").WithContinueOnFailure(true)
+runner := itest.NewEndpointTester("http://example.com").WithContinueOnFailure(true)
 ```
 
-### Define a test case with a custom HTTP request
+### Create a test case with a custom HTTP request
 
 ```go
-req, err := http.NewRequest("GET", "http://example.com/endpoint", nil)
+req, err := http.NewRequest("GET", "http://example.com/resource", nil)
 
 itest.DO(req).
     ExpectStatus(200)
@@ -187,7 +194,7 @@ itest.DO(req).
 Any unexpected headers or JSON keys or values present in the response will cause the test case to fail.
 
 ```go
-itest.GET("/endpoint").
+itest.GET("/resource").
     ExpectExactHeaders(http.Header{
         "Content-Type": []string{"application/json"},
     }).
@@ -199,9 +206,11 @@ itest.GET("/endpoint").
 ### Load expectations for a test case from a golden file
 
 ```go
-itest.GET("/endpoint").
+itest.GET("/resource").
     ExpectGolden("path/to/file.golden")
 ```
+
+Golden files keep your test definitions short and concise by storing expectations in a file. See the [golden file format specification](./golden/README.md).
 
 ## Planned Features
 
@@ -217,4 +226,4 @@ Please [open an issue](https://github.com/jefflinse/go-itest/issues) if you find
 
 ## License
 
-MIT License (MIT) - see [`LICENSE.md`](https://github.com/jefflinse/go-itest/blob/master/LICENSE.md) for details.
+MIT License (MIT) - see [`LICENSE`](./LICENSE) for details.
