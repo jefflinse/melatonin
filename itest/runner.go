@@ -207,12 +207,24 @@ func (r *TestRunner) runTest(t *testing.T, test *TestCase) (*TestCaseResult, err
 		timeout = r.TestTimeout
 	}
 
-	var reqBody []byte
+	var body []byte
+	var err error
 	if test.RequestBody != nil {
-		var err error
-		reqBody, err = json.Marshal(test.RequestBody)
+		switch v := test.RequestBody.(type) {
+		case []byte:
+			body = v
+		case string:
+			body = []byte(v)
+		case func() []byte:
+			body = v()
+		case func() ([]byte, error):
+			body, err = v()
+		default:
+			body, err = json.Marshal(test.RequestBody)
+		}
+
 		if err != nil {
-			result.addErrors(fmt.Errorf("error marshaling request body: %w", err))
+			result.addErrors(fmt.Errorf("request body: %w", err))
 			return result, nil
 		}
 	}
@@ -223,7 +235,7 @@ func (r *TestRunner) runTest(t *testing.T, test *TestCase) (*TestCaseResult, err
 			r.baseURL+test.Path,
 			test.QueryParams,
 			test.RequestHeaders,
-			reqBody,
+			body,
 			timeout)
 		defer cancel()
 		if err != nil {
@@ -234,7 +246,6 @@ func (r *TestRunner) runTest(t *testing.T, test *TestCase) (*TestCaseResult, err
 		test.request = req
 	}
 
-	var err error
 	if r.mode() == modeBaseURL {
 		result.Status, result.Headers, result.Body, err = doRequest(r.client, test.request)
 		if err != nil {
