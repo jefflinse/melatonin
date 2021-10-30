@@ -33,15 +33,15 @@ var (
 	underline = color.New(color.Underline).SprintFunc()
 )
 
-type ColumnWriter struct {
+type columnWriter struct {
 	columns   int
 	format    string
 	stdout    io.Writer
 	tabWriter *tabwriter.Writer
 }
 
-func NewColumnWriter(output io.Writer, columns int, padding int) *ColumnWriter {
-	return &ColumnWriter{
+func newColumnWriter(output io.Writer, columns int, padding int) *columnWriter {
+	return &columnWriter{
 		columns:   columns,
 		format:    strings.Repeat("%s\t", columns) + "\n",
 		stdout:    output,
@@ -49,7 +49,7 @@ func NewColumnWriter(output io.Writer, columns int, padding int) *ColumnWriter {
 	}
 }
 
-func (w *ColumnWriter) PrintColumns(columns ...interface{}) {
+func (w *columnWriter) PrintColumns(columns ...interface{}) {
 	if len(columns) > w.columns {
 		panic(fmt.Sprintf("PrintColumns() called with %d columns, expected at most %d", len(columns), w.columns))
 	}
@@ -57,7 +57,7 @@ func (w *ColumnWriter) PrintColumns(columns ...interface{}) {
 	fmt.Fprintf(w.tabWriter, w.format, columns...)
 }
 
-func (w *ColumnWriter) Flush() {
+func (w *columnWriter) Flush() {
 	w.tabWriter.Flush()
 	if w.stdout != io.Discard {
 		fmt.Println()

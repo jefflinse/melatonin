@@ -65,7 +65,7 @@ type TestRunner struct {
 	baseURL      string
 	client       *http.Client
 	handler      http.Handler
-	outputWriter *ColumnWriter
+	outputWriter *columnWriter
 }
 
 // NewEndpointTester creates a new TestRunner for testing an HTTP endpoint.
@@ -137,7 +137,7 @@ func (r *TestRunner) RunTestsT(t *testing.T, tests []*TestCase) ([]*TestCaseResu
 		outputTarget = os.Stdout
 	}
 
-	r.outputWriter = NewColumnWriter(outputTarget, 5, 2)
+	r.outputWriter = newColumnWriter(outputTarget, 5, 2)
 
 	if r.mode() == modeBaseURL {
 		fmt.Printf("running %d tests for %s\n", len(tests), underline(r.baseURL))
