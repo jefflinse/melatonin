@@ -2,15 +2,21 @@
 
 Hassle-free REST API testing for Go.
 
+go-itest is a fluent, flexible REST API testing library for Go. It provides many of the benefits of domain-specific test language but with the flexibililty of writing pure Go. Use it to write unit tests that test your `http.Handler`s directly, or target actual local or remote service endpoints to perform E2E tests of your API service.
+
+See the full [user guide](./USERGUIDE.md) and the [API documentation](https://pkg.go.dev/github.com/jefflinse/go-itest/itest) for more information.
+
 ## Installation
 
-    go get github.com/jefflinse/go-itest
+    go get github.com/jefflinse/go-itest/itest
 
 ## Usage
 
-Create tests for your API endpoints and run them as a standalone binary or as part of your usual Go tests.
+itest can run as a standalone binary built with go build`. When run in this manner, the program will output a formatted table of test results to stdout.
 
-**Standalone**
+itest can also run as a set of regular Go tests, in which case results will be reported through the usual `testing.T` context.
+
+**As A Go Program**
 
 ```go
 package main
@@ -35,7 +41,7 @@ func main() {
 
     1 passed, 0 failed, 0 skipped in 3.9252ms
 
-**Go Test**
+**As Go Tests**
 
 ```go
 package mypackage_test
