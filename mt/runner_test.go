@@ -11,13 +11,13 @@ import (
 )
 
 func TestNewTestRunner(t *testing.T) {
-	r := mt.NewEndpointTester("http://example.com")
+	r := mt.NewURLTester("http://example.com")
 	assert.NotNil(t, r)
 	assert.False(t, r.ContinueOnFailure)
 }
 
 func TestRunnerConvenienceSetters(t *testing.T) {
-	r := mt.NewEndpointTester("http://example.com")
+	r := mt.NewURLTester("http://example.com")
 	r.WithContinueOnFailure(true)
 	assert.True(t, r.ContinueOnFailure)
 	r.WithHTTPClient(http.DefaultClient)
@@ -52,21 +52,21 @@ func TestRunner_RunTestsT(t *testing.T) {
 		},
 		{
 			name:      "invalid tests",
-			runner:    mt.NewEndpointTester(mockServer.URL),
+			runner:    mt.NewURLTester(mockServer.URL),
 			tests:     []*mt.TestCase{mt.GET("")},
 			wantError: true,
 		},
 		{
 			name:        "nil HTTP client, use default",
 			server:      mockServer,
-			runner:      mt.NewEndpointTester(mockServer.URL),
+			runner:      mt.NewURLTester(mockServer.URL),
 			tests:       []*mt.TestCase{mt.GET("/path")},
 			wantResults: []*mt.TestCaseResult{{TestCase: mt.GET("/path"), Status: http.StatusOK}},
 		},
 		{
 			name:   "all tests pass",
 			server: mockServer,
-			runner: mt.NewEndpointTester(mockServer.URL).WithContinueOnFailure(true),
+			runner: mt.NewURLTester(mockServer.URL).WithContinueOnFailure(true),
 			tests: []*mt.TestCase{
 				mt.GET("/path").ExpectStatus(http.StatusOK),
 				mt.GET("/path").ExpectStatus(http.StatusOK),
@@ -81,7 +81,7 @@ func TestRunner_RunTestsT(t *testing.T) {
 		{
 			name:   "test failure",
 			server: mockServer,
-			runner: mt.NewEndpointTester(mockServer.URL).WithContinueOnFailure(true),
+			runner: mt.NewURLTester(mockServer.URL).WithContinueOnFailure(true),
 			tests: []*mt.TestCase{
 				mt.GET("/path").ExpectStatus(http.StatusOK),
 				mt.GET("/path").ExpectStatus(http.StatusNotFound),
@@ -119,17 +119,17 @@ func TestRunnerValidate(t *testing.T) {
 	}{
 		{
 			name:        "valid",
-			runner:      mt.NewEndpointTester("http://example.com"),
+			runner:      mt.NewURLTester("http://example.com"),
 			expectError: false,
 		},
 		{
 			name:        "invalid, empty base URL",
-			runner:      mt.NewEndpointTester(""),
+			runner:      mt.NewURLTester(""),
 			expectError: true,
 		},
 		{
 			name:        "invalid, base URL contains trailing slash",
-			runner:      mt.NewEndpointTester("http://example.com/"),
+			runner:      mt.NewURLTester("http://example.com/"),
 			expectError: true,
 		},
 	} {

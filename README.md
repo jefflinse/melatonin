@@ -14,7 +14,7 @@ melatonin is very usable in its current state but has not yet reached its V1 rel
 
 ## Usage
 
-melatonin can run as a standalone binary built with go build`. When run in this manner, the program will output a formatted table of test results to stdout.
+melatonin can run as a standalone binary built with `go build`. When run in this manner, the program will output a formatted table of test results to stdout.
 
 melatonin can also run as a set of regular Go tests, in which case results will be reported through the usual `testing.T` context.
 
@@ -76,7 +76,7 @@ Check out the [examples](examples/README.md) directory for more examples.
 ### Test a service runnnig locally or remotely (E2E tests)
 
 ```go
-runner := mt.NewEndpointTester("http://example.com")
+runner := mt.NewURLTester("http://example.com")
 runner.RunTests(...)
 ```
 
@@ -140,13 +140,13 @@ tests := []*mt.TestCase{
 
 ```go
 client, err := &http.Client{}
-runner := mt.NewEndpointTester("http://example.com").WithHTTPClient(client)
+runner := mt.NewURLTester("http://example.com").WithHTTPClient(client)
 ```
 
 ### Use a custom timeout for all tests
 
 ```go
-runner := mt.NewEndpointTester("http://example.com").WithTimeout(5 * time.Second)
+runner := mt.NewURLTester("http://example.com").WithTimeout(5 * time.Second)
 ```
 
 ### Specify a timeout for a specific test
@@ -186,7 +186,7 @@ mt.GET("/resource").
 ### Allow or disallow further tests to run after a failure
 
 ```go
-runner := mt.NewEndpointTester("http://example.com").WithContinueOnFailure(true)
+runner := mt.NewURLTester("http://example.com").WithContinueOnFailure(true)
 ```
 
 ### Create a test case with a custom HTTP request

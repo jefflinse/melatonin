@@ -41,7 +41,7 @@ func init() {
 
 // A TestRunner runs a set of tests against an HTTP endpoint or handler.
 //
-// Use NewEndpointTester() to create a test runner that makes real HTTP
+// Use NewURLTester() to create a test runner that makes real HTTP
 // requests to an actual server (local or remote). This is typically used
 // to defice and run E2E tests against a running web service.
 //
@@ -68,9 +68,9 @@ type TestRunner struct {
 	outputWriter *columnWriter
 }
 
-// NewEndpointTester creates a new TestRunner for testing an HTTP endpoint.
+// NewURLTester creates a new TestRunner for testing an HTTP endpoint.
 // targeting a base URL.
-func NewEndpointTester(baseURL string) *TestRunner {
+func NewURLTester(baseURL string) *TestRunner {
 	return (&TestRunner{}).WithBaseURL(baseURL)
 }
 
@@ -376,7 +376,7 @@ func TestEndpoint(baseURL string, tests []*TestCase) {
 // RunTests runs a set of tests within a Go testing context using the provided
 // base URL and the default TestRunner.
 func TestEndpointT(t *testing.T, baseURL string, tests []*TestCase) {
-	NewEndpointTester(baseURL).RunTestsT(t, tests)
+	NewURLTester(baseURL).RunTestsT(t, tests)
 }
 
 // TestEndpoint runs a set of tests using the provided base URL and the default TestRunner.

@@ -16,10 +16,10 @@ func EndpointExample() {
 	// all aspects of a particular test case, if needed.
 	customReq, _ := http.NewRequest("GET", "http://localhost:8080/foo", nil)
 
-	// Use NewEndpointTesterr() to test actual service endpoints.
+	// Use NewURLTester() to test actual service endpoints.
 	// Real network calls are made, making this suitable for E2E testing
 	// of actual service endpoints running locally or remotely.
-	runner := mt.NewEndpointTester("http://localhost:8080").
+	runner := mt.NewURLTester("http://localhost:8080").
 		WithHTTPClient(http.DefaultClient).
 		WithRequestTimeout(time.Second * 5).
 		WithContinueOnFailure(true)
