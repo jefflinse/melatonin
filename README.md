@@ -6,6 +6,8 @@ go-itest is a fluent, flexible REST API testing library for Go. It provides many
 
 See the full [user guide](./USERGUIDE.md) and the [API documentation](https://pkg.go.dev/github.com/jefflinse/go-itest/itest) for more information.
 
+itest is very usable in its current state but has not yet reached its V1 release milestone. As such, the API surface may change without notice until then. See the roadmap for more information.
+
 ## Installation
 
     go get github.com/jefflinse/go-itest/itest
@@ -21,14 +23,13 @@ itest can also run as a set of regular Go tests, in which case results will be r
 ```go
 package main
 
-import "github.com/jefflinse/go-itest"
+import "github.com/jefflinse/go-itest/itest"
 
 func main() {
 
     itest.TestEndpoint("http://example.com", []*itest.TestCase{
 
-        itest.GET("/resource").
-            Describe("Fetch a record successfully").
+        itest.GET("/resource", "Fetch a record successfully").
             ExpectStatus(200).
             ExpectBody("Hello, world!"),
     })
@@ -46,14 +47,16 @@ func main() {
 ```go
 package mypackage_test
 
-import "github.com/jefflinse/go-itest"
+import (
+    "testing"
+    "github.com/jefflinse/go-itest/itest"
+)
 
 func TestAPI(t *testing.T) {
 
     itest.TestEndpointT(t, "http://example.com", []*itest.TestCase{
 
-        itest.GET("/resource").
-            Describe("Fetch a record successfully").
+        itest.GET("/resource", "Fetch a record successfully").
             ExpectStatus(200).
             ExpectBody("Hello, world!"),
     })
@@ -67,6 +70,8 @@ func TestAPI(t *testing.T) {
     ok      github.com/my/api    0.144s
 
 ## Examples
+
+Check out the [examples](examples/README.md) directory for more examples.
 
 ### Test a service runnnig locally or remotely (E2E tests)
 
