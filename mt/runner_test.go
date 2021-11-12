@@ -1,4 +1,4 @@
-package itest_test
+package mt_test
 
 import (
 	"net/http"
@@ -6,18 +6,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jefflinse/go-itest/itest"
+	"github.com/jefflinse/melatonin/mt"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewTestRunner(t *testing.T) {
-	r := itest.NewEndpointTester("http://example.com")
+	r := mt.NewEndpointTester("http://example.com")
 	assert.NotNil(t, r)
 	assert.False(t, r.ContinueOnFailure)
 }
 
 func TestRunnerConvenienceSetters(t *testing.T) {
-	r := itest.NewEndpointTester("http://example.com")
+	r := mt.NewEndpointTester("http://example.com")
 	r.WithContinueOnFailure(true)
 	assert.True(t, r.ContinueOnFailure)
 	r.WithHTTPClient(http.DefaultClient)
@@ -40,39 +40,39 @@ func TestRunner_RunTestsT(t *testing.T) {
 	for _, test := range []struct {
 		name        string
 		server      *httptest.Server
-		runner      *itest.TestRunner
-		tests       []*itest.TestCase
-		wantResults []*itest.TestCaseResult
+		runner      *mt.TestRunner
+		tests       []*mt.TestCase
+		wantResults []*mt.TestCaseResult
 		wantError   bool
 	}{
 		{
 			name:      "invalid test runner",
-			runner:    &itest.TestRunner{},
+			runner:    &mt.TestRunner{},
 			wantError: true,
 		},
 		{
 			name:      "invalid tests",
-			runner:    itest.NewEndpointTester(mockServer.URL),
-			tests:     []*itest.TestCase{itest.GET("")},
+			runner:    mt.NewEndpointTester(mockServer.URL),
+			tests:     []*mt.TestCase{mt.GET("")},
 			wantError: true,
 		},
 		{
 			name:        "nil HTTP client, use default",
 			server:      mockServer,
-			runner:      itest.NewEndpointTester(mockServer.URL),
-			tests:       []*itest.TestCase{itest.GET("/path")},
-			wantResults: []*itest.TestCaseResult{{TestCase: itest.GET("/path"), Status: http.StatusOK}},
+			runner:      mt.NewEndpointTester(mockServer.URL),
+			tests:       []*mt.TestCase{mt.GET("/path")},
+			wantResults: []*mt.TestCaseResult{{TestCase: mt.GET("/path"), Status: http.StatusOK}},
 		},
 		{
 			name:   "all tests pass",
 			server: mockServer,
-			runner: itest.NewEndpointTester(mockServer.URL).WithContinueOnFailure(true),
-			tests: []*itest.TestCase{
-				itest.GET("/path").ExpectStatus(http.StatusOK),
-				itest.GET("/path").ExpectStatus(http.StatusOK),
-				itest.GET("/path").ExpectStatus(http.StatusOK),
+			runner: mt.NewEndpointTester(mockServer.URL).WithContinueOnFailure(true),
+			tests: []*mt.TestCase{
+				mt.GET("/path").ExpectStatus(http.StatusOK),
+				mt.GET("/path").ExpectStatus(http.StatusOK),
+				mt.GET("/path").ExpectStatus(http.StatusOK),
 			},
-			wantResults: []*itest.TestCaseResult{
+			wantResults: []*mt.TestCaseResult{
 				{Status: http.StatusOK},
 				{Status: http.StatusOK},
 				{Status: http.StatusOK},
@@ -81,13 +81,13 @@ func TestRunner_RunTestsT(t *testing.T) {
 		{
 			name:   "test failure",
 			server: mockServer,
-			runner: itest.NewEndpointTester(mockServer.URL).WithContinueOnFailure(true),
-			tests: []*itest.TestCase{
-				itest.GET("/path").ExpectStatus(http.StatusOK),
-				itest.GET("/path").ExpectStatus(http.StatusNotFound),
-				itest.GET("/path").ExpectStatus(http.StatusOK),
+			runner: mt.NewEndpointTester(mockServer.URL).WithContinueOnFailure(true),
+			tests: []*mt.TestCase{
+				mt.GET("/path").ExpectStatus(http.StatusOK),
+				mt.GET("/path").ExpectStatus(http.StatusNotFound),
+				mt.GET("/path").ExpectStatus(http.StatusOK),
 			},
-			wantResults: []*itest.TestCaseResult{
+			wantResults: []*mt.TestCaseResult{
 				{Status: http.StatusOK},
 				{Status: http.StatusOK, Errors: []error{assert.AnError}},
 				{Status: http.StatusOK},
@@ -114,22 +114,22 @@ func TestRunner_RunTestsT(t *testing.T) {
 func TestRunnerValidate(t *testing.T) {
 	for _, test := range []struct {
 		name        string
-		runner      *itest.TestRunner
+		runner      *mt.TestRunner
 		expectError bool
 	}{
 		{
 			name:        "valid",
-			runner:      itest.NewEndpointTester("http://example.com"),
+			runner:      mt.NewEndpointTester("http://example.com"),
 			expectError: false,
 		},
 		{
 			name:        "invalid, empty base URL",
-			runner:      itest.NewEndpointTester(""),
+			runner:      mt.NewEndpointTester(""),
 			expectError: true,
 		},
 		{
 			name:        "invalid, base URL contains trailing slash",
-			runner:      itest.NewEndpointTester("http://example.com/"),
+			runner:      mt.NewEndpointTester("http://example.com/"),
 			expectError: true,
 		},
 	} {

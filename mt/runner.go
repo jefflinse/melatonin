@@ -1,4 +1,4 @@
-package itest
+package mt
 
 import (
 	"encoding/json"
@@ -28,12 +28,12 @@ var (
 
 func init() {
 	defaultRequestTimeout, _ = time.ParseDuration(defaultRequestTimeoutStr)
-	envTimeoutStr := os.Getenv("ITEST_DEFAULT_TEST_TIMEOUT")
+	envTimeoutStr := os.Getenv("MELATONIN_DEFAULT_TEST_TIMEOUT")
 	if envTimeoutStr != "" {
 		if timeout, err := time.ParseDuration(envTimeoutStr); err == nil {
 			defaultRequestTimeout = timeout
 		} else {
-			color.HiYellow("invalid ITEST_DEFAULT_TEST_TIMEOUT value %q in environment, using default of %s",
+			color.HiYellow("invalid MELATONIN_DEFAULT_TEST_TIMEOUT value %q in environment, using default of %s",
 				envTimeoutStr, defaultRequestTimeoutStr)
 		}
 	}

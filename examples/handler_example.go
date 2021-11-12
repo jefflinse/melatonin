@@ -3,10 +3,10 @@ package main
 import (
 	"net/http"
 
-	"github.com/jefflinse/go-itest/itest"
+	"github.com/jefflinse/melatonin/mt"
 )
 
-// This example shows how to use itest to directly test an HTTP handler locally.
+// This example shows how to use melatonin to directly test an HTTP handler locally.
 func HandlerExample() {
 
 	// Anything satifying the http.Handler interface can be tested as a handler.
@@ -18,14 +18,14 @@ func HandlerExample() {
 
 	// Use NetHandlerTester() to test a net/http.Handler.
 	// No actual network calls are made, making this suitable for unit tests.
-	runner := itest.NewHandlerTester(mux).WithContinueOnFailure(true)
-	runner.RunTests([]*itest.TestCase{
+	runner := mt.NewHandlerTester(mux).WithContinueOnFailure(true)
+	runner.RunTests([]*mt.TestCase{
 
-		itest.GET("/foo", "Fetch foo by testing a local handler").
+		mt.GET("/foo", "Fetch foo by testing a local handler").
 			ExpectStatus(200).
 			ExpectBody("Hello, world!"),
 
-		itest.GET("/bar", "This should be a 404").
+		mt.GET("/bar", "This should be a 404").
 			ExpectStatus(200),
 	})
 }

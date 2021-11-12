@@ -2,7 +2,7 @@
 
 Generally speaking, [golden files](https://softwareengineering.stackexchange.com/a/358792) contain the expected output of a program or process being tested. They are especially useful if your expected output is lengthy or complex.
 
-itest uses a very simple golden file format to specify the expected status code, headers, and body content of a test result:
+melatonin uses a very simple golden file format to specify the expected status code, headers, and body content of a test result:
 
 ```
 200
@@ -64,7 +64,7 @@ By default, a test result's body content is expected to match the content in the
 }
 ```
 
-When comparing a JSON response to the expected content, itest will ensure that all keys or elements present in the expected content are present in the actual response and that their values match. This allows for one to specify just the subset of a JSON response of interest to the test. To fail a test if an unexpected key or element is present in the response (that is, to match the JSON content exactly, ignoring whitespace), use the `exact` directive in the body section declaration:
+When comparing a JSON response to the expected content, melatonin will ensure that all keys or elements present in the expected content are present in the actual response and that their values match. This allows for one to specify just the subset of a JSON response of interest to the test. To fail a test if an unexpected key or element is present in the response (that is, to match the JSON content exactly, ignoring whitespace), use the `exact` directive in the body section declaration:
 
 ```
 200

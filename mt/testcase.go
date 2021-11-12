@@ -1,4 +1,4 @@
-package itest
+package mt
 
 import (
 	"errors"
@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/jefflinse/go-itest/golden"
+	"github.com/jefflinse/melatonin/golden"
 )
 
 // A TestCase tests a single call to an HTTP endpoint.

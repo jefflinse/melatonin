@@ -5,10 +5,10 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/jefflinse/go-itest/itest"
+	"github.com/jefflinse/melatonin/mt"
 )
 
-// This example shows how to use itest to test an actual service endpoint.
+// This example shows how to use melatonin to test an actual service endpoint.
 func EndpointExample() {
 	startExampleServer()
 
@@ -19,38 +19,38 @@ func EndpointExample() {
 	// Use NewEndpointTesterr() to test actual service endpoints.
 	// Real network calls are made, making this suitable for E2E testing
 	// of actual service endpoints running locally or remotely.
-	runner := itest.NewEndpointTester("http://localhost:8080").
+	runner := mt.NewEndpointTester("http://localhost:8080").
 		WithHTTPClient(http.DefaultClient).
 		WithRequestTimeout(time.Second * 5).
 		WithContinueOnFailure(true)
 
-	runner.RunTests([]*itest.TestCase{
+	runner.RunTests([]*mt.TestCase{
 
-		itest.GET("/foo").
+		mt.GET("/foo").
 			Describe("Fetch foo and ensure it takes less than one second").
 			WithTimeout(1 * time.Second). // specify a timeout for the test case
 			ExpectStatus(200).
 			ExpectBody("Hello, world!"),
 
-		itest.GET("/foo", "The test description can be specified here instead").
+		mt.GET("/foo", "The test description can be specified here instead").
 			ExpectBody("Hello, world!"),
 
-		itest.GET("/foo").
+		mt.GET("/foo").
 			Describe("Fetch foo and ensure the returned JSON contains the right values").
 			WithHeader("Accept", "application/json").
 			ExpectStatus(201).
-			ExpectBody(itest.Object{
+			ExpectBody(mt.Object{
 				"a_string":       "Hello, world!",
 				"a_number":       43,
 				"another_number": 3.15,
 				"a_bool":         false,
 			}),
 
-		itest.GET("/bar?first=foo&second=bar").
+		mt.GET("/bar?first=foo&second=bar").
 			Describe("Fetch bar specifying a query string directly").
 			ExpectStatus(404),
 
-		itest.GET("/bar").
+		mt.GET("/bar").
 			Describe("Fetch bar specifying query parameters all at once").
 			WithQueryParams(url.Values{
 				"first":  []string{"foo"},
@@ -58,13 +58,13 @@ func EndpointExample() {
 			}).
 			ExpectStatus(404),
 
-		itest.GET("/bar").
+		mt.GET("/bar").
 			Describe("Fetch bar specifying query parameters individually").
 			WithQueryParam("first", "foo").
 			WithQueryParam("second", "bar").
 			ExpectStatus(404),
 
-		itest.POST("/foo").
+		mt.POST("/foo").
 			Describe("Create a new foo").
 			WithHeader("Accept", "application/json"). // add a single header
 			WithBody(map[string]interface{}{          // specify the body using Go types
@@ -73,7 +73,7 @@ func EndpointExample() {
 			ExpectStatus(201).
 			ExpectHeader("My-Custom-Header", "foobar"),
 
-		itest.POST("/foo").
+		mt.POST("/foo").
 			Describe("Ensure auth credentials are accepted").
 			WithHeaders(http.Header{ // set all headers at once
 				"Accept": []string{"application/json"},
@@ -82,18 +82,18 @@ func EndpointExample() {
 			WithBody(`{"key":"value"}`). // specify body as a string
 			ExpectStatus(201),
 
-		itest.DELETE("/foo").
+		mt.DELETE("/foo").
 			Describe("Delete a foo").
 			ExpectStatus(204),
 
 		// use any custom *http.Request for a test
-		itest.DO(customReq).
+		mt.DO(customReq).
 			Describe("Fetch foo using a custom HTTP request").
 			ExpectStatus(200).
 			ExpectBody("Hello, world!"),
 
 		// load expectations from a golden file
-		itest.GET("/foo").
+		mt.GET("/foo").
 			Describe("Fetch foo and match expectations from a golden file").
 			WithHeader("Accept", "application/json").
 			ExpectGolden("golden/expect-headers-and-json-body.golden"),

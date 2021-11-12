@@ -1,35 +1,35 @@
-# go-itest
+# melatonin
 
 Hassle-free REST API testing for Go.
 
-go-itest is a fluent, flexible REST API testing library for Go. It provides many of the benefits of domain-specific test language but with the flexibililty of writing pure Go. Use it to write unit tests that test your `http.Handler`s directly, or target actual local or remote service endpoints to perform E2E tests of your API service.
+melatonin is a fluent, flexible REST API testing library for Go. It provides many of the benefits of domain-specific test language but with the flexibililty of writing pure Go. Use it to write unit tests that test your `http.Handler`s directly, or target actual local or remote service endpoints to perform E2E tests of your API service.
 
-See the full [user guide](./USERGUIDE.md) and the [API documentation](https://pkg.go.dev/github.com/jefflinse/go-itest/itest) for more information.
+See the full [user guide](./USERGUIDE.md) and the [API documentation](https://pkg.go.dev/github.com/jefflinse/melatonin/mt) for more information.
 
-itest is very usable in its current state but has not yet reached its V1 release milestone. As such, the API surface may change without notice until then. See the roadmap for more information.
+melatonin is very usable in its current state but has not yet reached its V1 release milestone. As such, the API surface may change without notice until then. See the roadmap for more information.
 
 ## Installation
 
-    go get github.com/jefflinse/go-itest/itest
+    go get github.com/jefflinse/melatonin/mt
 
 ## Usage
 
-itest can run as a standalone binary built with go build`. When run in this manner, the program will output a formatted table of test results to stdout.
+melatonin can run as a standalone binary built with go build`. When run in this manner, the program will output a formatted table of test results to stdout.
 
-itest can also run as a set of regular Go tests, in which case results will be reported through the usual `testing.T` context.
+melatonin can also run as a set of regular Go tests, in which case results will be reported through the usual `testing.T` context.
 
 **As A Go Program**
 
 ```go
 package main
 
-import "github.com/jefflinse/go-itest/itest"
+import "github.com/jefflinse/melatonin/mt"
 
 func main() {
 
-    itest.TestEndpoint("http://example.com", []*itest.TestCase{
+    mt.TestEndpoint("http://example.com", []*mt.TestCase{
 
-        itest.GET("/resource", "Fetch a record successfully").
+        mt.GET("/resource", "Fetch a record successfully").
             ExpectStatus(200).
             ExpectBody("Hello, world!"),
     })
@@ -49,14 +49,14 @@ package mypackage_test
 
 import (
     "testing"
-    "github.com/jefflinse/go-itest/itest"
+    "github.com/jefflinse/melatonin/mt"
 )
 
 func TestAPI(t *testing.T) {
 
-    itest.TestEndpointT(t, "http://example.com", []*itest.TestCase{
+    mt.TestEndpointT(t, "http://example.com", []*mt.TestCase{
 
-        itest.GET("/resource", "Fetch a record successfully").
+        mt.GET("/resource", "Fetch a record successfully").
             ExpectStatus(200).
             ExpectBody("Hello, world!"),
     })
@@ -76,34 +76,34 @@ Check out the [examples](examples/README.md) directory for more examples.
 ### Test a service runnnig locally or remotely (E2E tests)
 
 ```go
-runner := itest.NewEndpointTester("http://example.com")
+runner := mt.NewEndpointTester("http://example.com")
 runner.RunTests(...)
 ```
 
 ### Test an HTTP handler directly (unit tests)
 
 ```go
-runner := itest.NewHandlerTester(http.NewServeMux())
+runner := mt.NewHandlerTester(http.NewServeMux())
 runner.RunTests(...)
 ```
 
 ### Define tests using chainable methods
 
 ```go
-tests := []*itest.TestCase{
+tests := []*mt.TestCase{
 
-    itest.GET("/resource").
+    mt.GET("/resource").
        ExpectStatus(200).
        ExpectBody(String("Hello, World!")),
     
-    itest.POST("/resource").
+    mt.POST("/resource").
        WithBody(Object{
          "name": "Burt Macklin",
          "age":  32,
        }).
        ExpectStatus(201),
     
-    itest.DELETE("/resource/42").
+    mt.DELETE("/resource/42").
        ExpectStatus(204),
 }
 ```
@@ -111,7 +111,7 @@ tests := []*itest.TestCase{
 ### Define tests using structs
 
 ```go
-tests := []*itest.TestCase{
+tests := []*mt.TestCase{
 
     {
         Method: "GET",
@@ -140,19 +140,19 @@ tests := []*itest.TestCase{
 
 ```go
 client, err := &http.Client{}
-runner := itest.NewEndpointTester("http://example.com").WithHTTPClient(client)
+runner := mt.NewEndpointTester("http://example.com").WithHTTPClient(client)
 ```
 
 ### Use a custom timeout for all tests
 
 ```go
-runner := itest.NewEndpointTester("http://example.com").WithTimeout(5 * time.Second)
+runner := mt.NewEndpointTester("http://example.com").WithTimeout(5 * time.Second)
 ```
 
 ### Specify a timeout for a specific test
 
 ```go
-itest.GET("/resource").
+mt.GET("/resource").
     WithTimeout(5 * time.Second).
     ExpectStatus(200).
 ```
@@ -162,13 +162,13 @@ itest.GET("/resource").
 Inline:
 
 ```go
-itest.GET("/resource?first=foo&second=bar")
+mt.GET("/resource?first=foo&second=bar")
 ```
 
 Individually:
 
 ```go
-itest.GET("/resource").
+mt.GET("/resource").
     WithQueryParam("first", "foo").
     WithQueryParam("second", "bar")
 ```
@@ -176,7 +176,7 @@ itest.GET("/resource").
 All At Once:
 
 ```go
-itest.GET("/resource").
+mt.GET("/resource").
     WithQueryParams(url.Values{
         "first": []string{"foo"},
         "second": []string{"bar"},
@@ -186,7 +186,7 @@ itest.GET("/resource").
 ### Allow or disallow further tests to run after a failure
 
 ```go
-runner := itest.NewEndpointTester("http://example.com").WithContinueOnFailure(true)
+runner := mt.NewEndpointTester("http://example.com").WithContinueOnFailure(true)
 ```
 
 ### Create a test case with a custom HTTP request
@@ -194,7 +194,7 @@ runner := itest.NewEndpointTester("http://example.com").WithContinueOnFailure(tr
 ```go
 req, err := http.NewRequest("GET", "http://example.com/resource", nil)
 
-itest.DO(req).
+mt.DO(req).
     ExpectStatus(200)
 ```
 
@@ -203,11 +203,11 @@ itest.DO(req).
 Any unexpected headers or JSON keys or values present in the response will cause the test case to fail.
 
 ```go
-itest.GET("/resource").
+mt.GET("/resource").
     ExpectExactHeaders(http.Header{
         "Content-Type": []string{"application/json"},
     }).
-    ExpectExactBody(itest.Object{
+    ExpectExactBody(mt.Object{
         "foo": "bar",
     })
 ```
@@ -215,7 +215,7 @@ itest.GET("/resource").
 ### Load expectations for a test case from a golden file
 
 ```go
-itest.GET("/resource").
+mt.GET("/resource").
     ExpectGolden("path/to/file.golden")
 ```
 
@@ -231,7 +231,7 @@ Golden files keep your test definitions short and concise by storing expectation
 
 ## Contributing
 
-Please [open an issue](https://github.com/jefflinse/go-itest/issues) if you find a bug or have a feature request.
+Please [open an issue](https://github.com/jefflinse/melatonin/issues) if you find a bug or have a feature request.
 
 ## License
 

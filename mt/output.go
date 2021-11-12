@@ -1,4 +1,4 @@
-package itest
+package mt
 
 import (
 	"fmt"
@@ -13,11 +13,11 @@ import (
 var Verbose bool
 
 func init() {
-	if os.Getenv("ITEST_VERBOSE") != "" {
+	if os.Getenv("MELATONIN_VERBOSE") != "" {
 		Verbose = true
 	}
 
-	if os.Getenv("ITEST_NOCOLOR") != "" {
+	if os.Getenv("MELATONIN_NOCOLOR") != "" {
 		color.NoColor = true
 	}
 }

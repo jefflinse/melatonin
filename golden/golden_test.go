@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/jefflinse/go-itest/golden"
+	"github.com/jefflinse/melatonin/golden"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 )

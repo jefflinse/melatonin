@@ -1,4 +1,4 @@
-module github.com/jefflinse/go-itest
+module github.com/jefflinse/melatonin
 
 go 1.17
 
