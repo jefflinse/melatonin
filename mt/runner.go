@@ -368,14 +368,14 @@ func validateTests(tests []*TestCase) bool {
 	return valid
 }
 
-// TestEndpoint runs a set of tests using the provided base URL and the default TestRunner.
-func TestEndpoint(baseURL string, tests []*TestCase) {
-	TestEndpointT(nil, baseURL, tests)
+// TestURL runs a set of tests using the provided base URL and the default TestRunner.
+func TestURL(baseURL string, tests []*TestCase) {
+	TestURLT(nil, baseURL, tests)
 }
 
 // RunTests runs a set of tests within a Go testing context using the provided
 // base URL and the default TestRunner.
-func TestEndpointT(t *testing.T, baseURL string, tests []*TestCase) {
+func TestURLT(t *testing.T, baseURL string, tests []*TestCase) {
 	NewURLTester(baseURL).RunTestsT(t, tests)
 }
 
