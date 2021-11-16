@@ -116,14 +116,14 @@ func (r *TestRunner) WithRequestTimeout(timeout time.Duration) *TestRunner {
 // RunTests runs a set of tests.
 //
 // To run tests within the context of a Go test, use RunTestsT().
-func (r *TestRunner) RunTests(tests []*TestCase) ([]*TestCaseResult, error) {
+func (r *TestRunner) RunTests(tests []*HTTPTestCase) ([]*TestCaseResult, error) {
 	return r.RunTestsT(nil, tests)
 }
 
 // RunTests runs a set of tests within the context of a Go test.
 //
 // To run tests as a standalone binary without a testing context, use RunTests().
-func (r *TestRunner) RunTestsT(t *testing.T, tests []*TestCase) ([]*TestCaseResult, error) {
+func (r *TestRunner) RunTestsT(t *testing.T, tests []*HTTPTestCase) ([]*TestCaseResult, error) {
 	if err := r.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid test runner: %w", err)
 	}
@@ -184,7 +184,7 @@ func (r *TestRunner) RunTestsT(t *testing.T, tests []*TestCase) ([]*TestCaseResu
 	return results, nil
 }
 
-func (r *TestRunner) runTest(t *testing.T, test *TestCase) (*TestCaseResult, error) {
+func (r *TestRunner) runTest(t *testing.T, test *HTTPTestCase) (*TestCaseResult, error) {
 	result := &TestCaseResult{
 		TestCase: test,
 		Errors:   []error{},
@@ -356,7 +356,7 @@ func parseResponseBody(body []byte) interface{} {
 }
 
 // validateTests validates a set of tests.
-func validateTests(tests []*TestCase) bool {
+func validateTests(tests []*HTTPTestCase) bool {
 	valid := true
 	for _, test := range tests {
 		if err := test.Validate(); err != nil {
@@ -369,23 +369,23 @@ func validateTests(tests []*TestCase) bool {
 }
 
 // TestURL runs a set of tests using the provided base URL and the default TestRunner.
-func TestURL(baseURL string, tests []*TestCase) {
+func TestURL(baseURL string, tests []*HTTPTestCase) {
 	TestURLT(nil, baseURL, tests)
 }
 
 // RunTests runs a set of tests within a Go testing context using the provided
 // base URL and the default TestRunner.
-func TestURLT(t *testing.T, baseURL string, tests []*TestCase) {
+func TestURLT(t *testing.T, baseURL string, tests []*HTTPTestCase) {
 	NewURLTester(baseURL).RunTestsT(t, tests)
 }
 
 // TestEndpoint runs a set of tests using the provided base URL and the default TestRunner.
-func TestHandler(handler http.Handler, tests []*TestCase) {
+func TestHandler(handler http.Handler, tests []*HTTPTestCase) {
 	TestHandlerT(nil, handler, tests)
 }
 
 // RunTests runs a set of tests within a Go testing context using the provided
 // base URL and the default TestRunner.
-func TestHandlerT(t *testing.T, handler http.Handler, tests []*TestCase) {
+func TestHandlerT(t *testing.T, handler http.Handler, tests []*HTTPTestCase) {
 	NewHandlerTester(handler).RunTestsT(t, tests)
 }

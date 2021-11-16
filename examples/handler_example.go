@@ -19,7 +19,7 @@ func HandlerExample() {
 	// Use NetHandlerTester() to test a net/http.Handler.
 	// No actual network calls are made, making this suitable for unit tests.
 	runner := mt.NewHandlerTester(mux).WithContinueOnFailure(true)
-	runner.RunTests([]*mt.TestCase{
+	runner.RunTests([]*mt.HTTPTestCase{
 
 		mt.GET("/foo", "Fetch foo by testing a local handler").
 			ExpectStatus(200).

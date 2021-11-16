@@ -12,7 +12,7 @@ import (
 	"github.com/jefflinse/melatonin/golden"
 )
 
-// A TestCase tests a single call to an HTTP endpoint.
+// An HTTPTestCase tests a single call to an HTTP endpoint.
 //
 // An optional setup function can be provided to perform any necessary
 // setup before the test is run, such as adding or removing objects in
@@ -20,7 +20,7 @@ import (
 //
 // All fields in the WantBody map are expected to be present in the
 // response body.
-type TestCase struct {
+type HTTPTestCase struct {
 	// After is an optional function that is run after the test is run.
 	// It can be used to perform any cleanup actions after the test,
 	// such as adding or removing objects in a database. Any error
@@ -85,8 +85,8 @@ type TestCase struct {
 }
 
 // NewTestCase creates a new TestCase with the given method and path.
-func NewTestCase(method, path string, description ...string) *TestCase {
-	return &TestCase{
+func NewTestCase(method, path string, description ...string) *HTTPTestCase {
+	return &HTTPTestCase{
 		Description: strings.Join(description, " "),
 		Method:      method,
 		Path:        path,
@@ -94,48 +94,48 @@ func NewTestCase(method, path string, description ...string) *TestCase {
 }
 
 // DisplayName returns the name of the test case.
-func (tc *TestCase) DisplayName() string {
+func (tc *HTTPTestCase) DisplayName() string {
 	return fmt.Sprintf("%s %s", tc.Method, tc.Path)
 }
 
 // DELETE is a shortcut for NewTestCase(http.MethodDelete, path).
-func DELETE(path string, description ...string) *TestCase {
+func DELETE(path string, description ...string) *HTTPTestCase {
 	return NewTestCase(http.MethodDelete, path, description...)
 }
 
 // HEAD is a shortcut for NewTestCase(http.MethodHead, path, description...).
-func HEAD(path string, description ...string) *TestCase {
+func HEAD(path string, description ...string) *HTTPTestCase {
 	return NewTestCase(http.MethodHead, path, description...)
 }
 
 // GET is a shortcut for NewTestCase(http.MethodGet, path, description...).
-func GET(path string, description ...string) *TestCase {
+func GET(path string, description ...string) *HTTPTestCase {
 	return NewTestCase(http.MethodGet, path, description...)
 }
 
 // OPTIONS is a shortcut for NewTestCase(http.MethodOptions, path, description...).
-func OPTIONS(path string, description ...string) *TestCase {
+func OPTIONS(path string, description ...string) *HTTPTestCase {
 	return NewTestCase(http.MethodOptions, path, description...)
 }
 
 // PATCH is a shortcut for NewTestCase(http.MethodPatch, path, description...).
-func PATCH(path string, description ...string) *TestCase {
+func PATCH(path string, description ...string) *HTTPTestCase {
 	return NewTestCase(http.MethodPatch, path, description...)
 }
 
 // POST is a shortcut for NewTestCase(http.MethodPost, path, description...).
-func POST(path string, description ...string) *TestCase {
+func POST(path string, description ...string) *HTTPTestCase {
 	return NewTestCase(http.MethodPost, path, description...)
 }
 
 // PUT is a shortcut for NewTestCase(http.MethodPut, path, description...).
-func PUT(path string, description ...string) *TestCase {
+func PUT(path string, description ...string) *HTTPTestCase {
 	return NewTestCase(http.MethodPut, path, description...)
 }
 
 // DO creates a test case from a custom HTTP request.
-func DO(request *http.Request, description ...string) *TestCase {
-	return &TestCase{
+func DO(request *http.Request, description ...string) *HTTPTestCase {
+	return &HTTPTestCase{
 		Method:  request.Method,
 		Path:    request.URL.Path,
 		request: request,
@@ -143,7 +143,7 @@ func DO(request *http.Request, description ...string) *TestCase {
 }
 
 // After registers a function to be run after the test case.
-func (tc *TestCase) After(after func() error) *TestCase {
+func (tc *HTTPTestCase) After(after func() error) *HTTPTestCase {
 	if tc.AfterFunc != nil {
 		color.HiYellow("overriding previously defined AfterFunc")
 	}
@@ -153,7 +153,7 @@ func (tc *TestCase) After(after func() error) *TestCase {
 }
 
 // Before registers a function to be run before the test case.
-func (tc *TestCase) Before(before func() error) *TestCase {
+func (tc *HTTPTestCase) Before(before func() error) *HTTPTestCase {
 	if tc.BeforeFunc != nil {
 		color.HiYellow("overriding previously defined BeforeFunc")
 	}
@@ -163,7 +163,7 @@ func (tc *TestCase) Before(before func() error) *TestCase {
 }
 
 // Describe sets a description for the test case.
-func (tc *TestCase) Describe(description string) *TestCase {
+func (tc *HTTPTestCase) Describe(description string) *HTTPTestCase {
 	if tc.Description != "" {
 		color.HiYellow("overriding previous description")
 	}
@@ -173,7 +173,7 @@ func (tc *TestCase) Describe(description string) *TestCase {
 }
 
 // WithBody sets the request body for the test case.
-func (tc *TestCase) WithBody(body interface{}) *TestCase {
+func (tc *HTTPTestCase) WithBody(body interface{}) *HTTPTestCase {
 	if tc.RequestBody != nil {
 		color.HiYellow("overriding previously defined request body")
 	}
@@ -183,7 +183,7 @@ func (tc *TestCase) WithBody(body interface{}) *TestCase {
 }
 
 // WithHeaders sets the request headers for the test case.
-func (tc *TestCase) WithHeaders(headers http.Header) *TestCase {
+func (tc *HTTPTestCase) WithHeaders(headers http.Header) *HTTPTestCase {
 	if tc.RequestHeaders != nil {
 		color.HiYellow("overriding previously defined request headers")
 	}
@@ -193,7 +193,7 @@ func (tc *TestCase) WithHeaders(headers http.Header) *TestCase {
 }
 
 // WithHeader adds a request header to the test case.
-func (tc *TestCase) WithHeader(key, value string) *TestCase {
+func (tc *HTTPTestCase) WithHeader(key, value string) *HTTPTestCase {
 	if tc.RequestHeaders == nil {
 		tc.RequestHeaders = http.Header{}
 	}
@@ -202,7 +202,7 @@ func (tc *TestCase) WithHeader(key, value string) *TestCase {
 	return tc
 }
 
-func (tc *TestCase) WithQueryParams(params url.Values) *TestCase {
+func (tc *HTTPTestCase) WithQueryParams(params url.Values) *HTTPTestCase {
 	if tc.QueryParams != nil {
 		color.HiYellow("overriding previously defined query params")
 	}
@@ -211,7 +211,7 @@ func (tc *TestCase) WithQueryParams(params url.Values) *TestCase {
 	return tc
 }
 
-func (tc *TestCase) WithQueryParam(key, value string) *TestCase {
+func (tc *HTTPTestCase) WithQueryParam(key, value string) *HTTPTestCase {
 	if tc.QueryParams == nil {
 		tc.QueryParams = url.Values{}
 	}
@@ -221,7 +221,7 @@ func (tc *TestCase) WithQueryParam(key, value string) *TestCase {
 }
 
 // WithTimeout sets a timeout for the test case.
-func (tc *TestCase) WithTimeout(timeout time.Duration) *TestCase {
+func (tc *HTTPTestCase) WithTimeout(timeout time.Duration) *HTTPTestCase {
 	if tc.Timeout != 0 {
 		color.HiYellow("overriding previously defined timeout")
 	}
@@ -231,7 +231,7 @@ func (tc *TestCase) WithTimeout(timeout time.Duration) *TestCase {
 }
 
 // ExpectStatus sets the expected HTTP status code for the test case.
-func (tc *TestCase) ExpectStatus(status int) *TestCase {
+func (tc *HTTPTestCase) ExpectStatus(status int) *HTTPTestCase {
 	if tc.WantStatus > 0 {
 		color.HiYellow("overriding previously expected status")
 	}
@@ -244,7 +244,7 @@ func (tc *TestCase) ExpectStatus(status int) *TestCase {
 //
 // Unlike ExpectHeaders, ExpectExactHeaders willl cause the test case to fail
 // if any unexpected headers are present in the response.
-func (tc *TestCase) ExpectExactHeaders(headers http.Header) *TestCase {
+func (tc *HTTPTestCase) ExpectExactHeaders(headers http.Header) *HTTPTestCase {
 	tc.WantExactHeaders = true
 	return tc.ExpectHeaders(headers)
 }
@@ -253,7 +253,7 @@ func (tc *TestCase) ExpectExactHeaders(headers http.Header) *TestCase {
 //
 // Unlike ExpectExactHeaders, ExpectHeaders only verifies that the expected
 // headers are present in the response, and ignores any additional headers.
-func (tc *TestCase) ExpectHeaders(headers http.Header) *TestCase {
+func (tc *HTTPTestCase) ExpectHeaders(headers http.Header) *HTTPTestCase {
 	if tc.WantHeaders != nil && len(tc.WantHeaders) > 0 {
 		color.HiYellow("overriding previously expected headers")
 	}
@@ -263,7 +263,7 @@ func (tc *TestCase) ExpectHeaders(headers http.Header) *TestCase {
 }
 
 // ExpectHeader adds an expected HTTP response header for the test case.
-func (tc *TestCase) ExpectHeader(key, value string) *TestCase {
+func (tc *HTTPTestCase) ExpectHeader(key, value string) *HTTPTestCase {
 	if tc.WantHeaders == nil {
 		tc.WantHeaders = http.Header{}
 	}
@@ -273,7 +273,7 @@ func (tc *TestCase) ExpectHeader(key, value string) *TestCase {
 }
 
 // ExpectBody sets the expected HTTP response body for the test case.
-func (tc *TestCase) ExpectBody(body interface{}) *TestCase {
+func (tc *HTTPTestCase) ExpectBody(body interface{}) *HTTPTestCase {
 	if tc.WantBody != nil {
 		color.HiYellow("overriding previously expected body")
 	}
@@ -289,12 +289,12 @@ func (tc *TestCase) ExpectBody(body interface{}) *TestCase {
 // additional fields or values not present in the expected JSON content.
 //
 // For non-JSON values, ExpectExactBody behaves identically to ExpectBody.
-func (tc *TestCase) ExpectExactBody(body interface{}) *TestCase {
+func (tc *HTTPTestCase) ExpectExactBody(body interface{}) *HTTPTestCase {
 	tc.WantExactJSONBody = true
 	return tc.ExpectBody(body)
 }
 
-func (tc *TestCase) ExpectGolden(path string) *TestCase {
+func (tc *HTTPTestCase) ExpectGolden(path string) *HTTPTestCase {
 	if tc.GoldenFilePath != "" {
 		color.HiYellow("overriding previously expected golden file")
 	}
@@ -304,7 +304,7 @@ func (tc *TestCase) ExpectGolden(path string) *TestCase {
 }
 
 // Validate ensures that the test case is valid can can be run.
-func (tc *TestCase) Validate() error {
+func (tc *HTTPTestCase) Validate() error {
 	if tc.Method == "" {
 		return errors.New("missing Method")
 	} else if tc.Path == "" {
@@ -340,7 +340,7 @@ func (tc *TestCase) Validate() error {
 
 // TestCaseResult represents the result of running a single test case.
 type TestCaseResult struct {
-	TestCase *TestCase
+	TestCase *HTTPTestCase
 	Status   int
 	Headers  http.Header
 	Body     []byte

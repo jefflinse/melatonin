@@ -25,7 +25,7 @@ func TestEndpoint(t *testing.T) {
 		WithRequestTimeout(time.Second * 5).
 		WithContinueOnFailure(true)
 
-	runner.RunTestsT(t, []*mt.TestCase{
+	runner.RunTestsT(t, []*mt.HTTPTestCase{
 
 		mt.GET("/foo").
 			Describe("Fetch foo and ensure it takes less than one second").

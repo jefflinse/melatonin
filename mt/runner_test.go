@@ -41,7 +41,7 @@ func TestRunner_RunTestsT(t *testing.T) {
 		name        string
 		server      *httptest.Server
 		runner      *mt.TestRunner
-		tests       []*mt.TestCase
+		tests       []*mt.HTTPTestCase
 		wantResults []*mt.TestCaseResult
 		wantError   bool
 	}{
@@ -53,21 +53,21 @@ func TestRunner_RunTestsT(t *testing.T) {
 		{
 			name:      "invalid tests",
 			runner:    mt.NewURLTester(mockServer.URL),
-			tests:     []*mt.TestCase{mt.GET("")},
+			tests:     []*mt.HTTPTestCase{mt.GET("")},
 			wantError: true,
 		},
 		{
 			name:        "nil HTTP client, use default",
 			server:      mockServer,
 			runner:      mt.NewURLTester(mockServer.URL),
-			tests:       []*mt.TestCase{mt.GET("/path")},
+			tests:       []*mt.HTTPTestCase{mt.GET("/path")},
 			wantResults: []*mt.TestCaseResult{{TestCase: mt.GET("/path"), Status: http.StatusOK}},
 		},
 		{
 			name:   "all tests pass",
 			server: mockServer,
 			runner: mt.NewURLTester(mockServer.URL).WithContinueOnFailure(true),
-			tests: []*mt.TestCase{
+			tests: []*mt.HTTPTestCase{
 				mt.GET("/path").ExpectStatus(http.StatusOK),
 				mt.GET("/path").ExpectStatus(http.StatusOK),
 				mt.GET("/path").ExpectStatus(http.StatusOK),
@@ -82,7 +82,7 @@ func TestRunner_RunTestsT(t *testing.T) {
 			name:   "test failure",
 			server: mockServer,
 			runner: mt.NewURLTester(mockServer.URL).WithContinueOnFailure(true),
-			tests: []*mt.TestCase{
+			tests: []*mt.HTTPTestCase{
 				mt.GET("/path").ExpectStatus(http.StatusOK),
 				mt.GET("/path").ExpectStatus(http.StatusNotFound),
 				mt.GET("/path").ExpectStatus(http.StatusOK),

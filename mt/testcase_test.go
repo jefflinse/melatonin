@@ -18,7 +18,7 @@ func TestNewTestCase(t *testing.T) {
 func TestDisplayName(t *testing.T) {
 	for _, test := range []struct {
 		name     string
-		testCase *mt.TestCase
+		testCase *mt.HTTPTestCase
 		expected string
 	}{
 		{
@@ -45,7 +45,7 @@ func TestDisplayName(t *testing.T) {
 
 func TestConvenienceCtors(t *testing.T) {
 	for _, test := range []struct {
-		testCase       *mt.TestCase
+		testCase       *mt.HTTPTestCase
 		expectedMethod string
 	}{
 		{
@@ -180,7 +180,7 @@ func TestExpectations(t *testing.T) {
 func TestValidate(t *testing.T) {
 	for _, test := range []struct {
 		name        string
-		testCase    *mt.TestCase
+		testCase    *mt.HTTPTestCase
 		expectError bool
 	}{
 		{
