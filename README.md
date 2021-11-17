@@ -1,12 +1,8 @@
 # melatonin
 
-Hassle-free REST API testing for Go.
-
-melatonin is a fluent, flexible REST API testing library for Go. It provides many of the benefits of domain-specific test language but with the flexibililty of writing pure Go. Use it to write unit tests that test your `http.Handler`s directly, or target actual local or remote service endpoints to perform E2E tests of your API service.
+melatonin is a fluent, flexible REST API testing library for Go. It provides many of the benefits of a domain-specific test language but with the flexibililty of writing pure Go. Use it to write unit tests that test your `http.Handler`s directly, or target actual local or remote service endpoints to perform E2E tests of your API service.
 
 See the full [user guide](./USERGUIDE.md) and the [API documentation](https://pkg.go.dev/github.com/jefflinse/melatonin/mt) for more information.
-
-melatonin is very usable in its current state but has not yet reached its V1 release milestone. As such, the API surface may change without notice until then. See the roadmap for more information.
 
 ## Installation
 
@@ -73,7 +69,7 @@ func TestAPI(t *testing.T) {
 
 Check out the [examples](examples/README.md) directory for more examples.
 
-### Test a service runnnig locally or remotely (E2E tests)
+### Test a service running locally or remotely (E2E tests)
 
 ```go
 runner := mt.NewURLTester("http://example.com")

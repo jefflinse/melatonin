@@ -16,16 +16,16 @@ func HandlerExample() {
 		w.Write([]byte("Hello, world!"))
 	})
 
-	// Use NetHandlerTester() to test a net/http.Handler.
+	// Use NewHandlerContext() to test a net/http.Handler.
 	// No actual network calls are made, making this suitable for unit tests.
-	runner := mt.NewHandlerTester(mux).WithContinueOnFailure(true)
-	runner.RunTests([]*mt.HTTPTestCase{
+	myAPI := mt.NewHandlerContext(mux)
+	mt.RunTests([]mt.TestCase{
 
-		mt.GET("/foo", "Fetch foo by testing a local handler").
+		myAPI.GET("/foo", "Fetch foo by testing a local handler").
 			ExpectStatus(200).
 			ExpectBody("Hello, world!"),
 
-		mt.GET("/bar", "This should be a 404").
+		myAPI.GET("/bar", "This should be a 404").
 			ExpectStatus(200),
 	})
 }
