@@ -29,8 +29,6 @@ var (
 	faintFG = color.New(color.Faint).SprintFunc()
 
 	blueBG = color.New(color.BgBlue, color.FgHiWhite).SprintFunc()
-
-	underline = color.New(color.Underline).SprintFunc()
 )
 
 type columnWriter struct {

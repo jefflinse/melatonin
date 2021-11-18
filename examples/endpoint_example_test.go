@@ -18,7 +18,6 @@ func TestEndpoint(t *testing.T) {
 	customReq, _ := http.NewRequest("GET", "http://localhost:8080/foo", nil)
 
 	myAPI := mt.NewURLContext("http://localhost:8080").WithHTTPClient(http.DefaultClient)
-
 	mt.RunTestsT(t, []mt.TestCase{
 
 		myAPI.GET("/foo").

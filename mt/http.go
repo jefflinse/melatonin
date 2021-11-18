@@ -175,6 +175,10 @@ func (tc *HTTPTestCase) Action() string {
 	return tc.Method
 }
 
+func (tc *HTTPTestCase) Target() string {
+	return tc.Path
+}
+
 func (tc *HTTPTestCase) Description() string {
 	return tc.Desc
 }
@@ -309,6 +313,7 @@ func (c *HTTPTestContext) DO(request *http.Request, description ...string) *HTTP
 	return &HTTPTestCase{
 		Method:  request.Method,
 		Path:    request.URL.Path,
+		context: c,
 		request: request,
 	}
 }
@@ -522,11 +527,6 @@ type HTTPTestCaseResult struct {
 
 func (r *HTTPTestCaseResult) Errors() []error {
 	return r.errors
-}
-
-// Failed indicates that the test case failed.
-func (r *HTTPTestCaseResult) Failed() bool {
-	return len(r.errors) > 0
 }
 
 func (r *HTTPTestCaseResult) addErrors(errs ...error) {

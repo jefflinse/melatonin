@@ -73,19 +73,12 @@ func (r *TestRunner) RunTestsT(t *testing.T, tests []TestCase) ([]TestResult, er
 			return nil, err
 		}
 
-		results = append(results, result)
 		totalDuration += duration
 		executed++
 
 		if len(result.Errors()) > 0 {
 			failed++
-
-			if !r.ContinueOnFailure {
-				r.outputWriter.Flush()
-				color.HiYellow("skipping remaininig tests")
-				skipped = len(tests) - executed
-				break
-			}
+			r.printTestFailure(test, result, duration)
 
 			if t != nil {
 				t.Run(test.Description(), func(t *testing.T) {
@@ -97,15 +90,49 @@ func (r *TestRunner) RunTestsT(t *testing.T, tests []TestCase) ([]TestResult, er
 				})
 			}
 
+			if !r.ContinueOnFailure {
+				color.HiYellow("skipping remaininig tests")
+				skipped = len(tests) - executed
+				break
+			}
+
 		} else {
 			passed++
+			if t == nil {
+				r.printTestSuccess(test, result, duration)
+			}
 		}
+
+		results = append(results, result)
 	}
 
+	r.outputWriter.Flush()
 	fmt.Printf("%d passed, %d failed, %d skipped %s\n", passed, failed, skipped,
 		faintFG(fmt.Sprintf("in %s", totalDuration.String())))
 
 	return results, nil
+}
+
+func (r *TestRunner) printTestFailure(test TestCase, result TestResult, duration time.Duration) {
+	r.outputWriter.PrintColumns(
+		redFG(" ✘"),
+		whiteFG(test.Description()),
+		blueBG(fmt.Sprintf("%7s ", test.Action())),
+		test.Target(),
+		faintFG(duration.String()))
+
+	for _, err := range result.Errors() {
+		r.outputWriter.PrintColumns(redFG(""), redFG(fmt.Sprintf("  %s", err)), blueBG(""), "", faintFG(""))
+	}
+}
+
+func (r *TestRunner) printTestSuccess(test TestCase, result TestResult, duration time.Duration) {
+	r.outputWriter.PrintColumns(
+		greenFG(" ✔"),
+		whiteFG(test.Description()),
+		blueBG(fmt.Sprintf("%7s ", test.Action())),
+		test.Target(),
+		faintFG(duration.String()))
 }
 
 func runTestT(t *testing.T, test TestCase) (TestResult, time.Duration, error) {

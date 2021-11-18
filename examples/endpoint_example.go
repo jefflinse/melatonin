@@ -17,8 +17,7 @@ func EndpointExample() {
 	customReq, _ := http.NewRequest("GET", "http://localhost:8080/foo", nil)
 
 	myAPI := mt.NewURLContext("http://localhost:8080").WithHTTPClient(http.DefaultClient)
-
-	mt.RunTests([]mt.TestCase{
+	mt.NewTestRunner().WithContinueOnFailure(true).RunTests([]mt.TestCase{
 
 		myAPI.GET("/foo", "Fetch foo and ensure it takes less than one second").
 			WithTimeout(1 * time.Second). // specify a timeout for the test case
