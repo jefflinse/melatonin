@@ -35,12 +35,16 @@ func init() {
 		cfg.Verbose = true
 	}
 
-	dir, err := os.Executable()
-	if err != nil {
-		panic(err)
+	if workdir := os.Getenv("MELATONIN_WORKDIR"); workdir != "" {
+		cfg.WorkingDir = workdir
+	} else {
+		dir, err := os.Executable()
+		if err != nil {
+			panic(err)
+		}
+		cfg.WorkingDir = filepath.Dir(dir)
 	}
 
-	cfg.WorkingDir = filepath.Dir(dir)
 }
 
 var (
