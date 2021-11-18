@@ -184,8 +184,12 @@ func (tc *HTTPTestCase) Description() string {
 }
 
 func (tc *HTTPTestCase) Execute(t *testing.T) (TestResult, error) {
+	if err := tc.Validate(); err != nil {
+		return nil, err
+	}
+
 	result := &HTTPTestCaseResult{
-		TestCase: tc,
+		testCase: tc,
 	}
 
 	if tc.BeforeFunc != nil {
@@ -516,17 +520,20 @@ func (tc *HTTPTestCase) Validate() error {
 
 // HTTPTestCaseResult represents the result of running a single test case.
 type HTTPTestCaseResult struct {
-	TestCase *HTTPTestCase
-
 	Status  int
 	Headers http.Header
 	Body    []byte
 
-	errors []error
+	testCase *HTTPTestCase
+	errors   []error
 }
 
 func (r *HTTPTestCaseResult) Errors() []error {
 	return r.errors
+}
+
+func (r *HTTPTestCaseResult) TestCase() TestCase {
+	return r.testCase
 }
 
 func (r *HTTPTestCaseResult) addErrors(errs ...error) {
@@ -556,21 +563,22 @@ func parseResponseBody(body []byte) interface{} {
 }
 
 func (r *HTTPTestCaseResult) validateExpectations() {
-	if r.TestCase.WantStatus != 0 {
-		if err := expectStatus(r.TestCase.WantStatus, r.Status); err != nil {
+	tc := r.TestCase().(*HTTPTestCase)
+	if tc.WantStatus != 0 {
+		if err := expectStatus(tc.WantStatus, r.Status); err != nil {
 			r.addErrors(err)
 		}
 	}
 
-	if r.TestCase.WantHeaders != nil {
-		if errs := expectHeaders(r.TestCase.WantHeaders, r.Headers); len(errs) > 0 {
+	if tc.WantHeaders != nil {
+		if errs := expectHeaders(tc.WantHeaders, r.Headers); len(errs) > 0 {
 			r.addErrors(errs...)
 		}
 	}
 
-	if r.TestCase.WantBody != nil {
+	if tc.WantBody != nil {
 		body := parseResponseBody(r.Body)
-		if errs := expect("body", r.TestCase.WantBody, body, r.TestCase.WantExactJSONBody); len(errs) > 0 {
+		if errs := expect("body", tc.WantBody, body, tc.WantExactJSONBody); len(errs) > 0 {
 			r.addErrors(errs...)
 		}
 	}

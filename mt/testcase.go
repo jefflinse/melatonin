@@ -12,5 +12,6 @@ type TestCase interface {
 }
 
 type TestResult interface {
+	TestCase() TestCase
 	Errors() []error
 }
