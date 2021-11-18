@@ -1,6 +1,6 @@
 # melatonin
 
-melatonin is a fluent, flexible REST API testing library for Go. It provides many of the benefits of a domain-specific test language but with the flexibililty of writing pure Go. Use it to write unit tests that test your `http.Handler`s directly, or target actual local or remote service endpoints to perform E2E tests of your API service.
+melatonin is a fluent, flexible REST API testing library for Go. It provides many of the benefits of a domain-specific test language but with the flexibililty of writing pure Go. Use it to write unit tests that test your `http.Handler`s routes directly, or E2E tests that target routes on a running service written in any language.
 
 See the full [user guide](./USERGUIDE.md) and the [API documentation](https://pkg.go.dev/github.com/jefflinse/melatonin/mt) for more information.
 
@@ -10,11 +10,7 @@ See the full [user guide](./USERGUIDE.md) and the [API documentation](https://pk
 
 ## Usage
 
-melatonin can run as a standalone binary built with `go build`. When run in this manner, the program will output a formatted table of test results to stdout.
-
-melatonin can also run as a set of regular Go tests, in which case results will be reported through the usual `testing.T` context.
-
-**As A Go Program**
+When built and run as a standalone binary, a melatonin app will print a formatted table of test results to stdout.
 
 ```go
 package main
@@ -23,9 +19,10 @@ import "github.com/jefflinse/melatonin/mt"
 
 func main() {
 
-    mt.TestEndpoint("http://example.com", []*mt.TestCase{
+    myAPI := mt.NewURLContext("http://example.com")
+    mt.RunTests([]mt.TestCase{
 
-        mt.GET("/resource", "Fetch a record successfully").
+        myAPI.GET("/resource", "Fetch a record successfully").
             ExpectStatus(200).
             ExpectBody("Hello, world!"),
     })
@@ -38,7 +35,7 @@ func main() {
 
     1 passed, 0 failed, 0 skipped in 3.9252ms
 
-**As Go Tests**
+When run as a regular Go test, results will be reported through the standard `testing.T` context.
 
 ```go
 package mypackage_test
@@ -50,9 +47,9 @@ import (
 
 func TestAPI(t *testing.T) {
 
-    mt.TestEndpointT(t, "http://example.com", []*mt.TestCase{
-
-        mt.GET("/resource", "Fetch a record successfully").
+    myAPI := mt.NewURLContext("http://example.com")
+    mt.RunTestsT(t, []mt.TestCase{
+        myAPI.GET("/resource", "Fetch a record successfully").
             ExpectStatus(200).
             ExpectBody("Hello, world!"),
     })
@@ -72,83 +69,57 @@ Check out the [examples](examples/README.md) directory for more examples.
 ### Test a service running locally or remotely (E2E tests)
 
 ```go
-runner := mt.NewURLTester("http://example.com")
-runner.RunTests(...)
+myAPI := mt.NewURLContext("http://example.com")
+mt.RunTests(...)
 ```
 
-### Test an HTTP handler directly (unit tests)
+### Test a Go HTTP handler directly (unit tests)
 
 ```go
-runner := mt.NewHandlerTester(http.NewServeMux())
-runner.RunTests(...)
+myAPI := mt.NewHandlerContext(http.NewServeMux())
+mt.RunTests(...)
 ```
 
-### Define tests using chainable methods
+### Define tests
 
 ```go
-tests := []*mt.TestCase{
+myAPI := mt.NewURLContext("http://example.com")
+tests := []mt.TestCase{
 
-    mt.GET("/resource").
+    myAPI.GET("/resource").
        ExpectStatus(200).
        ExpectBody(String("Hello, World!")),
     
-    mt.POST("/resource").
+    myAPI.POST("/resource").
        WithBody(Object{
          "name": "Burt Macklin",
          "age":  32,
        }).
        ExpectStatus(201),
     
-    mt.DELETE("/resource/42").
+    myAPI.DELETE("/resource/42").
        ExpectStatus(204),
-}
-```
-
-### Define tests using structs
-
-```go
-tests := []*mt.TestCase{
-
-    {
-        Method: "GET",
-        Path: "/resource",
-        WantStatus: 200,
-        WantBody: String("Hello, World!"),
-    },
-    {
-        Method: "POST",
-        Path: "/resource",
-        RequestBody: Object{
-            "name": "Burt Macklin",
-            "age":  32,
-        },
-        WantStatus: 201,
-    },
-    {
-        Method: "DELETE",
-        Path: "/resource/42",
-        WantStatus: 204,
-    },
 }
 ```
 
 ### Use a custom HTTP client for requests
 
 ```go
-client, err := &http.Client{}
-runner := mt.NewURLTester("http://example.com").WithHTTPClient(client)
+client := &http.Client{}
+myAPI := mt.NewURLContext("http://example.com").WithHTTPClient(client)
 ```
 
 ### Use a custom timeout for all tests
 
 ```go
-runner := mt.NewURLTester("http://example.com").WithTimeout(5 * time.Second)
+timeout := time.Duration(5 * time.Second)
+myAPI := mt.NewURLContext("http://example.com").WithTimeout(timeout)
 ```
 
 ### Specify a timeout for a specific test
 
 ```go
-mt.GET("/resource").
+myAPI.GET("/resource").
     WithTimeout(5 * time.Second).
     ExpectStatus(200).
 ```
@@ -158,13 +129,13 @@ mt.GET("/resource").
 Inline:
 
 ```go
-mt.GET("/resource?first=foo&second=bar")
+myAPI.GET("/resource?first=foo&second=bar")
 ```
 
 Individually:
 
 ```go
-mt.GET("/resource").
+myAPI.GET("/resource").
     WithQueryParam("first", "foo").
     WithQueryParam("second", "bar")
 ```
@@ -172,7 +143,7 @@ mt.GET("/resource").
 All At Once:
 
 ```go
-mt.GET("/resource").
+myAPI.GET("/resource").
     WithQueryParams(url.Values{
         "first": []string{"foo"},
         "second": []string{"bar"},
@@ -182,15 +153,14 @@ mt.GET("/resource").
 ### Allow or disallow further tests to run after a failure
 
 ```go
-runner := mt.NewURLTester("http://example.com").WithContinueOnFailure(true)
+runner := mt.NewURLContext("http://example.com").WithContinueOnFailure(true)
 ```
 
 ### Create a test case with a custom HTTP request
 
 ```go
 req, err := http.NewRequest("GET", "http://example.com/resource", nil)
-
-mt.DO(req).
+myAPI.DO(req).
     ExpectStatus(200)
 ```
 
@@ -199,7 +169,7 @@ mt.DO(req).
 Any unexpected headers or JSON keys or values present in the response will cause the test case to fail.
 
 ```go
-mt.GET("/resource").
+myAPI.GET("/resource").
     ExpectExactHeaders(http.Header{
         "Content-Type": []string{"application/json"},
     }).
@@ -211,7 +181,7 @@ mt.GET("/resource").
 ### Load expectations for a test case from a golden file
 
 ```go
-mt.GET("/resource").
+myAPI.GET("/resource").
     ExpectGolden("path/to/file.golden")
 ```
 
@@ -220,10 +190,9 @@ Golden files keep your test definitions short and concise by storing expectation
 ## Planned Features
 
 - Output test results in different formats (e.g. JSON, XML, YAML)
-- Standalone tool for running tests defined in text files
-- Support for running external commands before and after test cases
-- Interfaces to allow wrapping of test cases with custom logic (e.g. AWS Lambda, etc.)
 - Generate test cases from an OpenAPI specification
+
+See the full [V1 milestone](https://github.com/jefflinse/melatonin/milestone/1) for more.
 
 ## Contributing
 
