@@ -22,12 +22,6 @@ import (
 )
 
 const (
-	modeNone = iota
-	modeBaseURL
-	modeHandler
-)
-
-const (
 	defaultRequestTimeoutStr = "10s"
 )
 
@@ -58,7 +52,6 @@ type HTTPTestContext struct {
 	BaseURL string
 	Client  *http.Client
 	Handler http.Handler
-	mode    int
 }
 
 // NewURLContext creates a new HTTPTestContext for creating tests that target
@@ -66,7 +59,6 @@ type HTTPTestContext struct {
 func NewURLContext(baseURL string) *HTTPTestContext {
 	return &HTTPTestContext{
 		BaseURL: baseURL,
-		mode:    modeBaseURL,
 	}
 }
 
@@ -75,7 +67,6 @@ func NewURLContext(baseURL string) *HTTPTestContext {
 func NewHandlerContext(handler http.Handler) *HTTPTestContext {
 	return &HTTPTestContext{
 		Handler: handler,
-		mode:    modeHandler,
 	}
 }
 
@@ -245,7 +236,11 @@ func (tc *HTTPTestCase) Execute(t *testing.T) (TestResult, error) {
 		tc.request = req
 	}
 
-	if tc.context.mode == modeBaseURL {
+	if tc.context.BaseURL != "" && tc.context.Handler != nil {
+		return nil, fmt.Errorf("HTTP test context %q cannot specify both a base URL and handler", tc.context.BaseURL)
+	}
+
+	if tc.context.BaseURL != "" {
 		if tc.context.Client == nil {
 			tc.context.Client = http.DefaultClient
 		}
@@ -256,7 +251,7 @@ func (tc *HTTPTestCase) Execute(t *testing.T) (TestResult, error) {
 			result.addErrors(fmt.Errorf("failed to execute HTTP request: %w", err))
 			return nil, err
 		}
-	} else if tc.context.mode == modeHandler {
+	} else if tc.context.Handler != nil {
 		result.Status, result.Headers, result.Body, err = handleRequest(tc.context.Handler, tc.request)
 		if err != nil {
 			debug("%s: failed to handle HTTP request: %s", tc.Description(), err)
