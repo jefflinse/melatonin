@@ -12,10 +12,10 @@ import (
 	"github.com/jefflinse/melatonin/mt"
 )
 
-// This example shows how to use melatonin to test an actual service endpoint.
-func EndpointExample() {
+// This example shows how to use melatonin with all of its configurable settings.
+func FullExample() {
 	// Create a mock server for this example. See startExampleServer() below.
-	server := startExampleServer()
+	server := startFullExampleServer()
 	defer server.Close()
 
 	// Testing a Base URL
@@ -58,12 +58,19 @@ func EndpointExample() {
 	runner := mt.NewTestRunner().WithContinueOnFailure(true).WithRequestTimeout(1 * time.Second)
 	results, err := runner.RunTests([]mt.TestCase{
 
-		myURL.GET("/foo", "Fetch foo and ensure it takes less than one second").
+		myURL.GET("/foo", "Fetch foo with a custom timeout").
 			WithTimeout(1 * time.Second). // specify a timeout for the test case
 			ExpectStatus(200).
 			ExpectBody("Hello, world!"),
 
-		myURL.GET("/foo", "Fetch foo and ensure the returned JSON contains the right values").
+		// A description is optional
+		myURL.GET("/foo").
+			WithHeader("Accept", "application/json").
+			WithQueryParam("sort", "false").
+			WithBody("hello").
+			ExpectStatus(200),
+
+		myURL.GET("/foo", "Fetch foo and expect a subset of JSON in response body").
 			WithHeader("Accept", "application/json").
 			ExpectStatus(201).
 			ExpectBody(mt.Object{
@@ -92,7 +99,7 @@ func EndpointExample() {
 			WithQueryParam("second", "bar").
 			ExpectStatus(404),
 
-		myURL.POST("/foo", "Create a new foo").
+		myURL.POST("/foo", "Create a new foo specifying a Go map as the body").
 			WithHeader("Accept", "application/json"). // add a single header
 			WithBody(map[string]interface{}{          // specify the body using Go types
 				"key": "value",
@@ -100,10 +107,10 @@ func EndpointExample() {
 			ExpectStatus(201).
 			ExpectHeader("My-Custom-Header", "foobar"),
 
-		myHandler.DELETE("/bar", "This should be a 404").
+		myHandler.DELETE("/bar", "Delete a bar with a failed expectation").
 			ExpectStatus(200),
 
-		myURL.POST("/foo", "Ensure auth credentials are accepted").
+		myURL.POST("/foo", "Create a foo setting multiple headers at once").
 			WithHeaders(http.Header{ // set all headers at once
 				"Accept": []string{"application/json"},
 				"Auth":   []string{"Bearer 12345"},
@@ -140,7 +147,7 @@ func EndpointExample() {
 }
 
 // Simple static webserver for example purposes.
-func startExampleServer() *httptest.Server {
+func startFullExampleServer() *httptest.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/foo", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Some-Header", "foo")

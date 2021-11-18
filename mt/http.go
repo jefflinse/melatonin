@@ -159,6 +159,9 @@ type HTTPTestCase struct {
 
 	// Underlying HTTP request for the test case.
 	request *http.Request
+
+	// Cached body content
+	bodyBytes []byte
 }
 
 var _ TestCase = &HTTPTestCase{}
@@ -177,11 +180,25 @@ func (tc *HTTPTestCase) Action() string {
 }
 
 func (tc *HTTPTestCase) Target() string {
+	if u, err := url.Parse(tc.Path); err == nil {
+		return u.Path
+	}
+
 	return tc.Path
 }
 
 func (tc *HTTPTestCase) Description() string {
-	return tc.Desc
+	if tc.Desc != "" {
+		return tc.Desc
+	}
+
+	body, _ := tc.requestBodyBytes()
+	return fmt.Sprintf("%s %s%s (%d q, %d h, %d b)",
+		tc.Action(), tc.context.BaseURL, tc.Target(),
+		len(tc.QueryParams),
+		len(tc.RequestHeaders),
+		len(body),
+	)
 }
 
 func (tc *HTTPTestCase) Execute(t *testing.T) (TestResult, error) {
@@ -194,7 +211,7 @@ func (tc *HTTPTestCase) Execute(t *testing.T) (TestResult, error) {
 	}
 
 	if tc.BeforeFunc != nil {
-		debug("%s: running before()", tc.DisplayName())
+		debug("%s: running before()", tc.Description())
 		if err := tc.BeforeFunc(); err != nil {
 			result.addErrors(fmt.Errorf("before(): %w", err))
 			return result, nil
@@ -206,26 +223,9 @@ func (tc *HTTPTestCase) Execute(t *testing.T) (TestResult, error) {
 		timeout = tc.Timeout
 	}
 
-	var body []byte
-	var err error
-	if tc.RequestBody != nil {
-		switch v := tc.RequestBody.(type) {
-		case []byte:
-			body = v
-		case string:
-			body = []byte(v)
-		case func() []byte:
-			body = v()
-		case func() ([]byte, error):
-			body, err = v()
-		default:
-			body, err = json.Marshal(tc.RequestBody)
-		}
-
-		if err != nil {
-			result.addErrors(fmt.Errorf("request body: %w", err))
-			return result, nil
-		}
+	body, err := tc.requestBodyBytes()
+	if err != nil {
+		return nil, err
 	}
 
 	if tc.request == nil {
@@ -246,16 +246,20 @@ func (tc *HTTPTestCase) Execute(t *testing.T) (TestResult, error) {
 	}
 
 	if tc.context.mode == modeBaseURL {
+		if tc.context.Client == nil {
+			tc.context.Client = http.DefaultClient
+		}
+
 		result.Status, result.Headers, result.Body, err = doRequest(tc.context.Client, tc.request)
 		if err != nil {
-			debug("%s: failed to execute HTTP request: %s", tc.DisplayName(), err)
+			debug("%s: failed to execute HTTP request: %s", tc.Description(), err)
 			result.addErrors(fmt.Errorf("failed to execute HTTP request: %w", err))
 			return nil, err
 		}
 	} else if tc.context.mode == modeHandler {
 		result.Status, result.Headers, result.Body, err = handleRequest(tc.context.Handler, tc.request)
 		if err != nil {
-			debug("%s: failed to handle HTTP request: %s", tc.DisplayName(), err)
+			debug("%s: failed to handle HTTP request: %s", tc.Description(), err)
 			result.addErrors(fmt.Errorf("failed to handle HTTP request: %w", err))
 			return nil, err
 		}
@@ -264,7 +268,7 @@ func (tc *HTTPTestCase) Execute(t *testing.T) (TestResult, error) {
 	result.validateExpectations()
 
 	if tc.AfterFunc != nil {
-		debug("%s: running after()", tc.DisplayName())
+		debug("%s: running after()", tc.Description())
 		if err := tc.AfterFunc(); err != nil {
 			result.addErrors(fmt.Errorf("after(): %w", err))
 		}
@@ -273,9 +277,34 @@ func (tc *HTTPTestCase) Execute(t *testing.T) (TestResult, error) {
 	return result, err
 }
 
-// DisplayName returns the name of the test case.
-func (tc *HTTPTestCase) DisplayName() string {
-	return fmt.Sprintf("%s %s", tc.Method, tc.Path)
+func (tc *HTTPTestCase) requestBodyBytes() ([]byte, error) {
+	if tc.bodyBytes != nil {
+		return tc.bodyBytes, nil
+	}
+
+	var body []byte
+	if tc.RequestBody != nil {
+		var err error
+		switch v := tc.RequestBody.(type) {
+		case []byte:
+			body = v
+		case string:
+			body = []byte(v)
+		case func() []byte:
+			body = v()
+		case func() ([]byte, error):
+			body, err = v()
+		default:
+			body, err = json.Marshal(tc.RequestBody)
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("request body: %w", err)
+		}
+	}
+
+	tc.bodyBytes = body
+	return tc.bodyBytes, nil
 }
 
 // DELETE is a shortcut for NewTestCase(http.MethodDelete, path).
@@ -315,12 +344,9 @@ func (c *HTTPTestContext) PUT(path string, description ...string) *HTTPTestCase 
 
 // DO creates a test case from a custom HTTP request.
 func (c *HTTPTestContext) DO(request *http.Request, description ...string) *HTTPTestCase {
-	return &HTTPTestCase{
-		Method:  request.Method,
-		Path:    request.URL.Path,
-		context: c,
-		request: request,
-	}
+	tc := newHTTPTestCase(c, request.Method, request.URL.Path, description...)
+	tc.request = request
+	return tc
 }
 
 // After registers a function to be run after the test case.
