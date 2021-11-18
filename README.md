@@ -1,5 +1,7 @@
 # melatonin
 
+[![CI](https://github.com/jefflinse/melatonin/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jefflinse/melatonin/actions/workflows/ci.yml)
+
 melatonin is a fluent, flexible REST API testing library for Go. It provides many of the benefits of a domain-specific test language but with the flexibililty of writing pure Go. Use it to write unit tests that test your `http.Handler`s routes directly, or E2E tests that target routes on a running service written in any language.
 
 See the full [user guide](./USERGUIDE.md) and the [API documentation](https://pkg.go.dev/github.com/jefflinse/melatonin/mt) for more information.
