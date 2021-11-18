@@ -128,10 +128,13 @@ func EndpointExample() {
 		log.Fatal(err)
 	}
 
-	// Results are accessible via the TestResult interface
+	// Results are accessible via the TestResult interface.
 	//
-	for i := range results {
-		fmt.Fprint(io.Discard, i)
+	// Setting MELATONIN_OUTPUT=none in the environment will suppress all output
+	// to stdout, enabling custom results processing, analysis, and output.
+	//
+	for _, result := range results {
+		fmt.Fprint(io.Discard, result)
 	}
 }
 

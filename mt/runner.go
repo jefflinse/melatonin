@@ -3,7 +3,6 @@ package mt
 import (
 	"fmt"
 	"io"
-	"os"
 	"testing"
 	"time"
 
@@ -59,7 +58,7 @@ func (r *TestRunner) RunTests(tests []TestCase) ([]TestResult, error) {
 func (r *TestRunner) RunTestsT(t *testing.T, tests []TestCase) ([]TestResult, error) {
 	outputTarget := io.Discard
 	if t == nil {
-		outputTarget = os.Stdout
+		outputTarget = cfg.Stdout
 	}
 
 	r.outputWriter = newColumnWriter(outputTarget, 5, 2)
@@ -107,7 +106,7 @@ func (r *TestRunner) RunTestsT(t *testing.T, tests []TestCase) ([]TestResult, er
 	}
 
 	r.outputWriter.Flush()
-	fmt.Printf("%d passed, %d failed, %d skipped %s\n", passed, failed, skipped,
+	fmt.Fprintf(cfg.Stdout, "%d passed, %d failed, %d skipped %s\n", passed, failed, skipped,
 		faintFG(fmt.Sprintf("in %s", totalDuration.String())))
 
 	return results, nil

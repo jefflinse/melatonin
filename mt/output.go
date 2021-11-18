@@ -3,49 +3,11 @@ package mt
 import (
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"strings"
 	"text/tabwriter"
 
 	"github.com/fatih/color"
 )
-
-var cfg = struct {
-	ContinueOnFailure bool
-	NoColor           bool
-	Verbose           bool
-	WorkingDir        string
-}{
-	ContinueOnFailure: false,
-	Verbose:           false,
-}
-
-func init() {
-	if os.Getenv("MELATONIN_CONTINUE_ON_FAILURE") != "" {
-		cfg.ContinueOnFailure = true
-	}
-
-	if os.Getenv("MELATONIN_NO_COLOR") != "" {
-		cfg.NoColor = true
-		color.NoColor = cfg.NoColor
-	}
-
-	if os.Getenv("MELATONIN_VERBOSE") != "" {
-		cfg.Verbose = true
-	}
-
-	if workdir := os.Getenv("MELATONIN_WORKDIR"); workdir != "" {
-		cfg.WorkingDir = workdir
-	} else {
-		dir, err := os.Executable()
-		if err != nil {
-			panic(err)
-		}
-		cfg.WorkingDir = filepath.Dir(dir)
-	}
-
-}
 
 var (
 	greenFG = color.New(color.FgHiGreen, color.Bold).SprintFunc()
@@ -85,7 +47,7 @@ func (w *columnWriter) Flush() {
 }
 
 func debug(format string, a ...interface{}) {
-	if cfg.Verbose {
+	if cfg.Debug {
 		color.Cyan(format, a...)
 	}
 }
