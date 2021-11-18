@@ -49,6 +49,7 @@ func TestAPI(t *testing.T) {
 
     myAPI := mt.NewURLContext("http://example.com")
     mt.RunTestsT(t, []mt.TestCase{
+
         myAPI.GET("/resource", "Fetch a record successfully").
             ExpectStatus(200).
             ExpectBody("Hello, world!"),
