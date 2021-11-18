@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"text/tabwriter"
 
@@ -14,6 +15,7 @@ var cfg = struct {
 	ContinueOnFailure bool
 	NoColor           bool
 	Verbose           bool
+	WorkingDir        string
 }{
 	ContinueOnFailure: false,
 	Verbose:           false,
@@ -32,6 +34,13 @@ func init() {
 	if os.Getenv("MELATONIN_VERBOSE") != "" {
 		cfg.Verbose = true
 	}
+
+	dir, err := os.Executable()
+	if err != nil {
+		panic(err)
+	}
+
+	cfg.WorkingDir = filepath.Dir(dir)
 }
 
 var (
@@ -39,8 +48,7 @@ var (
 	redFG   = color.New(color.FgHiRed, color.Bold).SprintFunc()
 	whiteFG = color.New(color.Bold).SprintFunc()
 	faintFG = color.New(color.Faint).SprintFunc()
-
-	blueBG = color.New(color.BgBlue, color.FgHiWhite).SprintFunc()
+	blueBG  = color.New(color.BgBlue, color.FgHiWhite).SprintFunc()
 )
 
 type columnWriter struct {

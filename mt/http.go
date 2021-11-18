@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -494,7 +495,12 @@ func (tc *HTTPTestCase) Validate() error {
 	}
 
 	if tc.GoldenFilePath != "" {
-		golden, err := golden.LoadFile(tc.GoldenFilePath)
+		path := tc.GoldenFilePath
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(cfg.WorkingDir, path)
+		}
+
+		golden, err := golden.LoadFile(path)
 		if err != nil {
 			return err
 		}
