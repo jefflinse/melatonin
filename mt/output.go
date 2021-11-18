@@ -10,15 +10,27 @@ import (
 	"github.com/fatih/color"
 )
 
-var Verbose bool
+var cfg = struct {
+	ContinueOnFailure bool
+	NoColor           bool
+	Verbose           bool
+}{
+	ContinueOnFailure: false,
+	Verbose:           false,
+}
 
 func init() {
-	if os.Getenv("MELATONIN_VERBOSE") != "" {
-		Verbose = true
+	if os.Getenv("MELATONIN_CONTINUE_ON_FAILURE") != "" {
+		cfg.ContinueOnFailure = true
 	}
 
-	if os.Getenv("MELATONIN_NOCOLOR") != "" {
-		color.NoColor = true
+	if os.Getenv("MELATONIN_NO_COLOR") != "" {
+		cfg.NoColor = true
+		color.NoColor = cfg.NoColor
+	}
+
+	if os.Getenv("MELATONIN_VERBOSE") != "" {
+		cfg.Verbose = true
 	}
 }
 
@@ -57,13 +69,11 @@ func (w *columnWriter) PrintColumns(columns ...interface{}) {
 
 func (w *columnWriter) Flush() {
 	w.tabWriter.Flush()
-	if w.stdout != io.Discard {
-		fmt.Println()
-	}
+	fmt.Fprintln(w.stdout)
 }
 
 func debug(format string, a ...interface{}) {
-	if Verbose {
+	if cfg.Verbose {
 		color.Cyan(format, a...)
 	}
 }

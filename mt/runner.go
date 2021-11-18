@@ -27,7 +27,7 @@ type TestRunner struct {
 
 func NewTestRunner() *TestRunner {
 	return &TestRunner{
-		ContinueOnFailure: false,
+		ContinueOnFailure: cfg.ContinueOnFailure,
 		TestTimeout:       10 * time.Second,
 	}
 }

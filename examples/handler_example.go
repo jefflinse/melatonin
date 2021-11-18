@@ -19,7 +19,7 @@ func HandlerExample() {
 	// Use NewHandlerContext() to test a net/http.Handler.
 	// No actual network calls are made, making this suitable for unit tests.
 	myAPI := mt.NewHandlerContext(mux)
-	mt.NewTestRunner().WithContinueOnFailure(true).RunTests([]mt.TestCase{
+	mt.NewTestRunner().RunTests([]mt.TestCase{
 
 		myAPI.GET("/foo", "Fetch foo by testing a local handler").
 			ExpectStatus(200).
