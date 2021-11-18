@@ -28,6 +28,12 @@ func EndpointExample() {
 	// compatibility with the service being tested.
 	myURL := mt.NewURLContext(server.URL).WithHTTPClient(http.DefaultClient)
 
+	// Testing an HTTP Handler
+	//
+	// myHandler is a test context that can be used to create test cases that
+	// target a specific handler. This is useful for testing HTTP handler logic
+	// directly, making tests created using this context suitable for unit tests.
+
 	// Anything satifying the http.Handler interface can be tested as a handler.
 	mux := http.NewServeMux()
 	mux.HandleFunc("/foo", func(w http.ResponseWriter, r *http.Request) {
@@ -35,11 +41,6 @@ func EndpointExample() {
 		w.Write([]byte("Hello, world!"))
 	})
 
-	// Test an HTTP Handler
-	//
-	// myHandler is a test context that can be used to create test cases that
-	// target a specific handler. This is useful for testing HTTP handler logic
-	// directly, making tests created using this context suitable for unit tests.
 	myHandler := mt.NewHandlerContext(mux)
 
 	// A custom HTTP request can be created to provide complete control over
