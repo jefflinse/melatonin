@@ -3,7 +3,6 @@ package mt
 import (
 	"io"
 	"os"
-	"path/filepath"
 
 	"github.com/fatih/color"
 )
@@ -49,10 +48,10 @@ func init() {
 	if workdir := os.Getenv("MELATONIN_WORKDIR"); workdir != "" {
 		cfg.WorkingDir = workdir
 	} else {
-		dir, err := os.Executable()
+		dir, err := os.Getwd()
 		if err != nil {
 			panic(err)
 		}
-		cfg.WorkingDir = filepath.Dir(dir)
+		cfg.WorkingDir = dir
 	}
 }
