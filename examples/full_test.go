@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jefflinse/melatonin/json"
 	"github.com/jefflinse/melatonin/mt"
 )
 
@@ -74,7 +75,7 @@ func TestFullExample(t *testing.T) {
 		myURL.GET("/foo", "Fetch foo and expect a subset of JSON in response body").
 			WithHeader("Accept", "application/json").
 			ExpectStatus(201).
-			ExpectBody(mt.Object{
+			ExpectBody(json.Object{
 				"a_string":       "Hello, world!",
 				"a_number":       43,
 				"another_number": 3.15,

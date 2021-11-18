@@ -1,10 +1,12 @@
-package mt
+package expect
 
 import (
 	"errors"
 	"fmt"
 	"net/http"
 	"sort"
+
+	"github.com/jefflinse/melatonin/json"
 )
 
 func wrongTypeError(key string, expected, actual interface{}) error {
@@ -37,38 +39,38 @@ func wrongValueError(key string, expected, actual interface{}) error {
 	return errors.New(msg)
 }
 
-func expectStatus(expected, actual int) error {
+func Status(expected, actual int) error {
 	if expected != actual {
 		return fmt.Errorf(`expected status %d, got %d`, expected, actual)
 	}
 	return nil
 }
 
-func expect(key string, expected, actual interface{}, exactJSON bool) []error {
+func Value(key string, expected, actual interface{}, exactJSON bool) []error {
 	switch expectedValue := expected.(type) {
 
-	case Object, map[string]interface{}:
+	case json.Object, map[string]interface{}:
 		ev, ok := expectedValue.(map[string]interface{})
 		if !ok {
-			ev = map[string]interface{}(expectedValue.(Object))
+			ev = map[string]interface{}(expectedValue.(json.Object))
 		}
-		return expectObject(key, ev, actual, exactJSON)
+		return Object(key, ev, actual, exactJSON)
 
-	case Array, []interface{}:
+	case json.Array, []interface{}:
 		ev, ok := expectedValue.([]interface{})
 		if !ok {
-			ev = []interface{}(expectedValue.(Array))
+			ev = []interface{}(expectedValue.(json.Array))
 		}
-		return expectArray(key, ev, actual, exactJSON)
+		return Array(key, ev, actual, exactJSON)
 
 	case string:
-		err := expectString(key, expectedValue, actual)
+		err := String(key, expectedValue, actual)
 		if err != nil {
 			return []error{err}
 		}
 
 	case float64:
-		err := expectNumber(key, expectedValue, actual)
+		err := Number(key, expectedValue, actual)
 		if err != nil {
 			return []error{err}
 		}
@@ -79,13 +81,13 @@ func expect(key string, expected, actual interface{}, exactJSON bool) []error {
 			ev = int64(expectedValue.(int))
 		}
 
-		err := expectNumber(key, float64(ev), actual)
+		err := Number(key, float64(ev), actual)
 		if err != nil {
 			return []error{err}
 		}
 
 	case bool:
-		err := expectBool(key, expectedValue, actual)
+		err := Bool(key, expectedValue, actual)
 		if err != nil {
 			return []error{err}
 		}
@@ -102,7 +104,7 @@ func expect(key string, expected, actual interface{}, exactJSON bool) []error {
 	return nil
 }
 
-func expectBool(key string, expected bool, actual interface{}) error {
+func Bool(key string, expected bool, actual interface{}) error {
 	b, ok := actual.(bool)
 	if !ok {
 		return wrongTypeError(key, expected, actual)
@@ -115,7 +117,7 @@ func expectBool(key string, expected bool, actual interface{}) error {
 	return nil
 }
 
-func expectNumber(key string, expected float64, actual interface{}) error {
+func Number(key string, expected float64, actual interface{}) error {
 	n, ok := actual.(float64)
 	if !ok {
 		return wrongTypeError(key, expected, actual)
@@ -128,7 +130,7 @@ func expectNumber(key string, expected float64, actual interface{}) error {
 	return nil
 }
 
-func expectString(key string, expected string, actual interface{}) error {
+func String(key string, expected string, actual interface{}) error {
 	s, ok := actual.(string)
 	if !ok {
 		return wrongTypeError(key, expected, actual)
@@ -141,7 +143,7 @@ func expectString(key string, expected string, actual interface{}) error {
 	return nil
 }
 
-func expectObject(key string, expected map[string]interface{}, actual interface{}, exact bool) []error {
+func Object(key string, expected map[string]interface{}, actual interface{}, exact bool) []error {
 	m, ok := actual.(map[string]interface{})
 	if !ok {
 		return []error{wrongTypeError(key, expected, actual)}
@@ -174,7 +176,7 @@ func expectObject(key string, expected map[string]interface{}, actual interface{
 
 	errs := []error{}
 	for k, v := range expected {
-		if elemErrs := expect(fmt.Sprintf("%s.%s", key, k), v, m[k], exact); len(elemErrs) > 0 {
+		if elemErrs := Value(fmt.Sprintf("%s.%s", key, k), v, m[k], exact); len(elemErrs) > 0 {
 			errs = append(errs, elemErrs...)
 		}
 	}
@@ -182,7 +184,7 @@ func expectObject(key string, expected map[string]interface{}, actual interface{
 	return errs
 }
 
-func expectArray(key string, expected []interface{}, actual interface{}, exact bool) []error {
+func Array(key string, expected []interface{}, actual interface{}, exact bool) []error {
 	a, ok := actual.([]interface{})
 	if !ok {
 		return []error{wrongTypeError(key, expected, actual)}
@@ -194,7 +196,7 @@ func expectArray(key string, expected []interface{}, actual interface{}, exact b
 
 	errs := []error{}
 	for i, v := range expected {
-		if elemErrs := expect(fmt.Sprintf("%s[%d]", key, i), v, a[i], exact); len(elemErrs) > 0 {
+		if elemErrs := Value(fmt.Sprintf("%s[%d]", key, i), v, a[i], exact); len(elemErrs) > 0 {
 			errs = append(errs, elemErrs...)
 		}
 	}
@@ -202,7 +204,7 @@ func expectArray(key string, expected []interface{}, actual interface{}, exact b
 	return errs
 }
 
-func expectHeaders(expected http.Header, actual http.Header) []error {
+func Headers(expected http.Header, actual http.Header) []error {
 	var errs []error
 	for key, expectedValuesForKey := range expected {
 		actualValuesForKey, ok := actual[key]

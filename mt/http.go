@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/jefflinse/melatonin/expect"
 	"github.com/jefflinse/melatonin/golden"
 )
 
@@ -41,12 +42,6 @@ func init() {
 		}
 	}
 }
-
-// Object is a type alias for map[string]interface{}.
-type Object map[string]interface{}
-
-// Array is a type alias for []interface{}.
-type Array []interface{}
 
 type HTTPTestContext struct {
 	BaseURL string
@@ -592,20 +587,20 @@ func parseResponseBody(body []byte) interface{} {
 func (r *HTTPTestCaseResult) validateExpectations() {
 	tc := r.TestCase().(*HTTPTestCase)
 	if tc.WantStatus != 0 {
-		if err := expectStatus(tc.WantStatus, r.Status); err != nil {
+		if err := expect.Status(tc.WantStatus, r.Status); err != nil {
 			r.addErrors(err)
 		}
 	}
 
 	if tc.WantHeaders != nil {
-		if errs := expectHeaders(tc.WantHeaders, r.Headers); len(errs) > 0 {
+		if errs := expect.Headers(tc.WantHeaders, r.Headers); len(errs) > 0 {
 			r.addErrors(errs...)
 		}
 	}
 
 	if tc.WantBody != nil {
 		body := parseResponseBody(r.Body)
-		if errs := expect("body", tc.WantBody, body, tc.WantExactJSONBody); len(errs) > 0 {
+		if errs := expect.Value("body", tc.WantBody, body, tc.WantExactJSONBody); len(errs) > 0 {
 			r.addErrors(errs...)
 		}
 	}
