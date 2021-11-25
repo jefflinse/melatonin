@@ -474,6 +474,7 @@ func (r *HTTPTestCaseResult) validateExpectations() {
 	}
 }
 
+// HTTPResponseExpectations represents the expected values for single HTTP response.
 type HTTPResponseExpectations struct {
 	// Body is the expected HTTP response body content.
 	Body interface{}
