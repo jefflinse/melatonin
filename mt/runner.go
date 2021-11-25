@@ -106,7 +106,7 @@ func (r *TestRunner) RunTestsT(t *testing.T, tests []TestCase) ([]TestResult, er
 	}
 
 	r.outputWriter.Flush()
-	fmt.Fprintf(cfg.Stdout, "%d passed, %d failed, %d skipped %s\n", passed, failed, skipped,
+	r.outputWriter.PrintLine("%d passed, %d failed, %d skipped %s\n", passed, failed, skipped,
 		faintFG(fmt.Sprintf("in %s", totalDuration.String())))
 
 	return results, nil

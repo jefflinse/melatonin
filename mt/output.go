@@ -20,7 +20,7 @@ var (
 type columnWriter struct {
 	columns   int
 	format    string
-	stdout    io.Writer
+	dest      io.Writer
 	tabWriter *tabwriter.Writer
 }
 
@@ -28,9 +28,14 @@ func newColumnWriter(output io.Writer, columns int, padding int) *columnWriter {
 	return &columnWriter{
 		columns:   columns,
 		format:    strings.Repeat("%s\t", columns) + "\n",
-		stdout:    output,
+		dest:      output,
 		tabWriter: tabwriter.NewWriter(output, 0, 0, padding, ' ', 0),
 	}
+}
+
+func (w *columnWriter) PrintLine(str string, args ...interface{}) {
+	w.tabWriter.Flush()
+	fmt.Fprintf(w.dest, str+"\n", args...)
 }
 
 func (w *columnWriter) PrintColumns(columns ...interface{}) {
@@ -43,7 +48,7 @@ func (w *columnWriter) PrintColumns(columns ...interface{}) {
 
 func (w *columnWriter) Flush() {
 	w.tabWriter.Flush()
-	fmt.Fprintln(w.stdout)
+	fmt.Fprintln(w.dest)
 }
 
 func debug(format string, a ...interface{}) {
