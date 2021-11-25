@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -17,7 +18,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fatih/color"
 	"github.com/jefflinse/melatonin/expect"
 	"github.com/jefflinse/melatonin/golden"
 )
@@ -37,7 +37,7 @@ func init() {
 		if timeout, err := time.ParseDuration(envTimeoutStr); err == nil {
 			defaultRequestTimeout = timeout
 		} else {
-			color.HiYellow("invalid MELATONIN_DEFAULT_TEST_TIMEOUT value %q in environment, using default of %s",
+			fmt.Printf("invalid MELATONIN_DEFAULT_TEST_TIMEOUT value %q in environment, using default of %s\n",
 				envTimeoutStr, defaultRequestTimeoutStr)
 		}
 	}
@@ -47,6 +47,11 @@ type HTTPTestContext struct {
 	BaseURL string
 	Client  *http.Client
 	Handler http.Handler
+}
+
+// DefaultContext returns an HTTPTestContext using the default HTTP client.
+func DefaultContext() *HTTPTestContext {
+	return &HTTPTestContext{}
 }
 
 // NewURLContext creates a new HTTPTestContext for creating tests that target
@@ -70,6 +75,63 @@ func NewHandlerContext(handler http.Handler) *HTTPTestContext {
 func (c *HTTPTestContext) WithHTTPClient(client *http.Client) *HTTPTestContext {
 	c.Client = client
 	return c
+}
+
+func (c *HTTPTestContext) newHTTPTestCase(method, path string, description ...string) *HTTPTestCase {
+	u, err := c.createURL(path)
+	if err != nil {
+		log.Fatalf("failed to create URL for path %q: %v", path, err)
+	}
+
+	req, cancel, err := createRequest(method, u.String())
+	if err != nil {
+		log.Fatalf("failed to create request %v", err)
+	}
+
+	return &HTTPTestCase{
+		Desc:    strings.Join(description, " "),
+		tctx:    c,
+		request: req,
+		cancel:  cancel,
+	}
+}
+
+func (c *HTTPTestContext) createURL(path string) (*url.URL, error) {
+	if path == "" {
+		return nil, errors.New("not enough URL information")
+	}
+
+	// when using the default context, the path must be a complete URL.
+	if c.BaseURL == "" {
+		u, err := url.ParseRequestURI(path)
+		if err != nil {
+			return nil, fmt.Errorf("invalid URL %q: %s", path, err)
+		}
+
+		return u, nil
+	}
+
+	base, err := url.ParseRequestURI(c.BaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid base URL %q: %s", c.BaseURL, err)
+	}
+
+	endpoint, err := url.ParseRequestURI(path)
+	if err != nil {
+		return nil, fmt.Errorf("invalid path %q: %s", path, err)
+	}
+
+	return base.ResolveReference(endpoint), nil
+}
+
+func createRequest(method, path string) (*http.Request, context.CancelFunc, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	req, err := http.NewRequestWithContext(ctx, method, path, nil)
+	if err != nil {
+		return nil, cancel, err
+	}
+
+	return req, cancel, nil
 }
 
 // An HTTPTestCase tests a single call to an HTTP endpoint.
@@ -102,21 +164,6 @@ type HTTPTestCase struct {
 	// values from the golden file.
 	GoldenFilePath string
 
-	// Method is the HTTP method to use for the request. Default is "GET".
-	Method string
-
-	// Path is the relative Path to use for the request. Must begin with "/".
-	Path string
-
-	// QueryParams is a map of query string parameters.
-	QueryParams url.Values
-
-	// RequestHeaders is a map of HTTP headers to use for the request.
-	RequestHeaders http.Header
-
-	// RequestBody is the content to send in the body of the HTTP request.
-	RequestBody interface{}
-
 	// Timeout is the maximum amount of time to wait for the request to complete.
 	//
 	// Default is 5 seconds.
@@ -141,36 +188,23 @@ type HTTPTestCase struct {
 	WantStatus int
 
 	// Configuration for the test
-	context *HTTPTestContext
+	tctx *HTTPTestContext
 
 	// Underlying HTTP request for the test case.
 	request *http.Request
 
-	// Cached body content
-	bodyBytes []byte
+	// Cancel function for the underlying HTTP request.
+	cancel context.CancelFunc
 }
 
 var _ TestCase = &HTTPTestCase{}
 
-func newHTTPTestCase(context *HTTPTestContext, method, path string, description ...string) *HTTPTestCase {
-	return &HTTPTestCase{
-		Desc:    strings.Join(description, " "),
-		Method:  method,
-		Path:    path,
-		context: context,
-	}
-}
-
 func (tc *HTTPTestCase) Action() string {
-	return tc.Method
+	return strings.ToUpper(tc.request.Method)
 }
 
 func (tc *HTTPTestCase) Target() string {
-	if u, err := url.Parse(tc.Path); err == nil {
-		return u.Path
-	}
-
-	return tc.Path
+	return tc.request.URL.Path
 }
 
 func (tc *HTTPTestCase) Description() string {
@@ -178,12 +212,10 @@ func (tc *HTTPTestCase) Description() string {
 		return tc.Desc
 	}
 
-	body, _ := tc.requestBodyBytes()
-	return fmt.Sprintf("%s %s%s (%d q, %d h, %d b)",
-		tc.Action(), tc.context.BaseURL, tc.Target(),
-		len(tc.QueryParams),
-		len(tc.RequestHeaders),
-		len(body),
+	return fmt.Sprintf("%s %s (%d q, %d h)",
+		tc.Action(), tc.Target(),
+		len(tc.request.URL.Query()),
+		len(tc.request.Header),
 	)
 }
 
@@ -204,53 +236,27 @@ func (tc *HTTPTestCase) Execute(t *testing.T) (TestResult, error) {
 		}
 	}
 
-	timeout := defaultRequestTimeout
-	if tc.Timeout > 0 {
-		timeout = tc.Timeout
+	if tc.tctx.BaseURL != "" && tc.tctx.Handler != nil {
+		return nil, fmt.Errorf("HTTP test context %q cannot specify both a base URL and handler", tc.tctx.BaseURL)
 	}
 
-	body, err := tc.requestBodyBytes()
-	if err != nil {
-		return nil, err
-	}
-
-	if tc.request == nil {
-		req, cancel, err := createRequest(
-			tc.Method,
-			tc.context.BaseURL+tc.Path,
-			tc.QueryParams,
-			tc.RequestHeaders,
-			body,
-			timeout)
-		defer cancel()
-		if err != nil {
-			result.addErrors(fmt.Errorf("failed to create HTTP request: %w", err))
-			return result, err
-		}
-
-		tc.request = req
-	}
-
-	if tc.context.BaseURL != "" && tc.context.Handler != nil {
-		return nil, fmt.Errorf("HTTP test context %q cannot specify both a base URL and handler", tc.context.BaseURL)
-	}
-
-	if tc.context.BaseURL != "" {
-		if tc.context.Client == nil {
-			tc.context.Client = http.DefaultClient
-		}
-
-		result.Status, result.Headers, result.Body, err = doRequest(tc.context.Client, tc.request)
-		if err != nil {
-			debug("%s: failed to execute HTTP request: %s", tc.Description(), err)
-			result.addErrors(fmt.Errorf("failed to execute HTTP request: %w", err))
-			return nil, err
-		}
-	} else if tc.context.Handler != nil {
-		result.Status, result.Headers, result.Body, err = handleRequest(tc.context.Handler, tc.request)
+	var err error
+	if tc.tctx.Handler != nil {
+		result.Status, result.Headers, result.Body, err = handleRequest(tc.tctx.Handler, tc.request)
 		if err != nil {
 			debug("%s: failed to handle HTTP request: %s", tc.Description(), err)
 			result.addErrors(fmt.Errorf("failed to handle HTTP request: %w", err))
+			return nil, err
+		}
+	} else {
+		if tc.tctx.Client == nil {
+			tc.tctx.Client = http.DefaultClient
+		}
+
+		result.Status, result.Headers, result.Body, err = doRequest(tc.tctx.Client, tc.request)
+		if err != nil {
+			debug("%s: failed to execute HTTP request: %s", tc.Description(), err)
+			result.addErrors(fmt.Errorf("failed to execute HTTP request: %w", err))
 			return nil, err
 		}
 	}
@@ -267,172 +273,111 @@ func (tc *HTTPTestCase) Execute(t *testing.T) (TestResult, error) {
 	return result, err
 }
 
-func (tc *HTTPTestCase) requestBodyBytes() ([]byte, error) {
-	if tc.bodyBytes != nil {
-		return tc.bodyBytes, nil
-	}
-
-	var body []byte
-	if tc.RequestBody != nil {
-		var err error
-		switch v := tc.RequestBody.(type) {
-		case []byte:
-			body = v
-		case string:
-			body = []byte(v)
-		case func() []byte:
-			body = v()
-		case func() ([]byte, error):
-			body, err = v()
-		default:
-			body, err = json.Marshal(tc.RequestBody)
-		}
-
-		if err != nil {
-			return nil, fmt.Errorf("request body: %w", err)
-		}
-	}
-
-	tc.bodyBytes = body
-	return tc.bodyBytes, nil
-}
-
 // DELETE is a shortcut for NewTestCase(http.MethodDelete, path).
 func (c *HTTPTestContext) DELETE(path string, description ...string) *HTTPTestCase {
-	return newHTTPTestCase(c, http.MethodDelete, path, description...)
+	return c.newHTTPTestCase(http.MethodDelete, path, description...)
 }
 
 // HEAD is a shortcut for NewTestCase(http.MethodHead, path, description...).
 func (c *HTTPTestContext) HEAD(path string, description ...string) *HTTPTestCase {
-	return newHTTPTestCase(c, http.MethodHead, path, description...)
+	return c.newHTTPTestCase(http.MethodHead, path, description...)
 }
 
 // GET is a shortcut for NewTestCase(http.MethodGet, path, description...).
 func (c *HTTPTestContext) GET(path string, description ...string) *HTTPTestCase {
-	return newHTTPTestCase(c, http.MethodGet, path, description...)
+	return c.newHTTPTestCase(http.MethodGet, path, description...)
 }
 
 // OPTIONS is a shortcut for NewTestCase(http.MethodOptions, path, description...).
 func (c *HTTPTestContext) OPTIONS(path string, description ...string) *HTTPTestCase {
-	return newHTTPTestCase(c, http.MethodOptions, path, description...)
+	return c.newHTTPTestCase(http.MethodOptions, path, description...)
 }
 
 // PATCH is a shortcut for NewTestCase(http.MethodPatch, path, description...).
 func (c *HTTPTestContext) PATCH(path string, description ...string) *HTTPTestCase {
-	return newHTTPTestCase(c, http.MethodPatch, path, description...)
+	return c.newHTTPTestCase(http.MethodPatch, path, description...)
 }
 
 // POST is a shortcut for NewTestCase(http.MethodPost, path, description...).
 func (c *HTTPTestContext) POST(path string, description ...string) *HTTPTestCase {
-	return newHTTPTestCase(c, http.MethodPost, path, description...)
+	return c.newHTTPTestCase(http.MethodPost, path, description...)
 }
 
 // PUT is a shortcut for NewTestCase(http.MethodPut, path, description...).
 func (c *HTTPTestContext) PUT(path string, description ...string) *HTTPTestCase {
-	return newHTTPTestCase(c, http.MethodPut, path, description...)
+	return c.newHTTPTestCase(http.MethodPut, path, description...)
 }
 
 // DO creates a test case from a custom HTTP request.
 func (c *HTTPTestContext) DO(request *http.Request, description ...string) *HTTPTestCase {
-	tc := newHTTPTestCase(c, request.Method, request.URL.Path, description...)
+	tc := c.newHTTPTestCase(request.Method, request.URL.Path, description...)
 	tc.request = request
 	return tc
 }
 
 // After registers a function to be run after the test case.
 func (tc *HTTPTestCase) After(after func() error) *HTTPTestCase {
-	if tc.AfterFunc != nil {
-		color.HiYellow("overriding previously defined AfterFunc")
-	}
-
 	tc.AfterFunc = after
 	return tc
 }
 
 // Before registers a function to be run before the test case.
 func (tc *HTTPTestCase) Before(before func() error) *HTTPTestCase {
-	if tc.BeforeFunc != nil {
-		color.HiYellow("overriding previously defined BeforeFunc")
-	}
-
 	tc.BeforeFunc = before
 	return tc
 }
 
 // Describe sets a description for the test case.
 func (tc *HTTPTestCase) Describe(description string) *HTTPTestCase {
-	if tc.Desc != "" {
-		color.HiYellow("overriding previous description")
-	}
-
 	tc.Desc = description
 	return tc
 }
 
 // WithBody sets the request body for the test case.
 func (tc *HTTPTestCase) WithBody(body interface{}) *HTTPTestCase {
-	if tc.RequestBody != nil {
-		color.HiYellow("overriding previously defined request body")
+	b, err := toBytes(body)
+	if err != nil {
+		log.Fatalf("failed to marshal request body: %s", err)
 	}
 
-	tc.RequestBody = body
+	tc.request.Body = io.NopCloser(bytes.NewReader(b))
 	return tc
 }
 
 // WithHeaders sets the request headers for the test case.
 func (tc *HTTPTestCase) WithHeaders(headers http.Header) *HTTPTestCase {
-	if tc.RequestHeaders != nil {
-		color.HiYellow("overriding previously defined request headers")
-	}
-
-	tc.RequestHeaders = headers
+	tc.request.Header = headers
 	return tc
 }
 
 // WithHeader adds a request header to the test case.
 func (tc *HTTPTestCase) WithHeader(key, value string) *HTTPTestCase {
-	if tc.RequestHeaders == nil {
-		tc.RequestHeaders = http.Header{}
-	}
-
-	tc.RequestHeaders.Set(key, value)
+	tc.request.Header.Set(key, value)
 	return tc
 }
 
 func (tc *HTTPTestCase) WithQueryParams(params url.Values) *HTTPTestCase {
-	if tc.QueryParams != nil {
-		color.HiYellow("overriding previously defined query params")
-	}
-
-	tc.QueryParams = params
+	tc.request.URL.RawQuery = params.Encode()
 	return tc
 }
 
 func (tc *HTTPTestCase) WithQueryParam(key, value string) *HTTPTestCase {
-	if tc.QueryParams == nil {
-		tc.QueryParams = url.Values{}
-	}
-
-	tc.QueryParams.Add(key, value)
+	q := tc.request.URL.Query()
+	q.Add(key, value)
+	tc.request.URL.RawQuery = q.Encode()
 	return tc
 }
 
 // WithTimeout sets a timeout for the test case.
 func (tc *HTTPTestCase) WithTimeout(timeout time.Duration) *HTTPTestCase {
-	if tc.Timeout != 0 {
-		color.HiYellow("overriding previously defined timeout")
-	}
-
-	tc.Timeout = timeout
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	tc.request = tc.request.WithContext(ctx)
+	tc.cancel = cancel
 	return tc
 }
 
 // ExpectStatus sets the expected HTTP status code for the test case.
 func (tc *HTTPTestCase) ExpectStatus(status int) *HTTPTestCase {
-	if tc.WantStatus > 0 {
-		color.HiYellow("overriding previously expected status")
-	}
-
 	tc.WantStatus = status
 	return tc
 }
@@ -451,10 +396,6 @@ func (tc *HTTPTestCase) ExpectExactHeaders(headers http.Header) *HTTPTestCase {
 // Unlike ExpectExactHeaders, ExpectHeaders only verifies that the expected
 // headers are present in the response, and ignores any additional headers.
 func (tc *HTTPTestCase) ExpectHeaders(headers http.Header) *HTTPTestCase {
-	if tc.WantHeaders != nil && len(tc.WantHeaders) > 0 {
-		color.HiYellow("overriding previously expected headers")
-	}
-
 	tc.WantHeaders = headers
 	return tc
 }
@@ -471,10 +412,6 @@ func (tc *HTTPTestCase) ExpectHeader(key, value string) *HTTPTestCase {
 
 // ExpectBody sets the expected HTTP response body for the test case.
 func (tc *HTTPTestCase) ExpectBody(body interface{}) *HTTPTestCase {
-	if tc.WantBody != nil {
-		color.HiYellow("overriding previously expected body")
-	}
-
 	tc.WantBody = body
 	return tc
 }
@@ -492,24 +429,12 @@ func (tc *HTTPTestCase) ExpectExactBody(body interface{}) *HTTPTestCase {
 }
 
 func (tc *HTTPTestCase) ExpectGolden(path string) *HTTPTestCase {
-	if tc.GoldenFilePath != "" {
-		color.HiYellow("overriding previously expected golden file")
-	}
-
 	tc.GoldenFilePath = path
 	return tc
 }
 
 // Validate ensures that the test case is valid can can be run.
 func (tc *HTTPTestCase) Validate() error {
-	if tc.Method == "" {
-		return errors.New("missing Method")
-	} else if tc.Path == "" {
-		return errors.New("missing Path")
-	} else if tc.Path[0] != '/' {
-		return errors.New("path must begin with '/'")
-	}
-
 	if tc.GoldenFilePath != "" {
 		path := tc.GoldenFilePath
 		if !filepath.IsAbs(path) {
@@ -521,19 +446,8 @@ func (tc *HTTPTestCase) Validate() error {
 			return err
 		}
 
-		if tc.WantStatus != 0 {
-			color.HiYellow("overriding previously expected status with golden file value")
-		}
 		tc.WantStatus = golden.WantStatus
-
-		if tc.WantHeaders != nil {
-			color.HiYellow("overriding previously expected headers with golden file content")
-		}
 		tc.WantHeaders = golden.WantHeaders
-
-		if tc.WantBody != nil {
-			color.HiYellow("overriding previously expected body with golden file content")
-		}
 		tc.WantBody = golden.WantBody
 	}
 
@@ -606,35 +520,46 @@ func (r *HTTPTestCaseResult) validateExpectations() {
 	}
 }
 
-func createRequest(method, path string,
-	query url.Values,
-	headers http.Header,
-	body []byte,
-	timeout time.Duration) (*http.Request, context.CancelFunc, error) {
+// DELETE is a shortcut for DefaultContext().NewTestCase(http.MethodDelete, path).
+func DELETE(url string, description ...string) *HTTPTestCase {
+	return DefaultContext().DELETE(url, description...)
+}
 
-	var reader io.Reader
-	if body != nil {
-		reader = bytes.NewReader(body)
-	}
+// HEAD is a shortcut for NewTestCase(http.MethodHead, path, description...).
+func HEAD(url string, description ...string) *HTTPTestCase {
+	return DefaultContext().HEAD(url, description...)
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+// GET is a shortcut for NewTestCase(http.MethodGet, path, description...).
+func GET(url string, description ...string) *HTTPTestCase {
+	return DefaultContext().GET(url, description...)
+}
 
-	req, err := http.NewRequestWithContext(ctx, method, path, reader)
-	if err != nil {
-		return nil, cancel, err
-	}
+// OPTIONS is a shortcut for NewTestCase(http.MethodOptions, path, description...).
+func OPTIONS(url string, description ...string) *HTTPTestCase {
+	return DefaultContext().OPTIONS(url, description...)
+}
 
-	if query != nil {
-		req.URL.RawQuery = query.Encode()
-	}
+// PATCH is a shortcut for NewTestCase(http.MethodPatch, path, description...).
+func PATCH(url string, description ...string) *HTTPTestCase {
+	return DefaultContext().PATCH(url, description...)
+}
 
-	if headers != nil {
-		req.Header = headers
-	} else {
-		req.Header = http.Header{}
-	}
+// POST is a shortcut for NewTestCase(http.MethodPost, path, description...).
+func POST(url string, description ...string) *HTTPTestCase {
+	return DefaultContext().POST(url, description...)
+}
 
-	return req, cancel, nil
+// PUT is a shortcut for NewTestCase(http.MethodPut, path, description...).
+func PUT(url string, description ...string) *HTTPTestCase {
+	return DefaultContext().PUT(url, description...)
+}
+
+// DO creates a test case from a custom HTTP request.
+func DO(request *http.Request, description ...string) *HTTPTestCase {
+	tc := DefaultContext().newHTTPTestCase(request.Method, request.URL.Path, description...)
+	tc.request = request
+	return tc
 }
 
 func doRequest(c *http.Client, req *http.Request) (int, http.Header, []byte, error) {
@@ -659,4 +584,29 @@ func handleRequest(h http.Handler, req *http.Request) (int, http.Header, []byte,
 	resp := w.Result()
 	b, err := ioutil.ReadAll(resp.Body)
 	return resp.StatusCode, resp.Header, b, err
+}
+
+func toBytes(body interface{}) ([]byte, error) {
+	var b []byte
+	if body != nil {
+		var err error
+		switch v := body.(type) {
+		case []byte:
+			b = v
+		case string:
+			b = []byte(v)
+		case func() []byte:
+			b = v()
+		case func() ([]byte, error):
+			b, err = v()
+		default:
+			b, err = json.Marshal(body)
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("request body: %w", err)
+		}
+	}
+
+	return b, nil
 }

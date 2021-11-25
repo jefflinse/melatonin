@@ -16,7 +16,7 @@ import (
 
 // This example shows how to use melatonin with all of its configurable settings.
 func TestFullExample(t *testing.T) {
-	// Create a mock server for this example. See startExampleServer() below.
+	// Create a mock server for this example. See startFullExampleServer() below.
 	server := startFullExampleServer()
 	defer server.Close()
 
