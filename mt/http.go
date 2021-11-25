@@ -124,16 +124,6 @@ func (c *HTTPTestContext) createURL(path string) (*url.URL, error) {
 	return base.ResolveReference(endpoint), nil
 }
 
-func createRequest(method, path string) (*http.Request, context.CancelFunc, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
-	req, err := http.NewRequestWithContext(ctx, method, path, nil)
-	if err != nil {
-		return nil, cancel, err
-	}
-
-	return req, cancel, nil
-}
-
 // An HTTPTestCase tests a single call to an HTTP endpoint.
 //
 // An optional setup function can be provided to perform any necessary
@@ -158,34 +148,14 @@ type HTTPTestCase struct {
 	// Desc is a description of the test case.
 	Desc string
 
+	// Expectations is a set of values to compare the response against.
+	Expectations HTTPResponseExpectations
+
 	// GoldenFilePath is a path to a golden file defining expectations for the test case.
 	//
 	// If set, any WantStatus, WantHeaders, or WantBody values are overriden with
 	// values from the golden file.
 	GoldenFilePath string
-
-	// Timeout is the maximum amount of time to wait for the request to complete.
-	//
-	// Default is 5 seconds.
-	Timeout time.Duration
-
-	// WantBody is the expected HTTP response body content.
-	WantBody interface{}
-
-	// WantExactHeaders indicates whether or not any unexpected response headers
-	// should be treated as a test failure.
-	WantExactHeaders bool
-
-	// WantExactJSONBody indicates whether or not the expected JSON should be matched
-	// exactly (true) or treated as a subset of the response JSON (false).
-	WantExactJSONBody bool
-
-	// WantHeaders is a map of HTTP headers that are expected to be present in
-	// the HTTP response.
-	WantHeaders http.Header
-
-	// WantStatus is the expected HTTP status code of the response. Default is 200.
-	WantStatus int
 
 	// Configuration for the test
 	tctx *HTTPTestContext
@@ -378,7 +348,7 @@ func (tc *HTTPTestCase) WithTimeout(timeout time.Duration) *HTTPTestCase {
 
 // ExpectStatus sets the expected HTTP status code for the test case.
 func (tc *HTTPTestCase) ExpectStatus(status int) *HTTPTestCase {
-	tc.WantStatus = status
+	tc.Expectations.Status = status
 	return tc
 }
 
@@ -387,7 +357,7 @@ func (tc *HTTPTestCase) ExpectStatus(status int) *HTTPTestCase {
 // Unlike ExpectHeaders, ExpectExactHeaders willl cause the test case to fail
 // if any unexpected headers are present in the response.
 func (tc *HTTPTestCase) ExpectExactHeaders(headers http.Header) *HTTPTestCase {
-	tc.WantExactHeaders = true
+	tc.Expectations.WantExactHeaders = true
 	return tc.ExpectHeaders(headers)
 }
 
@@ -396,23 +366,23 @@ func (tc *HTTPTestCase) ExpectExactHeaders(headers http.Header) *HTTPTestCase {
 // Unlike ExpectExactHeaders, ExpectHeaders only verifies that the expected
 // headers are present in the response, and ignores any additional headers.
 func (tc *HTTPTestCase) ExpectHeaders(headers http.Header) *HTTPTestCase {
-	tc.WantHeaders = headers
+	tc.Expectations.Headers = headers
 	return tc
 }
 
 // ExpectHeader adds an expected HTTP response header for the test case.
 func (tc *HTTPTestCase) ExpectHeader(key, value string) *HTTPTestCase {
-	if tc.WantHeaders == nil {
-		tc.WantHeaders = http.Header{}
+	if tc.Expectations.Headers == nil {
+		tc.Expectations.Headers = http.Header{}
 	}
 
-	tc.WantHeaders.Set(key, value)
+	tc.Expectations.Headers.Set(key, value)
 	return tc
 }
 
 // ExpectBody sets the expected HTTP response body for the test case.
 func (tc *HTTPTestCase) ExpectBody(body interface{}) *HTTPTestCase {
-	tc.WantBody = body
+	tc.Expectations.Body = body
 	return tc
 }
 
@@ -424,7 +394,7 @@ func (tc *HTTPTestCase) ExpectBody(body interface{}) *HTTPTestCase {
 //
 // For non-JSON values, ExpectExactBody behaves identically to ExpectBody.
 func (tc *HTTPTestCase) ExpectExactBody(body interface{}) *HTTPTestCase {
-	tc.WantExactJSONBody = true
+	tc.Expectations.WantExactJSONBody = true
 	return tc.ExpectBody(body)
 }
 
@@ -446,9 +416,11 @@ func (tc *HTTPTestCase) Validate() error {
 			return err
 		}
 
-		tc.WantStatus = golden.WantStatus
-		tc.WantHeaders = golden.WantHeaders
-		tc.WantBody = golden.WantBody
+		tc.Expectations.Status = golden.WantStatus
+		tc.Expectations.Headers = golden.WantHeaders
+		tc.Expectations.Body = golden.WantBody
+		tc.Expectations.WantExactHeaders = golden.MatchHeadersExactly
+		tc.Expectations.WantExactJSONBody = golden.MatchBodyJSONExactly
 	}
 
 	return nil
@@ -480,44 +452,46 @@ func (r *HTTPTestCaseResult) addErrors(errs ...error) {
 	r.errors = append(r.errors, errs...)
 }
 
-func parseResponseBody(body []byte) interface{} {
-	if len(body) > 0 {
-		var bodyMap map[string]interface{}
-		if err := json.Unmarshal(body, &bodyMap); err == nil {
-			return bodyMap
-		}
-
-		var bodyArray []interface{}
-		if err := json.Unmarshal(body, &bodyArray); err == nil {
-			return bodyArray
-		}
-
-		return string(body)
-	}
-
-	return nil
-}
-
 func (r *HTTPTestCaseResult) validateExpectations() {
 	tc := r.TestCase().(*HTTPTestCase)
-	if tc.WantStatus != 0 {
-		if err := expect.Status(tc.WantStatus, r.Status); err != nil {
+	if tc.Expectations.Status != 0 {
+		if err := expect.Status(tc.Expectations.Status, r.Status); err != nil {
 			r.addErrors(err)
 		}
 	}
 
-	if tc.WantHeaders != nil {
-		if errs := expect.Headers(tc.WantHeaders, r.Headers); len(errs) > 0 {
+	if tc.Expectations.Headers != nil {
+		if errs := expect.Headers(tc.Expectations.Headers, r.Headers); len(errs) > 0 {
 			r.addErrors(errs...)
 		}
 	}
 
-	if tc.WantBody != nil {
-		body := parseResponseBody(r.Body)
-		if errs := expect.Value("body", tc.WantBody, body, tc.WantExactJSONBody); len(errs) > 0 {
+	if tc.Expectations.Body != nil {
+		body := toInterface(r.Body)
+		if errs := expect.Value("body", tc.Expectations.Body, body, tc.Expectations.WantExactJSONBody); len(errs) > 0 {
 			r.addErrors(errs...)
 		}
 	}
+}
+
+type HTTPResponseExpectations struct {
+	// Body is the expected HTTP response body content.
+	Body interface{}
+
+	// ExactHeaders indicates whether or not any unexpected response headers
+	// should be treated as a test failure.
+	WantExactHeaders bool
+
+	// ExactJSONBody indicates whether or not the expected JSON should be matched
+	// exactly (true) or treated as a subset of the response JSON (false).
+	WantExactJSONBody bool
+
+	// Headers is a map of HTTP headers that are expected to be present in
+	// the HTTP response.
+	Headers http.Header
+
+	// Status is the expected HTTP status code of the response. Default is 200.
+	Status int
 }
 
 // DELETE is a shortcut for DefaultContext().NewTestCase(http.MethodDelete, path).
@@ -560,6 +534,16 @@ func DO(request *http.Request, description ...string) *HTTPTestCase {
 	tc := DefaultContext().newHTTPTestCase(request.Method, request.URL.Path, description...)
 	tc.request = request
 	return tc
+}
+
+func createRequest(method, path string) (*http.Request, context.CancelFunc, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	req, err := http.NewRequestWithContext(ctx, method, path, nil)
+	if err != nil {
+		return nil, cancel, err
+	}
+
+	return req, cancel, nil
 }
 
 func doRequest(c *http.Client, req *http.Request) (int, http.Header, []byte, error) {
@@ -609,4 +593,22 @@ func toBytes(body interface{}) ([]byte, error) {
 	}
 
 	return b, nil
+}
+
+func toInterface(body []byte) interface{} {
+	if len(body) > 0 {
+		var bodyMap map[string]interface{}
+		if err := json.Unmarshal(body, &bodyMap); err == nil {
+			return bodyMap
+		}
+
+		var bodyArray []interface{}
+		if err := json.Unmarshal(body, &bodyArray); err == nil {
+			return bodyArray
+		}
+
+		return string(body)
+	}
+
+	return nil
 }
