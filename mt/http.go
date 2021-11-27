@@ -15,7 +15,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/jefflinse/melatonin/expect"
@@ -189,36 +188,24 @@ func (tc *HTTPTestCase) Description() string {
 	)
 }
 
-func (tc *HTTPTestCase) Execute(t *testing.T) (TestResult, error) {
+func (tc *HTTPTestCase) Execute() TestResult {
 	defer tc.cancel()
-
-	if err := tc.Validate(); err != nil {
-		return nil, err
-	}
 
 	result := &HTTPTestCaseResult{
 		testCase: tc,
 	}
 
 	if tc.BeforeFunc != nil {
-		debug("%s: running before()", tc.Description())
 		if err := tc.BeforeFunc(); err != nil {
-			result.addErrors(fmt.Errorf("before(): %w", err))
-			return result, nil
+			return result.addErrors(fmt.Errorf("before(): %w", err))
 		}
-	}
-
-	if tc.tctx.BaseURL != "" && tc.tctx.Handler != nil {
-		return nil, fmt.Errorf("HTTP test context %q cannot specify both a base URL and handler", tc.tctx.BaseURL)
 	}
 
 	var err error
 	if tc.tctx.Handler != nil {
 		result.Status, result.Headers, result.Body, err = handleRequest(tc.tctx.Handler, tc.request)
 		if err != nil {
-			debug("%s: failed to handle HTTP request: %s", tc.Description(), err)
-			result.addErrors(fmt.Errorf("failed to handle HTTP request: %w", err))
-			return nil, err
+			return result.addErrors(fmt.Errorf("failed to handle HTTP request: %w", err))
 		}
 	} else {
 		if tc.tctx.Client == nil {
@@ -227,22 +214,19 @@ func (tc *HTTPTestCase) Execute(t *testing.T) (TestResult, error) {
 
 		result.Status, result.Headers, result.Body, err = doRequest(tc.tctx.Client, tc.request)
 		if err != nil {
-			debug("%s: failed to execute HTTP request: %s", tc.Description(), err)
-			result.addErrors(fmt.Errorf("failed to execute HTTP request: %w", err))
-			return nil, err
+			return result.addErrors(fmt.Errorf("failed to execute HTTP request: %w", err))
 		}
 	}
 
 	result.validateExpectations()
 
 	if tc.AfterFunc != nil {
-		debug("%s: running after()", tc.Description())
 		if err := tc.AfterFunc(); err != nil {
 			result.addErrors(fmt.Errorf("after(): %w", err))
 		}
 	}
 
-	return result, err
+	return result
 }
 
 // DELETE is a shortcut for NewTestCase(http.MethodDelete, path).
@@ -407,6 +391,10 @@ func (tc *HTTPTestCase) ExpectGolden(path string) *HTTPTestCase {
 
 // Validate ensures that the test case is valid can can be run.
 func (tc *HTTPTestCase) Validate() error {
+	if tc.tctx.BaseURL != "" && tc.tctx.Handler != nil {
+		return fmt.Errorf("HTTP test context %q cannot specify both a base URL and handler", tc.tctx.BaseURL)
+	}
+
 	if tc.GoldenFilePath != "" {
 		path := tc.GoldenFilePath
 		if !filepath.IsAbs(path) {
@@ -446,12 +434,13 @@ func (r *HTTPTestCaseResult) TestCase() TestCase {
 	return r.testCase
 }
 
-func (r *HTTPTestCaseResult) addErrors(errs ...error) {
+func (r *HTTPTestCaseResult) addErrors(errs ...error) *HTTPTestCaseResult {
 	if len(errs) == 0 {
-		return
+		return r
 	}
 
 	r.errors = append(r.errors, errs...)
+	return r
 }
 
 func (r *HTTPTestCaseResult) validateExpectations() {

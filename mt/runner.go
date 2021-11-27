@@ -5,8 +5,6 @@ import (
 	"io"
 	"testing"
 	"time"
-
-	"github.com/fatih/color"
 )
 
 type TestRunner struct {
@@ -67,19 +65,15 @@ func (r *TestRunner) RunTestsT(t *testing.T, tests []TestCase) ([]TestResult, er
 	results := []TestResult{}
 	totalDuration := time.Duration(0)
 	for _, test := range tests {
-		result, duration, err := runTestT(t, test)
-		if err != nil {
-			return nil, err
-		}
-
+		result, duration := runTest(test)
 		totalDuration += duration
 		executed++
 
 		if len(result.Errors()) > 0 {
 			failed++
-			r.printTestFailure(test, result, duration)
-
-			if t != nil {
+			if t == nil {
+				r.printTestFailure(test, result, duration)
+			} else {
 				t.Run(test.Description(), func(t *testing.T) {
 					for _, err := range result.Errors() {
 						t.Log(err)
@@ -90,7 +84,6 @@ func (r *TestRunner) RunTestsT(t *testing.T, tests []TestCase) ([]TestResult, er
 			}
 
 			if !r.ContinueOnFailure {
-				color.HiYellow("skipping remaininig tests")
 				skipped = len(tests) - executed
 				break
 			}
@@ -99,6 +92,10 @@ func (r *TestRunner) RunTestsT(t *testing.T, tests []TestCase) ([]TestResult, er
 			passed++
 			if t == nil {
 				r.printTestSuccess(test, result, duration)
+			} else {
+				t.Run(test.Description(), func(t *testing.T) {
+					t.Log(result.TestCase().Description())
+				})
 			}
 		}
 
@@ -134,15 +131,11 @@ func (r *TestRunner) printTestSuccess(test TestCase, result TestResult, duration
 		faintFG(duration.String()))
 }
 
-func runTestT(t *testing.T, test TestCase) (TestResult, time.Duration, error) {
+func runTest(test TestCase) (TestResult, time.Duration) {
 	start := time.Now()
-	result, err := test.Execute(t)
+	result := test.Execute()
 	duration := time.Since(start)
-	if err != nil {
-		return nil, duration, err
-	}
-
-	return result, duration, nil
+	return result, duration
 }
 
 func RunTests(tests []TestCase) ([]TestResult, error) {

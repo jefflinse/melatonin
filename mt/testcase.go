@@ -1,14 +1,10 @@
 package mt
 
-import (
-	"testing"
-)
-
 type TestCase interface {
 	Action() string
 	Target() string
 	Description() string
-	Execute(*testing.T) (TestResult, error)
+	Execute() TestResult
 }
 
 type TestResult interface {
