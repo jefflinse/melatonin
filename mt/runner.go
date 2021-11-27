@@ -1,8 +1,6 @@
 package mt
 
 import (
-	"fmt"
-	"io"
 	"testing"
 	"time"
 )
@@ -18,8 +16,16 @@ type TestRunner struct {
 	//
 	// Default is 10 seconds.
 	TestTimeout time.Duration
+}
 
-	outputWriter *columnWriter
+type RunResult struct {
+	TestResults   []TestResult
+	TestDurations []time.Duration
+	Passed        int
+	Failed        int
+	Skipped       int
+	Total         int
+	Duration      time.Duration
 }
 
 func NewTestRunner() *TestRunner {
@@ -46,36 +52,27 @@ func (r *TestRunner) WithRequestTimeout(timeout time.Duration) *TestRunner {
 // RunTests runs a set of tests.
 //
 // To run tests within the context of a Go test, use RunTestsT().
-func (r *TestRunner) RunTests(tests []TestCase) ([]TestResult, error) {
+func (r *TestRunner) RunTests(tests []TestCase) RunResult {
 	return r.RunTestsT(nil, tests)
 }
 
 // RunTests runs a set of tests within the context of a Go test.
 //
 // To run tests as a standalone binary without a testing context, use RunTests().
-func (r *TestRunner) RunTestsT(t *testing.T, tests []TestCase) ([]TestResult, error) {
-	outputTarget := io.Discard
-	if t == nil {
-		outputTarget = cfg.Stdout
-	}
-
-	r.outputWriter = newColumnWriter(outputTarget, 5, 2)
-
-	var executed, passed, failed, skipped int
-	results := []TestResult{}
-	totalDuration := time.Duration(0)
+func (r *TestRunner) RunTestsT(t *testing.T, tests []TestCase) RunResult {
+	runResult := RunResult{}
 	for _, test := range tests {
-		result, duration := runTest(test)
-		totalDuration += duration
-		executed++
+		testResult, duration := runTest(test)
+		runResult.TestResults = append(runResult.TestResults, testResult)
+		runResult.TestDurations = append(runResult.TestDurations, duration)
+		runResult.Total++
+		runResult.Duration += duration
 
-		if len(result.Errors()) > 0 {
-			failed++
-			if t == nil {
-				r.printTestFailure(test, result, duration)
-			} else {
+		if len(testResult.Errors()) > 0 {
+			runResult.Failed++
+			if t != nil {
 				t.Run(test.Description(), func(t *testing.T) {
-					for _, err := range result.Errors() {
+					for _, err := range testResult.Errors() {
 						t.Log(err)
 					}
 
@@ -84,51 +81,21 @@ func (r *TestRunner) RunTestsT(t *testing.T, tests []TestCase) ([]TestResult, er
 			}
 
 			if !r.ContinueOnFailure {
-				skipped = len(tests) - executed
+				runResult.Skipped = len(tests) - runResult.Total
 				break
 			}
 
 		} else {
-			passed++
-			if t == nil {
-				r.printTestSuccess(test, result, duration)
-			} else {
+			runResult.Passed++
+			if t != nil {
 				t.Run(test.Description(), func(t *testing.T) {
-					t.Log(result.TestCase().Description())
+					t.Log(testResult.TestCase().Description())
 				})
 			}
 		}
-
-		results = append(results, result)
 	}
 
-	r.outputWriter.Flush()
-	r.outputWriter.PrintLine("%d passed, %d failed, %d skipped %s\n", passed, failed, skipped,
-		faintFG(fmt.Sprintf("in %s", totalDuration.String())))
-
-	return results, nil
-}
-
-func (r *TestRunner) printTestFailure(test TestCase, result TestResult, duration time.Duration) {
-	r.outputWriter.PrintColumns(
-		redFG(" ✘"),
-		whiteFG(test.Description()),
-		blueBG(fmt.Sprintf("%7s ", test.Action())),
-		test.Target(),
-		faintFG(duration.String()))
-
-	for _, err := range result.Errors() {
-		r.outputWriter.PrintColumns(redFG(""), redFG(fmt.Sprintf("  %s", err)), blueBG(""), "", faintFG(""))
-	}
-}
-
-func (r *TestRunner) printTestSuccess(test TestCase, result TestResult, duration time.Duration) {
-	r.outputWriter.PrintColumns(
-		greenFG(" ✔"),
-		whiteFG(test.Description()),
-		blueBG(fmt.Sprintf("%7s ", test.Action())),
-		test.Target(),
-		faintFG(duration.String()))
+	return runResult
 }
 
 func runTest(test TestCase) (TestResult, time.Duration) {
@@ -138,10 +105,10 @@ func runTest(test TestCase) (TestResult, time.Duration) {
 	return result, duration
 }
 
-func RunTests(tests []TestCase) ([]TestResult, error) {
+func RunTests(tests []TestCase) RunResult {
 	return NewTestRunner().RunTests(tests)
 }
 
-func RunTestsT(t *testing.T, tests []TestCase) ([]TestResult, error) {
+func RunTestsT(t *testing.T, tests []TestCase) RunResult {
 	return NewTestRunner().RunTestsT(t, tests)
 }

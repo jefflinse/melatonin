@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -57,7 +56,7 @@ func FullExample() {
 	//     mt.RunTests()
 	//
 	runner := mt.NewTestRunner().WithContinueOnFailure(true).WithRequestTimeout(1 * time.Second)
-	results, err := runner.RunTests([]mt.TestCase{
+	results := runner.RunTests([]mt.TestCase{
 
 		myURL.GET("/foo", "Fetch foo with a custom timeout").
 			WithTimeout(1 * time.Second). // specify a timeout for the test case
@@ -133,16 +132,11 @@ func FullExample() {
 			ExpectGolden("golden/expect-headers-and-json-body.golden"),
 	})
 
-	if err != nil {
-		log.Fatal(err)
-	}
+	// Print the results of the test run.
+	mt.PrintRunResult(results)
 
-	// Results are accessible via the TestResult interface.
-	//
-	// Setting MELATONIN_OUTPUT=none in the environment will suppress all output
-	// to stdout, enabling custom results processing, analysis, and output.
-	//
-	for _, result := range results {
+	// Results are also accessible via the TestResult interface.
+	for _, result := range results.TestResults {
 		fmt.Fprint(io.Discard, result)
 	}
 }

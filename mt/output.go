@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/fatih/color"
 )
@@ -33,12 +34,12 @@ func newColumnWriter(output io.Writer, columns int, padding int) *columnWriter {
 	}
 }
 
-func (w *columnWriter) PrintLine(str string, args ...interface{}) {
+func (w *columnWriter) printLine(str string, args ...interface{}) {
 	w.tabWriter.Flush()
 	fmt.Fprintf(w.dest, str+"\n", args...)
 }
 
-func (w *columnWriter) PrintColumns(columns ...interface{}) {
+func (w *columnWriter) printColumns(columns ...interface{}) {
 	if len(columns) > w.columns {
 		panic(fmt.Sprintf("PrintColumns() called with %d columns, expected at most %d", len(columns), w.columns))
 	}
@@ -46,13 +47,46 @@ func (w *columnWriter) PrintColumns(columns ...interface{}) {
 	fmt.Fprintf(w.tabWriter, w.format, columns...)
 }
 
-func (w *columnWriter) Flush() {
-	w.tabWriter.Flush()
-	fmt.Fprintln(w.dest)
-}
-
 func debug(format string, a ...interface{}) {
 	if cfg.Debug {
 		color.Cyan(format, a...)
 	}
+}
+
+func PrintRunResult(result RunResult) {
+	w := newColumnWriter(cfg.Stdout, 5, 2)
+	for i := range result.TestResults {
+		if len(result.TestResults[i].Errors()) > 0 {
+			w.printTestFailure(result.TestResults[i], result.TestDurations[i])
+		} else {
+			w.printTestSuccess(result.TestResults[i], result.TestDurations[i])
+		}
+	}
+
+	w.tabWriter.Flush()
+	fmt.Fprintln(w.dest)
+	w.printLine("%d passed, %d failed, %d skipped %s\n", result.Passed, result.Failed, result.Skipped,
+		faintFG(fmt.Sprintf("in %s", result.Duration.String())))
+}
+
+func (w *columnWriter) printTestFailure(result TestResult, duration time.Duration) {
+	w.printColumns(
+		redFG(" ✘"),
+		whiteFG(result.TestCase().Description()),
+		blueBG(fmt.Sprintf("%7s ", result.TestCase().Action())),
+		result.TestCase().Target(),
+		faintFG(duration.String()))
+
+	for _, err := range result.Errors() {
+		w.printColumns(redFG(""), redFG(fmt.Sprintf("  %s", err)), blueBG(""), "", faintFG(""))
+	}
+}
+
+func (w *columnWriter) printTestSuccess(result TestResult, duration time.Duration) {
+	w.printColumns(
+		greenFG(" ✔"),
+		whiteFG(result.TestCase().Description()),
+		blueBG(fmt.Sprintf("%7s ", result.TestCase().Action())),
+		result.TestCase().Target(),
+		faintFG(duration.String()))
 }
