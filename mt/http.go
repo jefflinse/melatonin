@@ -190,6 +190,8 @@ func (tc *HTTPTestCase) Description() string {
 }
 
 func (tc *HTTPTestCase) Execute(t *testing.T) (TestResult, error) {
+	defer tc.cancel()
+
 	if err := tc.Validate(); err != nil {
 		return nil, err
 	}
