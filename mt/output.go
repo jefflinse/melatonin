@@ -120,7 +120,14 @@ func (w *columnWriter) printColumns(decorators map[int]decoratorFunc, columns ..
 
 	if diff := n - w.termWidth; w.termWidth > 0 && diff > 0 {
 		str := columns[w.elasticColumnIndex].(string)
-		columns[w.elasticColumnIndex] = str[:len(str)-diff-5] + "..."
+		newLength := len(str) - diff - 5
+		if newLength > 0 {
+			str = str[:newLength]
+		} else {
+			str = ""
+		}
+
+		columns[w.elasticColumnIndex] = str + "..."
 	}
 
 	if !color.NoColor {
