@@ -5,19 +5,21 @@ import (
 	"time"
 )
 
+// A TestRunner runs a set of tests.
 type TestRunner struct {
 	// ContinueOnFailure indicates whether the test runner should continue
-	// executing further tests after a failure.
+	// executing further tests after a test encounters a failure.
 	//
 	// Default is false.
 	ContinueOnFailure bool
 
-	// TestTimeout the the amount of time to wait for a test to complete.
+	// TestTimeout the the amount of time to wait for any single test to complete.
 	//
 	// Default is 10 seconds.
 	TestTimeout time.Duration
 }
 
+// A RunResult contains information about a set of test cases run by a test runner.
 type RunResult struct {
 	TestResults   []TestResult
 	TestDurations []time.Duration
@@ -28,6 +30,7 @@ type RunResult struct {
 	Duration      time.Duration
 }
 
+// NewTestRunner creates a new TestRunner with default configuration.
 func NewTestRunner() *TestRunner {
 	return &TestRunner{
 		ContinueOnFailure: cfg.ContinueOnFailure,
@@ -62,7 +65,9 @@ func (r *TestRunner) RunTests(tests []TestCase) RunResult {
 func (r *TestRunner) RunTestsT(t *testing.T, tests []TestCase) RunResult {
 	runResult := RunResult{}
 	for _, test := range tests {
-		testResult, duration := runTest(test)
+		start := time.Now()
+		testResult := test.Execute()
+		duration := time.Since(start)
 		runResult.TestResults = append(runResult.TestResults, testResult)
 		runResult.TestDurations = append(runResult.TestDurations, duration)
 		runResult.Total++
@@ -98,17 +103,13 @@ func (r *TestRunner) RunTestsT(t *testing.T, tests []TestCase) RunResult {
 	return runResult
 }
 
-func runTest(test TestCase) (TestResult, time.Duration) {
-	start := time.Now()
-	result := test.Execute()
-	duration := time.Since(start)
-	return result, duration
-}
-
+// RunTests runs a set of tests using the default test runner.
 func RunTests(tests []TestCase) RunResult {
 	return NewTestRunner().RunTests(tests)
 }
 
+// RunTestsT runs a set of tests within the context of a Go test
+// using the default test runner.
 func RunTestsT(t *testing.T, tests []TestCase) RunResult {
 	return NewTestRunner().RunTestsT(t, tests)
 }
