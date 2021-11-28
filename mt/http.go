@@ -42,6 +42,8 @@ func init() {
 	}
 }
 
+// An HTTPTestContext is used to create HTTP test cases that target either
+// a specific base URL or a Go HTTP handler.
 type HTTPTestContext struct {
 	BaseURL string
 	Client  *http.Client

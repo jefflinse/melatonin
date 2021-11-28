@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -68,6 +69,34 @@ func FullExample() {
 			WithHeader("Accept", "application/json").
 			WithQueryParam("sort", "false").
 			WithBody("hello").
+			ExpectStatus(200),
+
+		// Before the test executes, run a function that succeeds...
+		myURL.GET("/foo").
+			Before(func() error {
+				return nil
+			}).
+			ExpectStatus(200),
+
+		// ...or that fails
+		myURL.GET("/foo").
+			Before(func() error {
+				return errors.New("the before-func failed")
+			}).
+			ExpectStatus(200),
+
+		// After the test executes, run a function that succeeds...
+		myURL.GET("/foo").
+			After(func() error {
+				return nil
+			}).
+			ExpectStatus(200),
+
+		// ...or that fails
+		myURL.GET("/foo").
+			After(func() error {
+				return errors.New("the after-func failed")
+			}).
 			ExpectStatus(200),
 
 		myURL.GET("/foo", "Fetch foo and expect a subset of JSON in response body").
