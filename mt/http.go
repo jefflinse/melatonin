@@ -158,7 +158,7 @@ type HTTPTestCase struct {
 
 	// GoldenFilePath is a path to a golden file defining expectations for the test case.
 	//
-	// If set, any WantStatus, WantHeaders, or WantBody values are overriden with
+	// If set, any WantStatus, WantHeaders, or WantBody values are overridden with
 	// values from the golden file.
 	GoldenFilePath string
 
