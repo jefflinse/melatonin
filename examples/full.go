@@ -59,7 +59,7 @@ func FullExample() {
 	runner := mt.NewTestRunner().WithContinueOnFailure(true).WithRequestTimeout(1 * time.Second)
 
 	// Defining a test group allows you to group related tests together with associated metadata.
-	group := mt.NewTestGroup("My Test Group").Add(
+	group := mt.NewTestGroup("E2E Test for Sample API").Add(
 
 		myURL.GET("/foo", "Fetch foo with a custom timeout").
 			WithTimeout(1*time.Second). // specify a timeout for the test case

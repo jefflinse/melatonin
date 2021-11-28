@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	blueFG  = color.New(color.FgHiBlue, color.Bold).SprintFunc()
+	cyanFG  = color.New(color.FgHiCyan, color.Bold).SprintFunc()
 	greenFG = color.New(color.FgHiGreen, color.Bold).SprintFunc()
 	redFG   = color.New(color.FgHiRed, color.Bold).SprintFunc()
 	whiteFG = color.New(color.Bold).SprintFunc()
@@ -40,7 +40,7 @@ func FPrintResult(w io.Writer, result RunResult) {
 	cw := newColumnWriter(w, 5, 1)
 
 	if result.Group.Name != "" {
-		cw.printLine(blueFG(result.Group.Name))
+		cw.printLine(cyanFG(result.Group.Name))
 	}
 
 	for i := range result.TestResults {

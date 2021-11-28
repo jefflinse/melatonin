@@ -1,7 +1,6 @@
 package mt
 
 import (
-	"fmt"
 	"testing"
 	"time"
 )
@@ -80,7 +79,7 @@ func (r *TestRunner) RunTests(tests []TestCase) RunResult {
 //
 // To run tests standalone to print or examine results, use RunTests().
 func (r *TestRunner) RunTestsT(t *testing.T, tests []TestCase) RunResult {
-	group := NewTestGroup(fmt.Sprintf("%d tests in sequence", len(tests))).Add(tests...)
+	group := NewTestGroup("").Add(tests...)
 	return r.RunTestGroupT(t, group)
 }
 
