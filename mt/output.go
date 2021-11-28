@@ -171,7 +171,6 @@ func (w *columnWriter) printTestFailure(testNum int, result TestResult, duration
 	}
 
 	w.printLine(redFG(fmt.Sprintf("└╴ %s", failures[len(failures)-1])))
-
 	w.printLine("")
 }
 
