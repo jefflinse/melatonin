@@ -1,6 +1,7 @@
 package mt
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"strings"
@@ -52,24 +53,41 @@ func FPrintResult(w io.Writer, result RunResult) {
 	cw.printLine("")
 	cw.printLine("%d passed, %d failed, %d skipped %s", result.Passed, result.Failed, result.Skipped,
 		faintFG(fmt.Sprintf("in %s", result.Duration.String())))
-	cw.tabWriter.Flush()
+	cw.Flush()
 }
 
 type columnWriter struct {
-	columns   int
-	format    string
-	dest      io.Writer
-	tabWriter *tabwriter.Writer
+	columns        int
+	format         string
+	dest           io.Writer
+	buf            *strings.Builder
+	tabWriter      *tabwriter.Writer
+	currentLineNum int
+	nonTableLines  map[int][]string
 }
 
 type decoratorFunc func(...interface{}) string
 
 func newColumnWriter(output io.Writer, columns int, padding int) *columnWriter {
+	buf := &strings.Builder{}
 	return &columnWriter{
-		columns:   columns,
-		format:    strings.Repeat("%s\t", columns) + "\n",
-		dest:      output,
-		tabWriter: tabwriter.NewWriter(output, 0, 0, padding, ' ', 0),
+		columns:       columns,
+		format:        strings.Repeat("%s\t", columns) + "\n",
+		buf:           buf,
+		dest:          output,
+		tabWriter:     tabwriter.NewWriter(buf, 0, 0, padding, ' ', 0),
+		nonTableLines: map[int][]string{},
+	}
+}
+
+func (w *columnWriter) Flush() {
+	w.tabWriter.Flush()
+	s := bufio.NewScanner(strings.NewReader(w.buf.String()))
+	for i := 0; s.Scan(); i++ {
+		if lines, ok := w.nonTableLines[i]; ok {
+			fmt.Fprintln(w.dest, strings.Join(lines, "\n"))
+		}
+		fmt.Fprintln(w.dest, s.Text())
 	}
 }
 
@@ -88,10 +106,11 @@ func (w *columnWriter) printColumns(decorators map[int]decoratorFunc, columns ..
 	}
 
 	fmt.Fprintf(w.tabWriter, w.format, columns...)
+	w.currentLineNum++
 }
 
 func (w *columnWriter) printLine(str string, args ...interface{}) {
-	fmt.Fprintf(w.tabWriter, str+"\n", args...)
+	w.nonTableLines[w.currentLineNum] = append(w.nonTableLines[w.currentLineNum], str)
 }
 
 func (w *columnWriter) printTestSuccess(testNum int, result TestResult, duration time.Duration) {
@@ -112,8 +131,9 @@ func (w *columnWriter) printTestFailure(testNum int, result TestResult, duration
 		result.TestCase().Target(),
 		duration.String())
 
-	decorators[1] = redFG
 	for _, err := range result.Failures() {
-		w.printColumns(decorators, "", fmt.Sprintf("  %s", err), "", "", "")
+		w.printLine(fmt.Sprintf("%s", redFG(err)))
 	}
+
+	w.printLine("")
 }
