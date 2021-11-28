@@ -57,10 +57,12 @@ func FullExample() {
 	//     mt.RunTests()
 	//
 	runner := mt.NewTestRunner().WithContinueOnFailure(true).WithRequestTimeout(1 * time.Second)
-	results := runner.RunTests([]mt.TestCase{
+
+	// Defining a test group allows you to group related tests together with associated metadata.
+	group := mt.NewTestGroup("My Test Group").Add(
 
 		myURL.GET("/foo", "Fetch foo with a custom timeout").
-			WithTimeout(1 * time.Second). // specify a timeout for the test case
+			WithTimeout(1*time.Second). // specify a timeout for the test case
 			ExpectStatus(200).
 			ExpectBody("Hello, world!"),
 
@@ -159,7 +161,9 @@ func FullExample() {
 		myURL.GET("/foo", "Fetch foo and match expectations from a golden file").
 			WithHeader("Accept", "application/json").
 			ExpectGolden("golden/expect-headers-and-json-body.golden"),
-	})
+	)
+
+	results := runner.RunTestGroup(group)
 
 	// Print the results of the test run.
 	mt.PrintRunResult(results)
