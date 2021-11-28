@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"golang.org/x/term"
 )
 
 var (
@@ -36,7 +37,7 @@ func PrintResult(result RunResult) {
 // the MELATONIN_OUTPUT environment variable to "simple" to disable colors, or "none"
 // to disable output all together.
 func FPrintResult(w io.Writer, result RunResult) {
-	cw := newColumnWriter(w, 5, 2)
+	cw := newColumnWriter(w, 5, 1)
 
 	if result.Group.Name != "" {
 		cw.printLine(blueFG(result.Group.Name))
@@ -57,26 +58,30 @@ func FPrintResult(w io.Writer, result RunResult) {
 }
 
 type columnWriter struct {
-	columns        int
-	format         string
-	dest           io.Writer
-	buf            *strings.Builder
-	tabWriter      *tabwriter.Writer
-	currentLineNum int
-	nonTableLines  map[int][]string
+	columns            int
+	elasticColumnIndex int
+	format             string
+	dest               io.Writer
+	buf                *strings.Builder
+	tabWriter          *tabwriter.Writer
+	currentLineNum     int
+	nonTableLines      map[int][]string
+	termWidth          int
 }
 
 type decoratorFunc func(...interface{}) string
 
-func newColumnWriter(output io.Writer, columns int, padding int) *columnWriter {
+func newColumnWriter(output io.Writer, columns int, elasticColumnIndex int) *columnWriter {
 	buf := &strings.Builder{}
 	return &columnWriter{
-		columns:       columns,
-		format:        strings.Repeat("%s\t", columns) + "\n",
-		buf:           buf,
-		dest:          output,
-		tabWriter:     tabwriter.NewWriter(buf, 0, 0, padding, ' ', 0),
-		nonTableLines: map[int][]string{},
+		columns:            columns,
+		elasticColumnIndex: elasticColumnIndex,
+		format:             strings.Repeat("%s\t", columns) + "\n",
+		buf:                buf,
+		dest:               output,
+		tabWriter:          tabwriter.NewWriter(buf, 0, 0, 2, ' ', 0),
+		nonTableLines:      map[int][]string{},
+		termWidth:          getTerminalWidth() - 1,
 	}
 }
 
@@ -94,6 +99,18 @@ func (w *columnWriter) Flush() {
 func (w *columnWriter) printColumns(decorators map[int]decoratorFunc, columns ...interface{}) {
 	if len(columns) > w.columns {
 		panic(fmt.Sprintf("PrintColumns() called with %d columns, expected at most %d", len(columns), w.columns))
+	}
+
+	noColor := color.NoColor
+	color.NoColor = true
+	buf := &strings.Builder{}
+	temp := tabwriter.NewWriter(buf, 0, 0, 2, ' ', 0)
+	n, _ := fmt.Fprintf(temp, w.format, columns...)
+	color.NoColor = noColor
+
+	if diff := n - w.termWidth; w.termWidth > 0 && diff > 0 {
+		str := columns[w.elasticColumnIndex].(string)
+		columns[w.elasticColumnIndex] = str[:len(str)-diff-5] + "..."
 	}
 
 	if !color.NoColor {
@@ -136,4 +153,17 @@ func (w *columnWriter) printTestFailure(testNum int, result TestResult, duration
 	}
 
 	w.printLine("")
+}
+
+func getTerminalWidth() int {
+	if !term.IsTerminal(0) {
+		return 0
+	}
+
+	width, _, err := term.GetSize(0)
+	if err != nil {
+		return 0
+	}
+
+	return width
 }
