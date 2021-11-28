@@ -35,7 +35,6 @@ func newColumnWriter(output io.Writer, columns int, padding int) *columnWriter {
 }
 
 func (w *columnWriter) printLine(str string, args ...interface{}) {
-	w.tabWriter.Flush()
 	fmt.Fprintf(w.dest, str+"\n", args...)
 }
 
@@ -63,10 +62,10 @@ func PrintRunResult(result RunResult) {
 		}
 	}
 
-	w.tabWriter.Flush()
-	fmt.Fprintln(w.dest)
-	w.printLine("%d passed, %d failed, %d skipped %s\n", result.Passed, result.Failed, result.Skipped,
+	w.printLine("")
+	w.printLine("%d passed, %d failed, %d skipped %s", result.Passed, result.Failed, result.Skipped,
 		faintFG(fmt.Sprintf("in %s", result.Duration.String())))
+	w.tabWriter.Flush()
 }
 
 func (w *columnWriter) printTestFailure(result TestResult, duration time.Duration) {
