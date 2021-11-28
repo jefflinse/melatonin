@@ -101,7 +101,7 @@ func FullExample() {
 			}).
 			ExpectStatus(200),
 
-		myURL.GET("/foo", "Fetch foo and expect a subset of JSON in response body and this description is really long").
+		myURL.GET("/foo", "Fetch foo and expect a subset of JSON in response body").
 			WithHeader("Accept", "application/json").
 			ExpectStatus(201).
 			ExpectBody(json.Object{

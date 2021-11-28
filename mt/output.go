@@ -52,8 +52,8 @@ func FPrintResult(w io.Writer, result RunResult) {
 	}
 
 	cw.printLine("")
-	cw.printLine("%d passed, %d failed, %d skipped %s", result.Passed, result.Failed, result.Skipped,
-		faintFG(fmt.Sprintf("in %s", result.Duration.String())))
+	cw.printLine(fmt.Sprintf("%d passed, %d failed, %d skipped %s", result.Passed, result.Failed, result.Skipped,
+		faintFG(fmt.Sprintf("in %s", result.Duration.String()))))
 	cw.Flush()
 }
 
@@ -80,19 +80,29 @@ func newColumnWriter(output io.Writer, columns int, elasticColumnIndex int) *col
 		buf:                buf,
 		dest:               output,
 		tabWriter:          tabwriter.NewWriter(buf, 0, 0, 2, ' ', 0),
+		currentLineNum:     -1,
 		nonTableLines:      map[int][]string{},
-		termWidth:          getTerminalWidth() - 1,
+		termWidth:          getTerminalWidth() - 2,
 	}
 }
 
 func (w *columnWriter) Flush() {
 	w.tabWriter.Flush()
+	if lines, ok := w.nonTableLines[-1]; ok {
+		fmt.Fprintln(w.dest, strings.Join(lines, "\n"))
+	}
+
 	s := bufio.NewScanner(strings.NewReader(w.buf.String()))
-	for i := 0; s.Scan(); i++ {
+	i := 0
+	for ; s.Scan(); i++ {
+		fmt.Fprintln(w.dest, s.Text())
 		if lines, ok := w.nonTableLines[i]; ok {
 			fmt.Fprintln(w.dest, strings.Join(lines, "\n"))
 		}
-		fmt.Fprintln(w.dest, s.Text())
+	}
+
+	if lines, ok := w.nonTableLines[i]; ok {
+		fmt.Fprintln(w.dest, strings.Join(lines, "\n"))
 	}
 }
 
