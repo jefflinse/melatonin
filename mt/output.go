@@ -19,25 +19,40 @@ var (
 	blueBG  = color.New(color.BgBlue, color.FgHiWhite).SprintFunc()
 )
 
+// PrintRunResult prints a RunResult to stdout.
+//
+// By default, the output is formatted as a table and colors are used if possible.
+// The behavio can be controlled by setting the MELATONIN_OUTPUT environment
+// variable to "simple" to disable colors, or "none" to disable output all together.
 func PrintRunResult(result RunResult) {
-	w := newColumnWriter(cfg.Stdout, 5, 2)
+	FPrintRunResult(cfg.Stdout, result)
+}
+
+// FPrintRunResult prints a RunResult to the given io.Writer.
+//
+// By default, if the supplied writer is stdout or a TTY, the output is formatted as
+// a table and colors are used if possible.
+// The behavio can be controlled by setting the MELATONIN_OUTPUT environment
+// variable to "simple" to disable colors, or "none" to disable output all together.
+func FPrintRunResult(w io.Writer, result RunResult) {
+	cw := newColumnWriter(w, 5, 2)
 
 	if result.Group.Name != "" {
-		w.printLine(blueFG(result.Group.Name))
+		cw.printLine(blueFG(result.Group.Name))
 	}
 
 	for i := range result.TestResults {
 		if len(result.TestResults[i].Failures()) > 0 {
-			w.printTestFailure(i+1, result.TestResults[i], result.TestDurations[i])
+			cw.printTestFailure(i+1, result.TestResults[i], result.TestDurations[i])
 		} else {
-			w.printTestSuccess(i+1, result.TestResults[i], result.TestDurations[i])
+			cw.printTestSuccess(i+1, result.TestResults[i], result.TestDurations[i])
 		}
 	}
 
-	w.printLine("")
-	w.printLine("%d passed, %d failed, %d skipped %s", result.Passed, result.Failed, result.Skipped,
+	cw.printLine("")
+	cw.printLine("%d passed, %d failed, %d skipped %s", result.Passed, result.Failed, result.Skipped,
 		faintFG(fmt.Sprintf("in %s", result.Duration.String())))
-	w.tabWriter.Flush()
+	cw.tabWriter.Flush()
 }
 
 type columnWriter struct {
