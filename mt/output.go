@@ -35,7 +35,7 @@ func newColumnWriter(output io.Writer, columns int, padding int) *columnWriter {
 }
 
 func (w *columnWriter) printLine(str string, args ...interface{}) {
-	fmt.Fprintf(w.dest, str+"\n", args...)
+	fmt.Fprintf(w.tabWriter, str+"\n", args...)
 }
 
 func (w *columnWriter) printColumns(columns ...interface{}) {
@@ -71,7 +71,7 @@ func (w *columnWriter) printTestFailure(testNum int, result TestResult, duration
 		faintFG(duration.String()))
 
 	for _, err := range result.Failures() {
-		w.printColumns(redFG(""), redFG(fmt.Sprintf("   %s", err)), blueBG(""), "", faintFG(""))
+		w.printColumns(redFG(""), redFG(fmt.Sprintf("  %s", err)), blueBG(""), "", faintFG(""))
 	}
 }
 
