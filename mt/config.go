@@ -15,14 +15,9 @@ const (
 
 var cfg = struct {
 	ContinueOnFailure bool
-	Debug             bool
-	OutputMode        int
 	Stdout            io.Writer
 	WorkingDir        string
-}{
-	ContinueOnFailure: false,
-	Debug:             false,
-}
+}{}
 
 func init() {
 	if os.Getenv("MELATONIN_CONTINUE_ON_FAILURE") != "" {
@@ -32,17 +27,9 @@ func init() {
 	cfg.Stdout = os.Stdout
 	switch os.Getenv("MELATONIN_OUTPUT") {
 	case "none":
-		cfg.OutputMode = OutputModeNone
 		cfg.Stdout = io.Discard
 	case "simple":
-		cfg.OutputMode = OutputModeSimple
 		color.NoColor = true
-	default:
-		cfg.OutputMode = OutputModePretty
-	}
-
-	if os.Getenv("MELATONIN_DEBUG") != "" {
-		cfg.Debug = true
 	}
 
 	if workdir := os.Getenv("MELATONIN_WORKDIR"); workdir != "" {

@@ -539,7 +539,6 @@ func createRequest(method, path string) (*http.Request, context.CancelFunc, erro
 }
 
 func doRequest(c *http.Client, req *http.Request) (int, http.Header, []byte, error) {
-	debug("%s %s", req.Method, req.URL.String())
 	resp, err := c.Do(req)
 	if err != nil {
 		return -1, nil, nil, err

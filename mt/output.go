@@ -46,12 +46,6 @@ func (w *columnWriter) printColumns(columns ...interface{}) {
 	fmt.Fprintf(w.tabWriter, w.format, columns...)
 }
 
-func debug(format string, a ...interface{}) {
-	if cfg.Debug {
-		color.Cyan(format, a...)
-	}
-}
-
 func PrintRunResult(result RunResult) {
 	w := newColumnWriter(cfg.Stdout, 5, 2)
 	for i := range result.TestResults {
