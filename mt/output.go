@@ -148,9 +148,12 @@ func (w *columnWriter) printTestFailure(testNum int, result TestResult, duration
 		result.TestCase().Target(),
 		duration.String())
 
-	for _, err := range result.Failures() {
-		w.printLine(fmt.Sprintf("%s", redFG(err)))
+	failures := result.Failures()
+	for i := 0; i < len(failures)-1; i++ {
+		w.printLine(redFG(fmt.Sprintf("├╴ %s", failures[i])))
 	}
+
+	w.printLine(redFG(fmt.Sprintf("└╴ %s", failures[len(failures)-1])))
 
 	w.printLine("")
 }
