@@ -19,22 +19,22 @@ var (
 	blueBG  = color.New(color.BgBlue, color.FgHiWhite).SprintFunc()
 )
 
-// PrintRunResult prints a RunResult to stdout.
+// PrintResult prints a RunResult to stdout.
 //
 // By default, the output is formatted as a table and colors are used if possible.
 // The behavio can be controlled by setting the MELATONIN_OUTPUT environment
 // variable to "simple" to disable colors, or "none" to disable output all together.
-func PrintRunResult(result RunResult) {
-	FPrintRunResult(cfg.Stdout, result)
+func PrintResult(result RunResult) {
+	FPrintResult(cfg.Stdout, result)
 }
 
-// FPrintRunResult prints a RunResult to the given io.Writer.
+// FPrintResult prints a RunResult to the given io.Writer.
 //
 // By default, if the supplied writer is stdout or a TTY, the output is formatted as
-// a table and colors are used if possible.
-// The behavio can be controlled by setting the MELATONIN_OUTPUT environment
-// variable to "simple" to disable colors, or "none" to disable output all together.
-func FPrintRunResult(w io.Writer, result RunResult) {
+// a table and colors are used if possible. The behavior can be controlled by setting
+// the MELATONIN_OUTPUT environment variable to "simple" to disable colors, or "none"
+// to disable output all together.
+func FPrintResult(w io.Writer, result RunResult) {
 	cw := newColumnWriter(w, 5, 2)
 
 	if result.Group.Name != "" {

@@ -7,7 +7,7 @@ import (
 	"github.com/jefflinse/melatonin/mt"
 )
 
-// This example shows how to use melatonin with all the quick, default settings.
+// SimpleExample shows how to use melatonin with all the quick, default settings.
 func SimpleExample() {
 	server := startSimpleExampleServer()
 	defer server.Close()
@@ -16,7 +16,7 @@ func SimpleExample() {
 	mux := createSimpleServeMux()
 	myHandler := mt.NewHandlerContext(mux)
 
-	mt.RunTests([]mt.TestCase{
+	result := mt.RunTests([]mt.TestCase{
 
 		myURL.GET("/foo", "Fetch /foo from a URL").
 			ExpectStatus(200).
@@ -26,6 +26,8 @@ func SimpleExample() {
 			ExpectStatus(200).
 			ExpectBody("Hello, world!"),
 	})
+
+	mt.PrintResult(result)
 }
 
 func createSimpleServeMux() *http.ServeMux {

@@ -39,6 +39,7 @@ func wrongValueError(key string, expected, actual interface{}) error {
 	return errors.New(msg)
 }
 
+// Status compares an expected status code to an actual status code.
 func Status(expected, actual int) error {
 	if expected != actual {
 		return fmt.Errorf(`expected status %d, got %d`, expected, actual)
@@ -46,6 +47,7 @@ func Status(expected, actual int) error {
 	return nil
 }
 
+// Value compares an expected value to an actual value.
 func Value(key string, expected, actual interface{}, exactJSON bool) []error {
 	switch expectedValue := expected.(type) {
 
@@ -104,6 +106,7 @@ func Value(key string, expected, actual interface{}, exactJSON bool) []error {
 	return nil
 }
 
+// Bool compares an expected bool to an actual bool.
 func Bool(key string, expected bool, actual interface{}) error {
 	b, ok := actual.(bool)
 	if !ok {
@@ -117,6 +120,7 @@ func Bool(key string, expected bool, actual interface{}) error {
 	return nil
 }
 
+// Number compares an expected float64 to an actual float64.
 func Number(key string, expected float64, actual interface{}) error {
 	n, ok := actual.(float64)
 	if !ok {
@@ -130,6 +134,7 @@ func Number(key string, expected float64, actual interface{}) error {
 	return nil
 }
 
+// String compares an expected string to an actual string.
 func String(key string, expected string, actual interface{}) error {
 	s, ok := actual.(string)
 	if !ok {
@@ -143,6 +148,7 @@ func String(key string, expected string, actual interface{}) error {
 	return nil
 }
 
+// Object compares an expected JSON object to an actual JSON object.
 func Object(key string, expected map[string]interface{}, actual interface{}, exact bool) []error {
 	m, ok := actual.(map[string]interface{})
 	if !ok {
@@ -184,6 +190,7 @@ func Object(key string, expected map[string]interface{}, actual interface{}, exa
 	return errs
 }
 
+// Array compares an expected JSON array to an actual JSON array.
 func Array(key string, expected []interface{}, actual interface{}, exact bool) []error {
 	a, ok := actual.([]interface{})
 	if !ok {
@@ -204,6 +211,7 @@ func Array(key string, expected []interface{}, actual interface{}, exact bool) [
 	return errs
 }
 
+// Headers compares a set of expected headers against a set of actual headers,
 func Headers(expected http.Header, actual http.Header) []error {
 	var errs []error
 	for key, expectedValuesForKey := range expected {

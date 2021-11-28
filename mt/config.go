@@ -7,12 +7,6 @@ import (
 	"github.com/fatih/color"
 )
 
-const (
-	OutputModeNone = iota
-	OutputModeSimple
-	OutputModePretty
-)
-
 var cfg = struct {
 	ContinueOnFailure bool
 	Stdout            io.Writer

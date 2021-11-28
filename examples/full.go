@@ -13,7 +13,7 @@ import (
 	"github.com/jefflinse/melatonin/mt"
 )
 
-// This example shows how to use melatonin with all of its configurable settings.
+// FullExample shows how to use melatonin with all of its configurable settings.
 func FullExample() {
 	// Create a mock server for this example. See startFullExampleServer() below.
 	server := startFullExampleServer()
@@ -166,7 +166,7 @@ func FullExample() {
 	results := runner.RunTestGroup(group)
 
 	// Print the results of the test run.
-	mt.PrintRunResult(results)
+	mt.PrintResult(results)
 
 	// Results are also accessible via the TestResult interface.
 	for _, result := range results.TestResults {

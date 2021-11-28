@@ -22,14 +22,29 @@ type TestRunner struct {
 
 // A RunResult contains information about a set of test cases run by a test runner.
 type RunResult struct {
-	Group         *TestGroup
-	TestResults   []TestResult
+	// Group is a reference to the test group that was run.
+	Group *TestGroup
+
+	// TestResults is a list of test results corresponding to tests in the test group.
+	TestResults []TestResult
+
+	// TestDurations is a list of durations corresponding to results in the test results.
 	TestDurations []time.Duration
-	Passed        int
-	Failed        int
-	Skipped       int
-	Total         int
-	Duration      time.Duration
+
+	// Passed is the number of tests that passed.
+	Passed int
+
+	// Failed is the number of tests that failed.
+	Failed int
+
+	// Skipped is the number of tests that were skipped.
+	Skipped int
+
+	// Total is the total number of tests in the test group.
+	Total int
+
+	// Duration is the total duration of all tests in the test group.
+	Duration time.Duration
 }
 
 // NewTestRunner creates a new TestRunner with default configuration.
@@ -56,21 +71,27 @@ func (r *TestRunner) WithRequestTimeout(timeout time.Duration) *TestRunner {
 
 // RunTests runs a set of tests.
 //
-// To run tests within the context of a Go test, use RunTestsT().
+// To run tests within a Go test context, use RunTestsT().
 func (r *TestRunner) RunTests(tests []TestCase) RunResult {
 	return r.RunTestsT(nil, tests)
 }
 
+// RunTestsT runs a set of tests within a Go test context.
+//
+// To run tests standalone to print or examine results, use RunTests().
 func (r *TestRunner) RunTestsT(t *testing.T, tests []TestCase) RunResult {
 	group := NewTestGroup(fmt.Sprintf("%d tests in sequence", len(tests))).Add(tests...)
 	return r.RunTestGroupT(t, group)
 }
 
+// RunTestGroup runs a test group.
+//
+// To run a test group within a Go test context, use RunTestGroupT().
 func (r *TestRunner) RunTestGroup(group *TestGroup) RunResult {
 	return r.RunTestGroupT(nil, group)
 }
 
-// RunTests runs a set of tests within the context of a Go test.
+// RunTestGroupT runs a test group within the context of a Go test.
 //
 // To run tests as a standalone binary without a testing context, use RunTests().
 func (r *TestRunner) RunTestGroupT(t *testing.T, group *TestGroup) RunResult {
@@ -122,8 +143,19 @@ func RunTests(tests []TestCase) RunResult {
 	return NewTestRunner().RunTests(tests)
 }
 
-// RunTestsT runs a set of tests within the context of a Go test
+// RunTestsT runs a set of tests within a Go test context
 // using the default test runner.
 func RunTestsT(t *testing.T, tests []TestCase) RunResult {
 	return NewTestRunner().RunTestsT(t, tests)
+}
+
+// RunTestGroup runs a test group using the default test runner.
+func RunTestGroup(group *TestGroup) RunResult {
+	return NewTestRunner().RunTestGroup(group)
+}
+
+// RunTestGroupT runs a test group within the context of a Go test
+// using the default test runner.
+func RunTestGroupT(t *testing.T, group *TestGroup) RunResult {
+	return NewTestRunner().RunTestGroupT(t, group)
 }

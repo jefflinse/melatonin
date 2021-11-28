@@ -14,6 +14,7 @@ import (
 	"golang.org/x/text/search"
 )
 
+// Golden represents the contents of a golden file.
 type Golden struct {
 	// WantStatus is the expected response status code.
 	WantStatus int
@@ -44,6 +45,7 @@ const (
 	bodyLinePrefix    = "--- body"
 )
 
+// AppFS is the filesystem used by the golden package.
 var AppFS = afero.NewOsFs()
 
 // LoadFile loads a golden file from the given path.

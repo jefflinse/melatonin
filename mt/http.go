@@ -174,14 +174,19 @@ type HTTPTestCase struct {
 
 var _ TestCase = &HTTPTestCase{}
 
+// Action returns a short, uppercase verb describing the action performed by the
+// test case.
 func (tc *HTTPTestCase) Action() string {
 	return strings.ToUpper(tc.request.Method)
 }
 
+// Target returns a string representing the target of the action performed by the
+// test case.
 func (tc *HTTPTestCase) Target() string {
 	return tc.request.URL.Path
 }
 
+// Description returns a string describing the test case.
 func (tc *HTTPTestCase) Description() string {
 	if tc.Desc != "" {
 		return tc.Desc
@@ -194,6 +199,7 @@ func (tc *HTTPTestCase) Description() string {
 	)
 }
 
+// Execute runs the test case.
 func (tc *HTTPTestCase) Execute() TestResult {
 	if tc.cancel != nil {
 		defer tc.cancel()
@@ -326,11 +332,13 @@ func (tc *HTTPTestCase) WithHeader(key, value string) *HTTPTestCase {
 	return tc
 }
 
+// WithQueryParams sets the request query parameters for the test case.
 func (tc *HTTPTestCase) WithQueryParams(params url.Values) *HTTPTestCase {
 	tc.request.URL.RawQuery = params.Encode()
 	return tc
 }
 
+// WithQueryParam adds a request query parameter to the test case.
 func (tc *HTTPTestCase) WithQueryParam(key, value string) *HTTPTestCase {
 	q := tc.request.URL.Query()
 	q.Add(key, value)
@@ -346,6 +354,8 @@ func (tc *HTTPTestCase) WithTimeout(timeout time.Duration) *HTTPTestCase {
 	return tc
 }
 
+// BindBody binds the response body to the given target after test execution.
+// This can be used to access the response body in subsequent test cases.
 func (tc *HTTPTestCase) BindBody(target interface{}) *HTTPTestCase {
 	tc.BodyBindTarget = target
 	return tc
@@ -403,6 +413,8 @@ func (tc *HTTPTestCase) ExpectExactBody(body interface{}) *HTTPTestCase {
 	return tc.ExpectBody(body)
 }
 
+// ExpectGolden causes the test case to load its HTTP response expectations
+// from a golden file.
 func (tc *HTTPTestCase) ExpectGolden(path string) *HTTPTestCase {
 	tc.GoldenFilePath = path
 	return tc
@@ -437,18 +449,25 @@ func (tc *HTTPTestCase) Validate() error {
 
 // HTTPTestCaseResult represents the result of running a single test case.
 type HTTPTestCaseResult struct {
-	Status  int
+	// Status is the HTTP status code returned in the response.
+	Status int
+
+	// Headers is the HTTP response headers.
 	Headers http.Header
-	Body    []byte
+
+	// Body is the HTTP response body.
+	Body []byte
 
 	testCase *HTTPTestCase
 	failures []error
 }
 
+// Failures returns a list of test case failures.
 func (r *HTTPTestCaseResult) Failures() []error {
 	return r.failures
 }
 
+// TestCase returns a reference to the test case that generated the result.
 func (r *HTTPTestCaseResult) TestCase() TestCase {
 	return r.testCase
 }
