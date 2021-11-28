@@ -189,7 +189,9 @@ func (tc *HTTPTestCase) Description() string {
 }
 
 func (tc *HTTPTestCase) Execute() TestResult {
-	defer tc.cancel()
+	if tc.cancel != nil {
+		defer tc.cancel()
+	}
 
 	result := &HTTPTestCaseResult{
 		testCase: tc,
