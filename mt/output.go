@@ -50,9 +50,9 @@ func PrintRunResult(result RunResult) {
 	w := newColumnWriter(cfg.Stdout, 5, 2)
 	for i := range result.TestResults {
 		if len(result.TestResults[i].Failures()) > 0 {
-			w.printTestFailure(result.TestResults[i], result.TestDurations[i])
+			w.printTestFailure(i+1, result.TestResults[i], result.TestDurations[i])
 		} else {
-			w.printTestSuccess(result.TestResults[i], result.TestDurations[i])
+			w.printTestSuccess(i+1, result.TestResults[i], result.TestDurations[i])
 		}
 	}
 
@@ -62,22 +62,22 @@ func PrintRunResult(result RunResult) {
 	w.tabWriter.Flush()
 }
 
-func (w *columnWriter) printTestFailure(result TestResult, duration time.Duration) {
+func (w *columnWriter) printTestFailure(testNum int, result TestResult, duration time.Duration) {
 	w.printColumns(
-		redFG(" ✘"),
+		redFG(fmt.Sprintf("✘ %d", testNum)),
 		whiteFG(result.TestCase().Description()),
 		blueBG(fmt.Sprintf("%7s ", result.TestCase().Action())),
 		result.TestCase().Target(),
 		faintFG(duration.String()))
 
 	for _, err := range result.Failures() {
-		w.printColumns(redFG(""), redFG(fmt.Sprintf("  %s", err)), blueBG(""), "", faintFG(""))
+		w.printColumns(redFG(""), redFG(fmt.Sprintf("   %s", err)), blueBG(""), "", faintFG(""))
 	}
 }
 
-func (w *columnWriter) printTestSuccess(result TestResult, duration time.Duration) {
+func (w *columnWriter) printTestSuccess(testNum int, result TestResult, duration time.Duration) {
 	w.printColumns(
-		greenFG(" ✔"),
+		greenFG(fmt.Sprintf("✔ %d", testNum)),
 		whiteFG(result.TestCase().Description()),
 		blueBG(fmt.Sprintf("%7s ", result.TestCase().Action())),
 		result.TestCase().Target(),
