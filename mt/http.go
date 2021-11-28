@@ -146,6 +146,10 @@ type HTTPTestCase struct {
 	// returned by Before is treated as a test failure.
 	BeforeFunc func() error
 
+	// BodyBindTarget is an optional pointer to a slice, map, or struct to which
+	// the response body should be bound.
+	BodyBindTarget interface{}
+
 	// Desc is a description of the test case.
 	Desc string
 
@@ -227,6 +231,12 @@ func (tc *HTTPTestCase) Execute() TestResult {
 	if tc.AfterFunc != nil {
 		if err := tc.AfterFunc(); err != nil {
 			result.addFailures(fmt.Errorf("after(): %w", err))
+		}
+	}
+
+	if tc.BodyBindTarget != nil {
+		if err := json.Unmarshal(result.Body, tc.BodyBindTarget); err != nil {
+			result.addFailures(fmt.Errorf("bind: %w", err))
 		}
 	}
 
@@ -333,6 +343,11 @@ func (tc *HTTPTestCase) WithTimeout(timeout time.Duration) *HTTPTestCase {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	tc.request = tc.request.WithContext(ctx)
 	tc.cancel = cancel
+	return tc
+}
+
+func (tc *HTTPTestCase) BindBody(target interface{}) *HTTPTestCase {
+	tc.BodyBindTarget = target
 	return tc
 }
 
