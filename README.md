@@ -29,7 +29,7 @@ func main() {
             ExpectBody("Hello, world!"),
     })
 
-    mt.PrintRunResult(result)
+    mt.PrintResult(result)
 }
 ```
 

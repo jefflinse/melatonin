@@ -22,7 +22,7 @@ var (
 // PrintResult prints a RunResult to stdout.
 //
 // By default, the output is formatted as a table and colors are used if possible.
-// The behavio can be controlled by setting the MELATONIN_OUTPUT environment
+// The behavior can be controlled by setting the MELATONIN_OUTPUT environment
 // variable to "simple" to disable colors, or "none" to disable output all together.
 func PrintResult(result RunResult) {
 	FPrintResult(cfg.Stdout, result)

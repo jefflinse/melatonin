@@ -154,7 +154,7 @@ type HTTPTestCase struct {
 	Desc string
 
 	// Expectations is a set of values to compare the response against.
-	Expectations HTTPResponseExpectations
+	Expectations expectatons
 
 	// GoldenFilePath is a path to a golden file defining expectations for the test case.
 	//
@@ -170,6 +170,27 @@ type HTTPTestCase struct {
 
 	// Cancel function for the underlying HTTP request.
 	cancel context.CancelFunc
+}
+
+// expectatons represents the expected values for single HTTP response.
+type expectatons struct {
+	// Body is the expected HTTP response body content.
+	Body interface{}
+
+	// ExactHeaders indicates whether or not any unexpected response headers
+	// should be treated as a test failure.
+	WantExactHeaders bool
+
+	// ExactJSONBody indicates whether or not the expected JSON should be matched
+	// exactly (true) or treated as a subset of the response JSON (false).
+	WantExactJSONBody bool
+
+	// Headers is a map of HTTP headers that are expected to be present in
+	// the HTTP response.
+	Headers http.Header
+
+	// Status is the expected HTTP status code of the response. Default is 200.
+	Status int
 }
 
 var _ TestCase = &HTTPTestCase{}
@@ -501,27 +522,6 @@ func (r *HTTPTestCaseResult) validateExpectations() {
 			r.addFailures(errs...)
 		}
 	}
-}
-
-// HTTPResponseExpectations represents the expected values for single HTTP response.
-type HTTPResponseExpectations struct {
-	// Body is the expected HTTP response body content.
-	Body interface{}
-
-	// ExactHeaders indicates whether or not any unexpected response headers
-	// should be treated as a test failure.
-	WantExactHeaders bool
-
-	// ExactJSONBody indicates whether or not the expected JSON should be matched
-	// exactly (true) or treated as a subset of the response JSON (false).
-	WantExactJSONBody bool
-
-	// Headers is a map of HTTP headers that are expected to be present in
-	// the HTTP response.
-	Headers http.Header
-
-	// Status is the expected HTTP status code of the response. Default is 200.
-	Status int
 }
 
 // DELETE is a shortcut for DefaultContext().NewTestCase(http.MethodDelete, path).
