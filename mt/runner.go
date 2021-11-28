@@ -1,6 +1,7 @@
 package mt
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -21,6 +22,7 @@ type TestRunner struct {
 
 // A RunResult contains information about a set of test cases run by a test runner.
 type RunResult struct {
+	Group         *TestGroup
 	TestResults   []TestResult
 	TestDurations []time.Duration
 	Passed        int
@@ -59,12 +61,24 @@ func (r *TestRunner) RunTests(tests []TestCase) RunResult {
 	return r.RunTestsT(nil, tests)
 }
 
+func (r *TestRunner) RunTestsT(t *testing.T, tests []TestCase) RunResult {
+	group := NewTestGroup(fmt.Sprintf("%d tests in sequence", len(tests))).Add(tests...)
+	return r.RunTestGroupT(t, group)
+}
+
+func (r *TestRunner) RunTestGroup(group *TestGroup) RunResult {
+	return r.RunTestGroupT(nil, group)
+}
+
 // RunTests runs a set of tests within the context of a Go test.
 //
 // To run tests as a standalone binary without a testing context, use RunTests().
-func (r *TestRunner) RunTestsT(t *testing.T, tests []TestCase) RunResult {
-	runResult := RunResult{}
-	for _, test := range tests {
+func (r *TestRunner) RunTestGroupT(t *testing.T, group *TestGroup) RunResult {
+	runResult := RunResult{
+		Group: group,
+	}
+
+	for _, test := range group.TestCases {
 		start := time.Now()
 		testResult := test.Execute()
 		duration := time.Since(start)
@@ -86,7 +100,7 @@ func (r *TestRunner) RunTestsT(t *testing.T, tests []TestCase) RunResult {
 			}
 
 			if !r.ContinueOnFailure {
-				runResult.Skipped = len(tests) - runResult.Total
+				runResult.Skipped = len(group.TestCases) - runResult.Total
 				break
 			}
 

@@ -11,6 +11,7 @@ import (
 )
 
 var (
+	blueFG  = color.New(color.FgHiBlue, color.Bold).SprintFunc()
 	greenFG = color.New(color.FgHiGreen, color.Bold).SprintFunc()
 	redFG   = color.New(color.FgHiRed, color.Bold).SprintFunc()
 	whiteFG = color.New(color.Bold).SprintFunc()
@@ -48,6 +49,7 @@ func (w *columnWriter) printColumns(columns ...interface{}) {
 
 func PrintRunResult(result RunResult) {
 	w := newColumnWriter(cfg.Stdout, 5, 2)
+	w.printLine(blueFG(result.Group.Name))
 	for i := range result.TestResults {
 		if len(result.TestResults[i].Failures()) > 0 {
 			w.printTestFailure(i+1, result.TestResults[i], result.TestDurations[i])
