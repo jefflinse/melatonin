@@ -49,7 +49,11 @@ func (w *columnWriter) printColumns(columns ...interface{}) {
 
 func PrintRunResult(result RunResult) {
 	w := newColumnWriter(cfg.Stdout, 5, 2)
-	w.printLine(blueFG(result.Group.Name))
+
+	if result.Group.Name != "" {
+		w.printLine(blueFG(result.Group.Name))
+	}
+
 	for i := range result.TestResults {
 		if len(result.TestResults[i].Failures()) > 0 {
 			w.printTestFailure(i+1, result.TestResults[i], result.TestDurations[i])
