@@ -62,6 +62,8 @@ type columnWriter struct {
 	tabWriter *tabwriter.Writer
 }
 
+type decoratorFunc func(interface{}) string
+
 func newColumnWriter(output io.Writer, columns int, padding int) *columnWriter {
 	return &columnWriter{
 		columns:   columns,
@@ -71,9 +73,15 @@ func newColumnWriter(output io.Writer, columns int, padding int) *columnWriter {
 	}
 }
 
-func (w *columnWriter) printColumns(columns ...interface{}) {
+func (w *columnWriter) printColumns(decorators []decoratorFunc, columns ...interface{}) {
 	if len(columns) > w.columns {
 		panic(fmt.Sprintf("PrintColumns() called with %d columns, expected at most %d", len(columns), w.columns))
+	}
+
+	if !color.NoColor {
+		for i := 0; i < len(decorators); i++ {
+			columns[i] = decorators[i](columns[i])
+		}
 	}
 
 	fmt.Fprintf(w.tabWriter, w.format, columns...)
@@ -84,23 +92,40 @@ func (w *columnWriter) printLine(str string, args ...interface{}) {
 }
 
 func (w *columnWriter) printTestSuccess(testNum int, result TestResult, duration time.Duration) {
-	w.printColumns(
-		greenFG(fmt.Sprintf("✔ %d", testNum)),
-		whiteFG(result.TestCase().Description()),
-		blueBG(fmt.Sprintf("%7s ", result.TestCase().Action())),
+	decorators := []decoratorFunc{
+		func(i interface{}) string { return greenFG(i) },
+		func(i interface{}) string { return whiteFG(i) },
+		func(i interface{}) string { return blueBG(i) },
+		func(i interface{}) string { return i.(string) },
+		func(i interface{}) string { return faintFG(i) },
+	}
+
+	w.printColumns(decorators,
+		fmt.Sprintf("✔ %d", testNum),
+		result.TestCase().Description(),
+		fmt.Sprintf("%7s ", result.TestCase().Action()),
 		result.TestCase().Target(),
-		faintFG(duration.String()))
+		duration.String())
 }
 
 func (w *columnWriter) printTestFailure(testNum int, result TestResult, duration time.Duration) {
-	w.printColumns(
-		redFG(fmt.Sprintf("✘ %d", testNum)),
-		whiteFG(result.TestCase().Description()),
-		blueBG(fmt.Sprintf("%7s ", result.TestCase().Action())),
-		result.TestCase().Target(),
-		faintFG(duration.String()))
+	decorators := []decoratorFunc{
+		func(i interface{}) string { return redFG(i) },
+		func(i interface{}) string { return whiteFG(i) },
+		func(i interface{}) string { return blueBG(i) },
+		func(i interface{}) string { return i.(string) },
+		func(i interface{}) string { return faintFG(i) },
+	}
 
+	w.printColumns(decorators,
+		fmt.Sprintf("✘ %d", testNum),
+		result.TestCase().Description(),
+		fmt.Sprintf("%7s ", result.TestCase().Action()),
+		result.TestCase().Target(),
+		duration.String())
+
+	decorators[1] = func(i interface{}) string { return redFG(i) }
 	for _, err := range result.Failures() {
-		w.printColumns(redFG(""), redFG(fmt.Sprintf("  %s", err)), blueBG(""), "", faintFG(""))
+		w.printColumns(decorators, "", fmt.Sprintf("  %s", err), "", "", "")
 	}
 }
