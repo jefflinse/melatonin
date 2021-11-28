@@ -197,7 +197,7 @@ func (tc *HTTPTestCase) Execute() TestResult {
 
 	if tc.BeforeFunc != nil {
 		if err := tc.BeforeFunc(); err != nil {
-			return result.addErrors(fmt.Errorf("before(): %w", err))
+			return result.addFailures(fmt.Errorf("before(): %w", err))
 		}
 	}
 
@@ -205,7 +205,7 @@ func (tc *HTTPTestCase) Execute() TestResult {
 	if tc.tctx.Handler != nil {
 		result.Status, result.Headers, result.Body, err = handleRequest(tc.tctx.Handler, tc.request)
 		if err != nil {
-			return result.addErrors(fmt.Errorf("failed to handle HTTP request: %w", err))
+			return result.addFailures(fmt.Errorf("failed to handle HTTP request: %w", err))
 		}
 	} else {
 		if tc.tctx.Client == nil {
@@ -214,7 +214,7 @@ func (tc *HTTPTestCase) Execute() TestResult {
 
 		result.Status, result.Headers, result.Body, err = doRequest(tc.tctx.Client, tc.request)
 		if err != nil {
-			return result.addErrors(fmt.Errorf("failed to execute HTTP request: %w", err))
+			return result.addFailures(fmt.Errorf("failed to execute HTTP request: %w", err))
 		}
 	}
 
@@ -222,7 +222,7 @@ func (tc *HTTPTestCase) Execute() TestResult {
 
 	if tc.AfterFunc != nil {
 		if err := tc.AfterFunc(); err != nil {
-			result.addErrors(fmt.Errorf("after(): %w", err))
+			result.addFailures(fmt.Errorf("after(): %w", err))
 		}
 	}
 
@@ -423,23 +423,23 @@ type HTTPTestCaseResult struct {
 	Body    []byte
 
 	testCase *HTTPTestCase
-	errors   []error
+	failures []error
 }
 
-func (r *HTTPTestCaseResult) Errors() []error {
-	return r.errors
+func (r *HTTPTestCaseResult) Failures() []error {
+	return r.failures
 }
 
 func (r *HTTPTestCaseResult) TestCase() TestCase {
 	return r.testCase
 }
 
-func (r *HTTPTestCaseResult) addErrors(errs ...error) *HTTPTestCaseResult {
+func (r *HTTPTestCaseResult) addFailures(errs ...error) *HTTPTestCaseResult {
 	if len(errs) == 0 {
 		return r
 	}
 
-	r.errors = append(r.errors, errs...)
+	r.failures = append(r.failures, errs...)
 	return r
 }
 
@@ -447,20 +447,20 @@ func (r *HTTPTestCaseResult) validateExpectations() {
 	tc := r.TestCase().(*HTTPTestCase)
 	if tc.Expectations.Status != 0 {
 		if err := expect.Status(tc.Expectations.Status, r.Status); err != nil {
-			r.addErrors(err)
+			r.addFailures(err)
 		}
 	}
 
 	if tc.Expectations.Headers != nil {
 		if errs := expect.Headers(tc.Expectations.Headers, r.Headers); len(errs) > 0 {
-			r.addErrors(errs...)
+			r.addFailures(errs...)
 		}
 	}
 
 	if tc.Expectations.Body != nil {
 		body := toInterface(r.Body)
 		if errs := expect.Value("body", tc.Expectations.Body, body, tc.Expectations.WantExactJSONBody); len(errs) > 0 {
-			r.addErrors(errs...)
+			r.addFailures(errs...)
 		}
 	}
 }

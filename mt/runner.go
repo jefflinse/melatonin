@@ -73,11 +73,11 @@ func (r *TestRunner) RunTestsT(t *testing.T, tests []TestCase) RunResult {
 		runResult.Total++
 		runResult.Duration += duration
 
-		if len(testResult.Errors()) > 0 {
+		if len(testResult.Failures()) > 0 {
 			runResult.Failed++
 			if t != nil {
 				t.Run(test.Description(), func(t *testing.T) {
-					for _, err := range testResult.Errors() {
+					for _, err := range testResult.Failures() {
 						t.Log(err)
 					}
 
