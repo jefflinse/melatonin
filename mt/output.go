@@ -22,21 +22,37 @@ var (
 	blueBG  = color.New(color.BgBlue, color.FgHiWhite).SprintFunc()
 )
 
-// PrintFormattedResults prints a RunResult to stdout.
+// PrintResults prints the results of a group run to stdout.
 //
 // By default, the output is formatted as a table and colors are used if possible.
 // The behavior can be controlled by setting the MELATONIN_OUTPUT environment
-// variable to "simple" to disable colors, or "none" to disable output all together.
+// variable to "json" to produce JSON output, or "none" to disable output all together.
+func PrintResults(results GroupRunResult) {
+	FPrintResults(cfg.Stdout, results)
+}
+
+// FPrintResults prints the results of a group run to the given io.Writer.
+//
+// By default, the output is formatted as a table and colors are used if possible.
+// The behavior can be controlled by setting the MELATONIN_OUTPUT environment
+// variable to "json" to produce JSON output, or "none" to disable output all together.
+func FPrintResults(w io.Writer, results GroupRunResult) {
+	switch cfg.OutputType {
+	case outputTypeNone:
+		return
+	case outputTypeJSON:
+		FPrintJSONResults(w, results, false)
+	default:
+		FPrintFormattedResults(w, results)
+	}
+}
+
+// PrintFormattedResults prints the results of a group run as a formatted table to stdout.
 func PrintFormattedResults(results GroupRunResult) {
 	FPrintFormattedResults(cfg.Stdout, results)
 }
 
-// FPrintFormattedResults prints a RunResult as a formatted table to the given io.Writer.
-//
-// By default, if the supplied writer is stdout or a TTY, the output is formatted as
-// a table and colors are used if possible. The behavior can be controlled by setting
-// the MELATONIN_OUTPUT environment variable to "simple" to disable colors, or "none"
-// to disable output all together.
+// FPrintFormattedResults prints the results of a group run as a formatted table to the given io.Writer.
 func FPrintFormattedResults(w io.Writer, groupResult GroupRunResult) {
 	cw := newColumnWriter(w, 5, 1)
 
@@ -88,12 +104,12 @@ type jsonResult struct {
 	Data     TestResult `json:"data,omitempty"`
 }
 
-// PrintJSONResults prints a RunResults as a JSON object to stdout.
+// PrintJSONResults prints the results of a group run as JSON to the given io.Writer.
 func PrintJSONResults(results GroupRunResult, deep bool) error {
 	return FPrintJSONResults(cfg.Stdout, results, deep)
 }
 
-// FPrintJSONResults prints a RunResults as a JSON object to the given io.Writer.
+// FPrintJSONResults prints the results of a group run as JSON to the given io.Writer.
 func FPrintJSONResults(w io.Writer, result GroupRunResult, deep bool) error {
 	groupResultObj := jsonGroupRunResult{
 		Name:     result.Group.Name,

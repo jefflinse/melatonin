@@ -12,26 +12,23 @@ See the full [user guide](./USERGUIDE.md) and the [API documentation](https://pk
 
 ## Usage
 
-When built and run as a standalone binary, a melatonin app can print a formatted table of test results to stdout.
+Just create a context and write tests. The test runner will run the tests and return the results.
 
 ```go
-package main
-
-import "github.com/jefflinse/melatonin/mt"
-
 func main() {
-
     myAPI := mt.NewURLContext("http://example.com")
-    result := mt.RunTests([]mt.TestCase{
+    results := mt.RunTests([]mt.TestCase{
 
         myAPI.GET("/resource", "Fetch a record successfully").
             ExpectStatus(200).
             ExpectBody("Hello, world!"),
     })
 
-    mt.PrintResult(result)
+    mt.PrintResults(results)
 }
 ```
+
+With the above, you'll get a nicely formatted table of results.
 
     $ go run example.go
     1 ✔  Fetch a record successfully      GET   /foo  3.9252ms
