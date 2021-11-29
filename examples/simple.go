@@ -27,7 +27,7 @@ func SimpleExample() {
 			ExpectBody("Hello, world!"),
 	})
 
-	mt.PrintJSONResults(result)
+	mt.PrintJSONResults(result, true)
 }
 
 func createSimpleServeMux() *http.ServeMux {

@@ -166,7 +166,7 @@ func FullExample() {
 	results := runner.RunTestGroup(group)
 
 	// Print the results of the test run.
-	mt.PrintJSONResults(results)
+	mt.PrintJSONResults(results, false)
 
 	// Results can be examined programatically.
 	for _, result := range results.Results {

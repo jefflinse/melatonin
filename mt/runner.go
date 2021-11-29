@@ -49,7 +49,7 @@ type GroupRunResult struct {
 	Total int `json:"total"`
 
 	// Duration is the total duration of all tests in the test group.
-	Duration time.Duration `json:"duration`
+	Duration time.Duration `json:"duration"`
 }
 
 // NewTestRunner creates a new TestRunner with default configuration.

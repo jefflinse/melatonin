@@ -77,22 +77,24 @@ type jsonTestRunResult struct {
 }
 
 type jsonTest struct {
-	Description string `json:"description"`
-	Action      string `json:"action"`
-	Target      string `json:"target"`
+	Description string   `json:"description"`
+	Action      string   `json:"action"`
+	Target      string   `json:"target"`
+	Data        TestCase `json:"data"`
 }
 
 type jsonResult struct {
-	Failures []error `json:"failures"`
+	Failures []error    `json:"failures"`
+	Data     TestResult `json:"data"`
 }
 
 // PrintJSONResults prints a RunResults as a JSON object to stdout.
-func PrintJSONResults(results GroupRunResult) error {
-	return FPrintJSONResults(cfg.Stdout, results)
+func PrintJSONResults(results GroupRunResult, deep bool) error {
+	return FPrintJSONResults(cfg.Stdout, results, deep)
 }
 
 // FPrintJSONResults prints a RunResults as a JSON object to the given io.Writer.
-func FPrintJSONResults(w io.Writer, result GroupRunResult) error {
+func FPrintJSONResults(w io.Writer, result GroupRunResult, deep bool) error {
 	groupResultObj := jsonGroupRunResult{
 		Name:     result.Group.Name,
 		Duration: result.Duration,
@@ -100,7 +102,7 @@ func FPrintJSONResults(w io.Writer, result GroupRunResult) error {
 	}
 
 	for i := range result.Results {
-		groupResultObj.Results[i] = jsonTestRunResult{
+		testRunResult := jsonTestRunResult{
 			Test: jsonTest{
 				Description: result.Results[i].TestCase.Description(),
 				Action:      result.Results[i].TestCase.Action(),
@@ -113,6 +115,13 @@ func FPrintJSONResults(w io.Writer, result GroupRunResult) error {
 			EndedAt:   result.Results[i].EndedAt,
 			Duration:  result.Results[i].Duration,
 		}
+
+		if deep {
+			testRunResult.Test.Data = result.Results[i].TestCase
+			testRunResult.Result.Data = result.Results[i].TestResult
+		}
+
+		groupResultObj.Results[i] = testRunResult
 	}
 
 	return json.NewEncoder(w).Encode(jsonOutputObj{

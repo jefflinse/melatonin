@@ -138,29 +138,29 @@ type HTTPTestCase struct {
 	// It can be used to perform any cleanup actions after the test,
 	// such as adding or removing objects in a database. Any error
 	// returned by After is treated as a test failure.
-	AfterFunc func() error
+	AfterFunc func() error `json:"-"`
 
 	// Before is an optional function that is run before the test is run.
 	// It can be used to perform any prerequisites actions for the test,
 	// such as adding or removing objects in a database. Any error
 	// returned by Before is treated as a test failure.
-	BeforeFunc func() error
+	BeforeFunc func() error `json:"-"`
 
 	// BodyBindTarget is an optional pointer to a slice, map, or struct to which
 	// the response body should be bound.
-	BodyBindTarget interface{}
+	BodyBindTarget interface{} `json:"-"`
 
 	// Desc is a description of the test case.
-	Desc string
+	Desc string `json:"-"`
 
 	// Expectations is a set of values to compare the response against.
-	Expectations expectatons
+	Expectations expectatons `json:"expectations"`
 
 	// GoldenFilePath is a path to a golden file defining expectations for the test case.
 	//
 	// If set, any WantStatus, WantHeaders, or WantBody values are overridden with
 	// values from the golden file.
-	GoldenFilePath string
+	GoldenFilePath string `json:"-"`
 
 	// Configuration for the test
 	tctx *HTTPTestContext
@@ -175,22 +175,22 @@ type HTTPTestCase struct {
 // expectatons represents the expected values for single HTTP response.
 type expectatons struct {
 	// Body is the expected HTTP response body content.
-	Body interface{}
+	Body interface{} `json:"body"`
 
 	// ExactHeaders indicates whether or not any unexpected response headers
 	// should be treated as a test failure.
-	WantExactHeaders bool
+	WantExactHeaders bool `json:"want_exact_headers"`
 
 	// ExactJSONBody indicates whether or not the expected JSON should be matched
 	// exactly (true) or treated as a subset of the response JSON (false).
-	WantExactJSONBody bool
+	WantExactJSONBody bool `json:"want_exact_json_body"`
 
 	// Headers is a map of HTTP headers that are expected to be present in
 	// the HTTP response.
-	Headers http.Header
+	Headers http.Header `json:"headers"`
 
 	// Status is the expected HTTP status code of the response. Default is 200.
-	Status int
+	Status int `json:"status"`
 }
 
 var _ TestCase = &HTTPTestCase{}
@@ -471,13 +471,13 @@ func (tc *HTTPTestCase) Validate() error {
 // HTTPTestCaseResult represents the result of running a single test case.
 type HTTPTestCaseResult struct {
 	// Status is the HTTP status code returned in the response.
-	Status int
+	Status int `json:"status"`
 
 	// Headers is the HTTP response headers.
-	Headers http.Header
+	Headers http.Header `json:"headers"`
 
 	// Body is the HTTP response body.
-	Body []byte
+	Body []byte `json:"body"`
 
 	testCase *HTTPTestCase
 	failures []error
