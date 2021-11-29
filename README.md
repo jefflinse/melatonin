@@ -1,6 +1,6 @@
 # melatonin
 
-[![Build Status](https://github.com/jefflinse/melatonin/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jefflinse/melatonin/actions/workflows/ci.yml) [![Go Report Card](https://goreportcard.com/badge/github.com/jefflinse/melatonin)](https://goreportcard.com/report/github.com/jefflinse/melatonin) ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/jefflinse/melatonin) ![GitHub](https://img.shields.io/github/license/jefflinse/melatonin)
+[![Build Status](https://github.com/jefflinse/melatonin/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jefflinse/melatonin/actions/workflows/ci.yml) [![Go Report Card](https://goreportcard.com/badge/github.com/jefflinse/melatonin)](https://goreportcard.com/report/github.com/jefflinse/melatonin) ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/jefflinse/melatonin) [![Go Reference](https://pkg.go.dev/badge/github.com/jefflinse/melatonin/mt.svg)](https://pkg.go.dev/github.com/jefflinse/melatonin/mt) ![License](https://img.shields.io/github/license/jefflinse/melatonin)
 
 melatonin is a fluent, flexible REST API testing library for Go. It provides many of the benefits of a domain-specific test language but with the flexibililty of writing pure Go. Use it to write unit tests that test your `http.Handler`s routes directly, or E2E tests that target routes on a running service written in any language.
 
