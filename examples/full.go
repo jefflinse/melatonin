@@ -166,11 +166,17 @@ func FullExample() {
 	results := runner.RunTestGroup(group)
 
 	// Print the results of the test run.
-	mt.PrintResult(results)
+	mt.PrintJSONResults(results)
 
-	// Results are also accessible via the TestResult interface.
-	for _, result := range results.TestResults {
+	// Results can be examined programatically.
+	for _, result := range results.Results {
 		fmt.Fprint(io.Discard, result)
+
+		// Type switch on the test result to access the underlying test result information.
+		switch result.TestResult.(type) {
+		case *mt.HTTPTestCaseResult:
+			// do something with the result
+		}
 	}
 }
 

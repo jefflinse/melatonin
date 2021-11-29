@@ -166,13 +166,15 @@ func TestFullExample(t *testing.T) {
 
 	results := runner.RunTestGroupT(t, group)
 
-	// Results are accessible via the TestResult interface.
-	//
-	// Setting MELATONIN_OUTPUT=none in the environment will suppress all output
-	// to stdout, enabling custom results processing, analysis, and output.
-	//
-	for _, result := range results.TestResults {
+	// Results can be examined programatically.
+	for _, result := range results.Results {
 		fmt.Fprint(io.Discard, result)
+
+		// Type switch on the test result to access the underlying test result information.
+		switch result.TestResult.(type) {
+		case *mt.HTTPTestCaseResult:
+			// do something with the result
+		}
 	}
 }
 

@@ -2,6 +2,7 @@ package mt
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -21,40 +22,102 @@ var (
 	blueBG  = color.New(color.BgBlue, color.FgHiWhite).SprintFunc()
 )
 
-// PrintResult prints a RunResult to stdout.
+// PrintFormattedResults prints a RunResult to stdout.
 //
 // By default, the output is formatted as a table and colors are used if possible.
 // The behavior can be controlled by setting the MELATONIN_OUTPUT environment
 // variable to "simple" to disable colors, or "none" to disable output all together.
-func PrintResult(result RunResult) {
-	FPrintResult(cfg.Stdout, result)
+func PrintFormattedResults(results GroupRunResult) {
+	FPrintFormattedResults(cfg.Stdout, results)
 }
 
-// FPrintResult prints a RunResult to the given io.Writer.
+// FPrintFormattedResults prints a RunResult as a formatted table to the given io.Writer.
 //
 // By default, if the supplied writer is stdout or a TTY, the output is formatted as
 // a table and colors are used if possible. The behavior can be controlled by setting
 // the MELATONIN_OUTPUT environment variable to "simple" to disable colors, or "none"
 // to disable output all together.
-func FPrintResult(w io.Writer, result RunResult) {
+func FPrintFormattedResults(w io.Writer, groupResult GroupRunResult) {
 	cw := newColumnWriter(w, 5, 1)
 
-	if result.Group.Name != "" {
-		cw.printLine(cyanFG(result.Group.Name))
+	if groupResult.Group.Name != "" {
+		cw.printLine(cyanFG(groupResult.Group.Name))
 	}
 
-	for i := range result.TestResults {
-		if len(result.TestResults[i].Failures()) > 0 {
-			cw.printTestFailure(i+1, result.TestResults[i], result.TestDurations[i])
+	for i := range groupResult.Results {
+		if len(groupResult.Results[i].TestResult.Failures()) > 0 {
+			cw.printTestFailure(i+1, groupResult.Results[i])
 		} else {
-			cw.printTestSuccess(i+1, result.TestResults[i], result.TestDurations[i])
+			cw.printTestSuccess(i+1, groupResult.Results[i])
 		}
 	}
 
 	cw.printLine("")
-	cw.printLine(fmt.Sprintf("%d passed, %d failed, %d skipped %s", result.Passed, result.Failed, result.Skipped,
-		faintFG(fmt.Sprintf("in %s", result.Duration.String()))))
+	cw.printLine(fmt.Sprintf("%d passed, %d failed, %d skipped %s", groupResult.Passed, groupResult.Failed, groupResult.Skipped,
+		faintFG(fmt.Sprintf("in %s", groupResult.Duration.String()))))
 	cw.Flush()
+}
+
+type jsonOutputObj struct {
+	Groups []jsonGroupRunResult `json:"groups"`
+}
+
+type jsonGroupRunResult struct {
+	Name     string              `json:"name"`
+	Results  []jsonTestRunResult `json:"results"`
+	Duration time.Duration       `json:"duration"`
+}
+
+type jsonTestRunResult struct {
+	Test      jsonTest      `json:"test"`
+	Result    jsonResult    `json:"result"`
+	StartedAt time.Time     `json:"started_at"`
+	EndedAt   time.Time     `json:"ended_at"`
+	Duration  time.Duration `json:"duration"`
+}
+
+type jsonTest struct {
+	Description string `json:"description"`
+	Action      string `json:"action"`
+	Target      string `json:"target"`
+}
+
+type jsonResult struct {
+	Failures []error `json:"failures"`
+}
+
+// PrintJSONResults prints a RunResults as a JSON object to stdout.
+func PrintJSONResults(results GroupRunResult) error {
+	return FPrintJSONResults(cfg.Stdout, results)
+}
+
+// FPrintJSONResults prints a RunResults as a JSON object to the given io.Writer.
+func FPrintJSONResults(w io.Writer, result GroupRunResult) error {
+	groupResultObj := jsonGroupRunResult{
+		Name:     result.Group.Name,
+		Duration: result.Duration,
+		Results:  make([]jsonTestRunResult, len(result.Results)),
+	}
+
+	for i := range result.Results {
+		groupResultObj.Results[i] = jsonTestRunResult{
+			Test: jsonTest{
+				Description: result.Results[i].TestCase.Description(),
+				Action:      result.Results[i].TestCase.Action(),
+				Target:      result.Results[i].TestCase.Target(),
+			},
+			Result: jsonResult{
+				Failures: result.Results[i].TestResult.Failures(),
+			},
+			StartedAt: result.Results[i].StartedAt,
+			EndedAt:   result.Results[i].EndedAt,
+			Duration:  result.Results[i].Duration,
+		}
+	}
+
+	return json.NewEncoder(w).Encode(jsonOutputObj{
+		Groups: []jsonGroupRunResult{groupResultObj},
+	})
 }
 
 type columnWriter struct {
@@ -147,25 +210,25 @@ func (w *columnWriter) printLine(str string, args ...interface{}) {
 	w.nonTableLines[w.currentLineNum] = append(w.nonTableLines[w.currentLineNum], str)
 }
 
-func (w *columnWriter) printTestSuccess(testNum int, result TestResult, duration time.Duration) {
+func (w *columnWriter) printTestSuccess(testNum int, result TestRunResult) {
 	w.printColumns(map[int]decoratorFunc{0: greenFG, 1: whiteFG, 2: blueBG, 4: faintFG},
 		fmt.Sprintf("✔ %d", testNum),
-		result.TestCase().Description(),
-		fmt.Sprintf("%7s ", result.TestCase().Action()),
-		result.TestCase().Target(),
-		duration.String())
+		result.TestCase.Description(),
+		fmt.Sprintf("%7s ", result.TestCase.Action()),
+		result.TestCase.Target(),
+		result.Duration.String())
 }
 
-func (w *columnWriter) printTestFailure(testNum int, result TestResult, duration time.Duration) {
+func (w *columnWriter) printTestFailure(testNum int, result TestRunResult) {
 	decorators := map[int]decoratorFunc{0: redFG, 1: whiteFG, 2: blueBG, 4: faintFG}
 	w.printColumns(decorators,
 		fmt.Sprintf("✘ %d", testNum),
-		result.TestCase().Description(),
-		fmt.Sprintf("%7s ", result.TestCase().Action()),
-		result.TestCase().Target(),
-		duration.String())
+		result.TestCase.Description(),
+		fmt.Sprintf("%7s ", result.TestCase.Action()),
+		result.TestCase.Target(),
+		result.Duration.String())
 
-	failures := result.Failures()
+	failures := result.TestResult.Failures()
 	for i := 0; i < len(failures)-1; i++ {
 		w.printLine(redFG(fmt.Sprintf("├╴ %s", failures[i])))
 	}
