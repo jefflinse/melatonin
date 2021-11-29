@@ -38,8 +38,6 @@ func PrintResults(results GroupRunResult) {
 // variable to "json" to produce JSON output, or "none" to disable output all together.
 func FPrintResults(w io.Writer, results GroupRunResult) {
 	switch cfg.OutputType {
-	case outputTypeNone:
-		return
 	case outputTypeJSON:
 		FPrintJSONResults(w, results, false)
 	default:
