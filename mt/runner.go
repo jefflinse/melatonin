@@ -19,15 +19,6 @@ type TestRunner struct {
 	TestTimeout time.Duration
 }
 
-// A TestRunResult contains information about a completed test case run.
-type TestRunResult struct {
-	TestCase   TestCase      `json:"test"`
-	TestResult TestResult    `json:"result"`
-	StartedAt  time.Time     `json:"started_at"`
-	EndedAt    time.Time     `json:"finished_at"`
-	Duration   time.Duration `json:"duration"`
-}
-
 // A GroupRunResult contains information about a completed set of test cases run by a test runner.
 type GroupRunResult struct {
 	// Group is a reference to the test group that was run.
@@ -50,6 +41,15 @@ type GroupRunResult struct {
 
 	// Duration is the total duration of all tests in the test group.
 	Duration time.Duration `json:"duration"`
+}
+
+// A TestRunResult contains information about a completed test case run.
+type TestRunResult struct {
+	TestCase   TestCase      `json:"test"`
+	TestResult TestResult    `json:"result"`
+	StartedAt  time.Time     `json:"started_at"`
+	EndedAt    time.Time     `json:"finished_at"`
+	Duration   time.Duration `json:"duration"`
 }
 
 // NewTestRunner creates a new TestRunner with default configuration.
