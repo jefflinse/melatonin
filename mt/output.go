@@ -58,11 +58,15 @@ func FPrintFormattedResults(w io.Writer, groupResult GroupRunResult) {
 		cw.printLine(cyanFG(groupResult.Group.Name))
 	}
 
-	for i := range groupResult.Results {
-		if len(groupResult.Results[i].TestResult.Failures()) > 0 {
-			cw.printTestFailure(i+1, groupResult.Results[i])
+	for i := range groupResult.GroupResults {
+		FPrintFormattedResults(w, groupResult.GroupResults[i])
+	}
+
+	for i := range groupResult.TestResults {
+		if len(groupResult.TestResults[i].TestResult.Failures()) > 0 {
+			cw.printTestFailure(i+1, groupResult.TestResults[i])
 		} else {
-			cw.printTestSuccess(i+1, groupResult.Results[i])
+			cw.printTestSuccess(i+1, groupResult.TestResults[i])
 		}
 	}
 
@@ -112,27 +116,27 @@ func FPrintJSONResults(w io.Writer, result GroupRunResult, deep bool) error {
 	groupResultObj := jsonGroupRunResult{
 		Name:     result.Group.Name,
 		Duration: result.Duration,
-		Results:  make([]jsonTestRunResult, len(result.Results)),
+		Results:  make([]jsonTestRunResult, len(result.TestResults)),
 	}
 
-	for i := range result.Results {
+	for i := range result.TestResults {
 		testRunResult := jsonTestRunResult{
 			Test: jsonTest{
-				Description: result.Results[i].TestCase.Description(),
-				Action:      result.Results[i].TestCase.Action(),
-				Target:      result.Results[i].TestCase.Target(),
+				Description: result.TestResults[i].TestCase.Description(),
+				Action:      result.TestResults[i].TestCase.Action(),
+				Target:      result.TestResults[i].TestCase.Target(),
 			},
 			Result: jsonResult{
-				Failures: result.Results[i].TestResult.Failures(),
+				Failures: result.TestResults[i].TestResult.Failures(),
 			},
-			StartedAt: result.Results[i].StartedAt,
-			EndedAt:   result.Results[i].EndedAt,
-			Duration:  result.Results[i].Duration,
+			StartedAt: result.TestResults[i].StartedAt,
+			EndedAt:   result.TestResults[i].EndedAt,
+			Duration:  result.TestResults[i].Duration,
 		}
 
 		if deep {
-			testRunResult.Test.Data = result.Results[i].TestCase
-			testRunResult.Result.Data = result.Results[i].TestResult
+			testRunResult.Test.Data = result.TestResults[i].TestCase
+			testRunResult.Result.Data = result.TestResults[i].TestResult
 		}
 
 		groupResultObj.Results[i] = testRunResult

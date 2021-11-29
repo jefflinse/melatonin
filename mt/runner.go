@@ -24,8 +24,11 @@ type GroupRunResult struct {
 	// Group is a reference to the test group that was run.
 	Group *TestGroup `json:"-"`
 
-	// Results is a list of test run results corresponding to tests in the test group.
-	Results []TestRunResult `json:"results"`
+	// GroupRunResults is a list of group run results for each subgroup that was run.
+	GroupResults []GroupRunResult `json:"-"`
+
+	// Results is a list of test run results for each test in the group that was run.
+	TestResults []TestRunResult `json:"results"`
 
 	// Passed is the number of tests that passed.
 	Passed int `json:"passed"`
@@ -85,7 +88,7 @@ func (r *TestRunner) RunTests(tests []TestCase) GroupRunResult {
 //
 // To run tests standalone to print or examine results, use RunTests().
 func (r *TestRunner) RunTestsT(t *testing.T, tests []TestCase) GroupRunResult {
-	group := NewTestGroup("").Add(tests...)
+	group := NewTestGroup("").AddTests(tests...)
 	return r.RunTestGroupT(t, group)
 }
 
@@ -104,7 +107,7 @@ func (r *TestRunner) RunTestGroupT(t *testing.T, group *TestGroup) GroupRunResul
 		Group: group,
 	}
 
-	for _, test := range group.TestCases {
+	for _, test := range group.Tests {
 		start := time.Now()
 		testResult := test.Execute()
 		end := time.Now()
@@ -118,7 +121,7 @@ func (r *TestRunner) RunTestGroupT(t *testing.T, group *TestGroup) GroupRunResul
 
 		groupRunResult.Total++
 		groupRunResult.Duration += runResult.Duration
-		groupRunResult.Results = append(groupRunResult.Results, runResult)
+		groupRunResult.TestResults = append(groupRunResult.TestResults, runResult)
 
 		if len(testResult.Failures()) > 0 {
 			groupRunResult.Failed++
@@ -133,7 +136,7 @@ func (r *TestRunner) RunTestGroupT(t *testing.T, group *TestGroup) GroupRunResul
 			}
 
 			if !r.ContinueOnFailure {
-				groupRunResult.Skipped = len(group.TestCases) - groupRunResult.Total
+				groupRunResult.Skipped = len(group.Tests) - groupRunResult.Total
 				break
 			}
 
