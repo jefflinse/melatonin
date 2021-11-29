@@ -64,8 +64,8 @@ type jsonOutputObj struct {
 
 type jsonGroupRunResult struct {
 	Name     string              `json:"name"`
-	Results  []jsonTestRunResult `json:"results"`
 	Duration time.Duration       `json:"duration"`
+	Results  []jsonTestRunResult `json:"results"`
 }
 
 type jsonTestRunResult struct {

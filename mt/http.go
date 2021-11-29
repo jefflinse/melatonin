@@ -11,23 +11,18 @@ import (
 	"time"
 )
 
-const (
-	defaultRequestTimeoutStr = "10s"
-)
-
 var (
-	defaultRequestTimeout time.Duration
+	defaultRequestTimeout = 10 * time.Second
 )
 
 func init() {
-	defaultRequestTimeout, _ = time.ParseDuration(defaultRequestTimeoutStr)
 	envTimeoutStr := os.Getenv("MELATONIN_DEFAULT_TEST_TIMEOUT")
 	if envTimeoutStr != "" {
 		if timeout, err := time.ParseDuration(envTimeoutStr); err == nil {
 			defaultRequestTimeout = timeout
 		} else {
 			fmt.Printf("invalid MELATONIN_DEFAULT_TEST_TIMEOUT value %q in environment, using default of %s\n",
-				envTimeoutStr, defaultRequestTimeoutStr)
+				envTimeoutStr, defaultRequestTimeout)
 		}
 	}
 }
