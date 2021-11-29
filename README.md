@@ -66,7 +66,7 @@ func TestAPI(t *testing.T) {
 
 ## Examples
 
-See the [examples](examples/README.md) directory for full, runnable examples.
+See the [examples](examples) directory for full, runnable examples.
 
 ### Test a service running locally or remotely (E2E tests)
 
