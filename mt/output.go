@@ -80,12 +80,12 @@ type jsonTest struct {
 	Description string   `json:"description"`
 	Action      string   `json:"action"`
 	Target      string   `json:"target"`
-	Data        TestCase `json:"data"`
+	Data        TestCase `json:"data,omitempty"`
 }
 
 type jsonResult struct {
 	Failures []error    `json:"failures"`
-	Data     TestResult `json:"data"`
+	Data     TestResult `json:"data,omitempty"`
 }
 
 // PrintJSONResults prints a RunResults as a JSON object to stdout.

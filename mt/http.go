@@ -468,6 +468,37 @@ func (tc *HTTPTestCase) Validate() error {
 	return nil
 }
 
+type jsonTestCase struct {
+	Headers      http.Header              `json:"headers,omitempty"`
+	Body         interface{}              `json:"body,omitempty"`
+	Expectations jsonTestCaseExpectations `json:"expectations,omitempty"`
+}
+
+type jsonTestCaseExpectations struct {
+	Status            int         `json:"status,omitempty"`
+	Headers           http.Header `json:"headers,omitempty"`
+	Body              interface{} `json:"body,omitempty"`
+	WantExactHeaders  bool        `json:"want_exact_headers"`
+	WantExactJSONBody bool        `json:"want_exact_json_body"`
+}
+
+// MarshalJSON customizes the JSON representaton of the test case.
+func (tc HTTPTestCase) MarshalJSON() ([]byte, error) {
+	o := jsonTestCase{
+		Headers: tc.request.Header,
+		Body:    tc.request.Body,
+		Expectations: jsonTestCaseExpectations{
+			Status:            tc.Expectations.Status,
+			Headers:           tc.Expectations.Headers,
+			Body:              tc.Expectations.Body,
+			WantExactHeaders:  tc.Expectations.WantExactHeaders,
+			WantExactJSONBody: tc.Expectations.WantExactJSONBody,
+		},
+	}
+
+	return json.Marshal(o)
+}
+
 // HTTPTestCaseResult represents the result of running a single test case.
 type HTTPTestCaseResult struct {
 	// Status is the HTTP status code returned in the response.

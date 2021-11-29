@@ -19,10 +19,14 @@ func SimpleExample() {
 	result := mt.RunTests([]mt.TestCase{
 
 		myURL.GET("/foo", "Fetch /foo from a URL").
+			WithHeader("Some-Header", "foo").
+			WithBody("Hello, world!").
 			ExpectStatus(200).
 			ExpectBody("Hello, world!"),
 
 		myHandler.GET("/foo", "Fetch /foo from a handler").
+			WithHeader("Some-Header", "foo").
+			WithBody("Hello, world!").
 			ExpectStatus(200).
 			ExpectBody("Hello, world!"),
 	})
