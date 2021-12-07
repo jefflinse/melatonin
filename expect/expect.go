@@ -6,37 +6,38 @@ import (
 	"net/http"
 	"sort"
 
-	"github.com/jefflinse/melatonin/json"
+	mtjson "github.com/jefflinse/melatonin/json"
 )
 
-func wrongTypeError(key string, expected, actual interface{}) error {
-	var msg string
-	if expected != nil && actual == nil {
-		msg = fmt.Sprintf("expected %T, got nothing", expected)
-	} else {
-		msg = fmt.Sprintf(`expected type "%T", got '%T"`, expected, actual)
+// Headers compares a set of expected headers against a set of actual headers,
+func Headers(expected http.Header, actual http.Header) []error {
+	var errs []error
+	for key, expectedValuesForKey := range expected {
+		actualValuesForKey, ok := actual[key]
+		if !ok {
+			errs = append(errs, fmt.Errorf("expected header %q, got nothing", key))
+			continue
+		}
+
+		sort.Strings(expectedValuesForKey)
+		sort.Strings(actualValuesForKey)
+
+		for _, expectedValue := range expectedValuesForKey {
+			found := false
+			for _, actualValue := range actualValuesForKey {
+				if actualValue == expectedValue {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				errs = append(errs, fmt.Errorf("expected header %q to contain %q, got %q", key, expectedValue, actualValuesForKey))
+			}
+		}
 	}
 
-	if key != "" {
-		msg = fmt.Sprintf("%s: %s", key, msg)
-	}
-
-	return errors.New(msg)
-}
-
-func wrongValueError(key string, expected, actual interface{}) error {
-	var msg string
-	if expected != nil && actual == nil {
-		msg = fmt.Sprintf("expected %v, got nothing", expected)
-	} else {
-		msg = fmt.Sprintf(`expected "%v", got "%v"`, expected, actual)
-	}
-
-	if key != "" {
-		msg = fmt.Sprintf("%s: %s", key, msg)
-	}
-
-	return errors.New(msg)
+	return errs
 }
 
 // Status compares an expected status code to an actual status code.
@@ -47,32 +48,32 @@ func Status(expected, actual int) error {
 	return nil
 }
 
-// Value compares an expected value to an actual value.
-func Value(key string, expected, actual interface{}, exactJSON bool) []error {
+// ValueForKey compares an expected value to an actual value.
+func ValueForKey(key string, expected, actual interface{}, exactJSON bool) []error {
 	switch expectedValue := expected.(type) {
 
-	case json.Object, map[string]interface{}:
+	case mtjson.Object, map[string]interface{}:
 		ev, ok := expectedValue.(map[string]interface{})
 		if !ok {
-			ev = map[string]interface{}(expectedValue.(json.Object))
+			ev = map[string]interface{}(expectedValue.(mtjson.Object))
 		}
-		return Object(key, ev, actual, exactJSON)
+		return mapValForKey(key, ev, actual, exactJSON)
 
-	case json.Array, []interface{}:
+	case mtjson.Array, []interface{}:
 		ev, ok := expectedValue.([]interface{})
 		if !ok {
-			ev = []interface{}(expectedValue.(json.Array))
+			ev = []interface{}(expectedValue.(mtjson.Array))
 		}
-		return Array(key, ev, actual, exactJSON)
+		return arrayValForKey(key, ev, actual, exactJSON)
 
 	case string:
-		err := String(key, expectedValue, actual)
+		err := strValForKey(key, expectedValue, actual)
 		if err != nil {
 			return []error{err}
 		}
 
 	case float64:
-		err := Number(key, expectedValue, actual)
+		err := numValForKey(key, expectedValue, actual)
 		if err != nil {
 			return []error{err}
 		}
@@ -83,13 +84,13 @@ func Value(key string, expected, actual interface{}, exactJSON bool) []error {
 			ev = int64(expectedValue.(int))
 		}
 
-		err := Number(key, float64(ev), actual)
+		err := numValForKey(key, float64(ev), actual)
 		if err != nil {
 			return []error{err}
 		}
 
 	case bool:
-		err := Bool(key, expectedValue, actual)
+		err := boolValForKey(key, expectedValue, actual)
 		if err != nil {
 			return []error{err}
 		}
@@ -106,8 +107,8 @@ func Value(key string, expected, actual interface{}, exactJSON bool) []error {
 	return nil
 }
 
-// Bool compares an expected bool to an actual bool.
-func Bool(key string, expected bool, actual interface{}) error {
+// boolValForKey compares an expected bool to an actual bool.
+func boolValForKey(key string, expected bool, actual interface{}) error {
 	b, ok := actual.(bool)
 	if !ok {
 		return wrongTypeError(key, expected, actual)
@@ -120,8 +121,8 @@ func Bool(key string, expected bool, actual interface{}) error {
 	return nil
 }
 
-// Number compares an expected float64 to an actual float64.
-func Number(key string, expected float64, actual interface{}) error {
+// numValForKey compares an expected float64 to an actual float64.
+func numValForKey(key string, expected float64, actual interface{}) error {
 	n, ok := actual.(float64)
 	if !ok {
 		return wrongTypeError(key, expected, actual)
@@ -134,8 +135,8 @@ func Number(key string, expected float64, actual interface{}) error {
 	return nil
 }
 
-// String compares an expected string to an actual string.
-func String(key string, expected string, actual interface{}) error {
+// strValForKey compares an expected string to an actual string.
+func strValForKey(key string, expected string, actual interface{}) error {
 	s, ok := actual.(string)
 	if !ok {
 		return wrongTypeError(key, expected, actual)
@@ -148,8 +149,8 @@ func String(key string, expected string, actual interface{}) error {
 	return nil
 }
 
-// Object compares an expected JSON object to an actual JSON object.
-func Object(key string, expected map[string]interface{}, actual interface{}, exact bool) []error {
+// mapValForKey compares an expected JSON object to an actual JSON object.
+func mapValForKey(key string, expected map[string]interface{}, actual interface{}, exact bool) []error {
 	m, ok := actual.(map[string]interface{})
 	if !ok {
 		return []error{wrongTypeError(key, expected, actual)}
@@ -182,7 +183,7 @@ func Object(key string, expected map[string]interface{}, actual interface{}, exa
 
 	errs := []error{}
 	for k, v := range expected {
-		if elemErrs := Value(fmt.Sprintf("%s.%s", key, k), v, m[k], exact); len(elemErrs) > 0 {
+		if elemErrs := ValueForKey(fmt.Sprintf("%s.%s", key, k), v, m[k], exact); len(elemErrs) > 0 {
 			errs = append(errs, elemErrs...)
 		}
 	}
@@ -190,8 +191,8 @@ func Object(key string, expected map[string]interface{}, actual interface{}, exa
 	return errs
 }
 
-// Array compares an expected JSON array to an actual JSON array.
-func Array(key string, expected []interface{}, actual interface{}, exact bool) []error {
+// arrayValForKey compares an expected JSON array to an actual JSON array.
+func arrayValForKey(key string, expected []interface{}, actual interface{}, exact bool) []error {
 	a, ok := actual.([]interface{})
 	if !ok {
 		return []error{wrongTypeError(key, expected, actual)}
@@ -203,7 +204,7 @@ func Array(key string, expected []interface{}, actual interface{}, exact bool) [
 
 	errs := []error{}
 	for i, v := range expected {
-		if elemErrs := Value(fmt.Sprintf("%s[%d]", key, i), v, a[i], exact); len(elemErrs) > 0 {
+		if elemErrs := ValueForKey(fmt.Sprintf("%s[%d]", key, i), v, a[i], exact); len(elemErrs) > 0 {
 			errs = append(errs, elemErrs...)
 		}
 	}
@@ -211,33 +212,32 @@ func Array(key string, expected []interface{}, actual interface{}, exact bool) [
 	return errs
 }
 
-// Headers compares a set of expected headers against a set of actual headers,
-func Headers(expected http.Header, actual http.Header) []error {
-	var errs []error
-	for key, expectedValuesForKey := range expected {
-		actualValuesForKey, ok := actual[key]
-		if !ok {
-			errs = append(errs, fmt.Errorf("expected header %q, got nothing", key))
-			continue
-		}
-
-		sort.Strings(expectedValuesForKey)
-		sort.Strings(actualValuesForKey)
-
-		for _, expectedValue := range expectedValuesForKey {
-			found := false
-			for _, actualValue := range actualValuesForKey {
-				if actualValue == expectedValue {
-					found = true
-					break
-				}
-			}
-
-			if !found {
-				errs = append(errs, fmt.Errorf("expected header %q to contain %q, got %q", key, expectedValue, actualValuesForKey))
-			}
-		}
+func wrongTypeError(key string, expected, actual interface{}) error {
+	var msg string
+	if expected != nil && actual == nil {
+		msg = fmt.Sprintf("expected %T, got nothing", expected)
+	} else {
+		msg = fmt.Sprintf(`expected type "%T", got '%T"`, expected, actual)
 	}
 
-	return errs
+	if key != "" {
+		msg = fmt.Sprintf("%s: %s", key, msg)
+	}
+
+	return errors.New(msg)
+}
+
+func wrongValueError(key string, expected, actual interface{}) error {
+	var msg string
+	if expected != nil && actual == nil {
+		msg = fmt.Sprintf("expected %v, got nothing", expected)
+	} else {
+		msg = fmt.Sprintf(`expected "%v", got "%v"`, expected, actual)
+	}
+
+	if key != "" {
+		msg = fmt.Sprintf("%s: %s", key, msg)
+	}
+
+	return errors.New(msg)
 }
