@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/jefflinse/melatonin/expect"
 	"github.com/jefflinse/melatonin/json"
 	"github.com/jefflinse/melatonin/mt"
 )
@@ -109,6 +110,22 @@ func FullExample() {
 				"a_number":       43,
 				"another_number": 3.15,
 				"a_bool":         false,
+			}),
+
+		// // Use a custom predicate to match an expected value
+		myURL.GET("/foo", "Fetch foo run a custom predicate while matching the body content").
+			WithHeader("Accept", "application/json").
+			ExpectStatus(200).
+			ExpectBody(json.Object{
+				"a_string": expect.Predicate(func(v interface{}) error {
+					if s, ok := v.(string); ok && s == "Hello, universe!" {
+						return nil
+					}
+					return errors.New("expected string to equal 'Hello, universe!'")
+				}),
+				"a_number":       42,
+				"another_number": 3.14,
+				"a_bool":         true,
 			}),
 
 		myURL.GET("/bar?first=foo&second=bar", "Fetch bar specifying a query string directly").

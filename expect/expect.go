@@ -9,6 +9,21 @@ import (
 	mtjson "github.com/jefflinse/melatonin/json"
 )
 
+type CustomPredicate func(interface{}) error
+
+type CustomPredicateForKey func(string, interface{}) error
+
+// Predicate runs a custom predicate against an value.
+func Predicate(fn CustomPredicate) CustomPredicateForKey {
+	return func(key string, actual interface{}) error {
+		if err := fn(actual); err != nil {
+			return failedPredicateError(key, err)
+		}
+
+		return nil
+	}
+}
+
 // Headers compares a set of expected headers against a set of actual headers,
 func Headers(expected http.Header, actual http.Header) []error {
 	var errs []error
@@ -95,9 +110,9 @@ func ValueForKey(key string, expected, actual interface{}, exactJSON bool) []err
 			return []error{err}
 		}
 
-	case func(interface{}) bool:
-		if !expectedValue(actual) {
-			return []error{fmt.Errorf("field %q did not satisfy predicate, got %q", key, actual)}
+	case CustomPredicateForKey:
+		if err := expectedValue(key, actual); err != nil {
+			return []error{err}
 		}
 
 	default:
@@ -210,6 +225,15 @@ func arrayValForKey(key string, expected []interface{}, actual interface{}, exac
 	}
 
 	return errs
+}
+
+func failedPredicateError(key string, err error) error {
+	msg := fmt.Sprintf("predicate failed: %s", err)
+	if key != "" {
+		msg = fmt.Sprintf("%s: %s", key, msg)
+	}
+
+	return errors.New(msg)
 }
 
 func wrongTypeError(key string, expected, actual interface{}) error {
