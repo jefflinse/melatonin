@@ -59,6 +59,8 @@ func FullExample() {
 	//
 	runner := mt.NewTestRunner().WithContinueOnFailure(true).WithRequestTimeout(1 * time.Second)
 
+	boundNumber := float64(0)
+
 	// Defining a test group allows you to group related tests together with associated metadata.
 	group := mt.NewTestGroup("E2E Test for Sample API").AddTests(
 
@@ -114,6 +116,14 @@ func FullExample() {
 
 		// // Use a custom predicate to match an expected value
 		myURL.GET("/foo", "Fetch foo run a custom predicate while matching the body content").
+			Before(func() error {
+				fmt.Println("bound number before:", boundNumber)
+				return nil
+			}).
+			After(func() error {
+				fmt.Println("bound number after:", boundNumber)
+				return nil
+			}).
 			WithHeader("Accept", "application/json").
 			ExpectStatus(200).
 			ExpectBody(json.Object{
@@ -123,12 +133,16 @@ func FullExample() {
 					}
 					return errors.New("expected string to equal 'Hello, universe!'")
 				}),
-				"a_number":       42,
-				"another_number": 3.14,
+				"a_number":       expect.Bind(&boundNumber),
+				"another_number": &boundNumber,
 				"a_bool":         true,
 			}),
 
 		myURL.GET("/bar?first=foo&second=bar", "Fetch bar specifying a query string directly").
+			Before(func() error {
+				fmt.Println("bound number before:", boundNumber)
+				return nil
+			}).
 			ExpectStatus(404),
 
 		myHandler.GET("/foo", "Fetch foo by testing a local handler").

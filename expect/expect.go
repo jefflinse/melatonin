@@ -1,6 +1,7 @@
 package expect
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -9,9 +10,65 @@ import (
 	mtjson "github.com/jefflinse/melatonin/json"
 )
 
+// A CustomPredicate is a function that takes a test result value and possibly returns an error.
 type CustomPredicate func(interface{}) error
 
+// A CustomPredicateForKey is a function that takes a key and a value and possibly returns an error.
 type CustomPredicateForKey func(string, interface{}) error
+
+// Bind binds a value to the provided target variable.
+func Bind(target interface{}) CustomPredicateForKey {
+	return func(key string, actual interface{}) error {
+
+		switch typedTarget := target.(type) {
+
+		case *string:
+			typedActual, ok := actual.(string)
+			if !ok {
+				return fmt.Errorf("expected to bind string, found %T", actual)
+			}
+
+			*typedTarget = typedActual
+
+		case *float64:
+			typedActual, ok := actual.(float64)
+			if !ok {
+				return fmt.Errorf("expected to bind float64, found %T", actual)
+			}
+
+			*typedTarget = typedActual
+
+		case *int64:
+			typedActual, ok := actual.(int64)
+			if !ok {
+				return fmt.Errorf("expected to bind int64, found %T", actual)
+			}
+
+			*typedTarget = typedActual
+
+		case *bool:
+			typedActual, ok := actual.(bool)
+			if !ok {
+				return fmt.Errorf("expected to bind bool, found %T", actual)
+			}
+
+			*typedTarget = typedActual
+
+		// struct, map, or slice
+		default:
+			b, err := json.Marshal(actual)
+			if err != nil {
+				return fmt.Errorf("failed to bind %T to %T: %s", actual, typedTarget, err)
+			}
+
+			if err := json.Unmarshal(b, target); err != nil {
+				return fmt.Errorf("failed to bind %T to %T: %s", actual, typedTarget, err)
+			}
+		}
+
+		return nil
+	}
+}
 
 // Predicate runs a custom predicate against an value.
 func Predicate(fn CustomPredicate) CustomPredicateForKey {
@@ -87,8 +144,17 @@ func ValueForKey(key string, expected, actual interface{}, exactJSON bool) []err
 			return []error{err}
 		}
 
+	case *string:
+		return []error{errors.New("bar")}
+
 	case float64:
 		err := numValForKey(key, expectedValue, actual)
+		if err != nil {
+			return []error{err}
+		}
+
+	case *float64:
+		err := numValForKey(key, *expectedValue, actual)
 		if err != nil {
 			return []error{err}
 		}
@@ -103,6 +169,9 @@ func ValueForKey(key string, expected, actual interface{}, exactJSON bool) []err
 		if err != nil {
 			return []error{err}
 		}
+
+	case *int, *int64:
+		return []error{errors.New("foo")}
 
 	case bool:
 		err := boolValForKey(key, expectedValue, actual)
