@@ -39,12 +39,18 @@ func Bind(target interface{}) CustomPredicateForKey {
 			*typedTarget = typedActual
 
 		case *int64:
-			typedActual, ok := actual.(int64)
-			if !ok {
-				return fmt.Errorf("expected to bind int64, found %T", actual)
+			if typedActual, ok := actual.(int64); ok {
+				*typedTarget = typedActual
+			} else if typedActual, ok := actual.(float64); ok {
+				if n, ok := floatToInt(typedActual); ok {
+					*typedTarget = n
+					return nil
+				}
+
+				return fmt.Errorf("expected to bind int64, found float64: %f", typedActual)
 			}
 
-			*typedTarget = typedActual
+			return fmt.Errorf("expected to bind int64, found %T", actual)
 
 		case *bool:
 			typedActual, ok := actual.(bool)
@@ -53,6 +59,9 @@ func Bind(target interface{}) CustomPredicateForKey {
 			}
 
 			*typedTarget = typedActual
+
+		case nil:
+			return fmt.Errorf("bind target is nil")
 
 		// struct, map, or slice
 		default:
@@ -333,4 +342,9 @@ func wrongValueError(key string, expected, actual interface{}) error {
 	}
 
 	return errors.New(msg)
+}
+
+func floatToInt(f float64) (int64, bool) {
+	n := int64(f)
+	return n, float64(n) == f
 }

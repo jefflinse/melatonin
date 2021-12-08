@@ -59,7 +59,8 @@ func FullExample() {
 	//
 	runner := mt.NewTestRunner().WithContinueOnFailure(true).WithRequestTimeout(1 * time.Second)
 
-	boundNumber := float64(0)
+	// boundNumber := float64(0)
+	store := expect.BoundValueCollection{}
 
 	// Defining a test group allows you to group related tests together with associated metadata.
 	group := mt.NewTestGroup("E2E Test for Sample API").AddTests(
@@ -117,11 +118,11 @@ func FullExample() {
 		// // Use a custom predicate to match an expected value
 		myURL.GET("/foo", "Fetch foo run a custom predicate while matching the body content").
 			Before(func() error {
-				fmt.Println("bound number before:", boundNumber)
+				fmt.Println("bound int before:", store.GetInt("some_int"))
 				return nil
 			}).
 			After(func() error {
-				fmt.Println("bound number after:", boundNumber)
+				fmt.Println("bound int after:", store.GetInt("some_int"))
 				return nil
 			}).
 			WithHeader("Accept", "application/json").
@@ -133,14 +134,14 @@ func FullExample() {
 					}
 					return errors.New("expected string to equal 'Hello, universe!'")
 				}),
-				"a_number":       expect.Bind(&boundNumber),
-				"another_number": &boundNumber,
+				"a_number":       store.BindInt("some_int"),
+				"another_number": store.BindFloat("some_float"),
 				"a_bool":         true,
 			}),
 
 		myURL.GET("/bar?first=foo&second=bar", "Fetch bar specifying a query string directly").
 			Before(func() error {
-				fmt.Println("bound number before:", boundNumber)
+				fmt.Println("bound int before:", store.GetInt("some_int"))
 				return nil
 			}).
 			ExpectStatus(404),
