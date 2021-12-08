@@ -5,47 +5,52 @@ import (
 	"log"
 )
 
-type BoundValueCollection map[string]interface{}
+type Values map[string]interface{}
 
-func (c BoundValueCollection) BindBytes(name string) CustomPredicateForKey {
-	if v, ok := c[name]; !ok {
-		v = []byte{}
-		c[name] = &v
+func (c Values) BindBytes(name string) CustomPredicateForKey {
+	v, ok := c[name]
+	if !ok {
+		c[name] = new([]byte)
 	}
 
-	return Bind(c[name])
+	if b, ok := c[name].(*[]byte); ok {
+		return Bind(b)
+	}
+
+	return func(string, interface{}) error {
+		return fmt.Errorf("can't bind byte slice value to %q (previously bound as %T)", name, v)
+	}
 }
 
-func (c BoundValueCollection) GetBytes(name string) []byte {
-	if v, ok := c[name]; ok {
-		if b, ok := v.(*[]byte); ok {
-			return *b
-		}
-
+func (c Values) GetBytes(name string) []byte {
+	v, ok := c[name]
+	if !ok {
 		return nil
+	}
+
+	if b, ok := v.(*[]byte); ok {
+		return *b
 	}
 
 	return nil
 }
 
-func (c BoundValueCollection) BindInt(name string) CustomPredicateForKey {
+func (c Values) BindInt(name string) CustomPredicateForKey {
 	v, ok := c[name]
 	if !ok {
-		v = new(int64)
-		c[name] = v
+		c[name] = new(int64)
 	}
 
-	n, ok := v.(*int64)
-	if !ok {
-		return func(string, interface{}) error {
-			return fmt.Errorf("can't bind int value to %q (previously bound as %T)", name, v)
-		}
+	if n, ok := c[name].(*int64); ok {
+		return Bind(n)
 	}
 
-	return Bind(n)
+	return func(string, interface{}) error {
+		return fmt.Errorf("can't bind int value to %q (previously bound as %T)", name, v)
+	}
 }
 
-func (c BoundValueCollection) GetInt(name string) int64 {
+func (c Values) GetInt(name string) int64 {
 	v, ok := c[name]
 	if !ok {
 		return 0
@@ -65,91 +70,121 @@ func (c BoundValueCollection) GetInt(name string) int64 {
 	return 0
 }
 
-func (c BoundValueCollection) BindFloat(name string) CustomPredicateForKey {
+func (c Values) BindFloat(name string) CustomPredicateForKey {
 	v, ok := c[name]
 	if !ok {
-		v = new(float64)
-		c[name] = v
+		c[name] = new(float64)
 	}
 
-	f, ok := v.(*float64)
+	if n, ok := c[name].(*float64); ok {
+		return Bind(n)
+	}
+
+	return func(string, interface{}) error {
+		return fmt.Errorf("can't bind float value to %q (previously bound as %T)", name, v)
+	}
+}
+
+func (c Values) GetFloat(name string) float64 {
+	v, ok := c[name]
 	if !ok {
-		return func(string, interface{}) error {
-			return fmt.Errorf("can't bind float value to %q (previously bound as %T)", name, v)
-		}
+		return 0
 	}
 
-	return Bind(f)
-}
-
-func (c BoundValueCollection) GetFloat(name string) float64 {
-	if v, ok := c[name]; ok {
-		if f, ok := v.(*float64); ok {
-			return *f
-		}
-
-		return 0.0
+	if f, ok := v.(*float64); ok {
+		return *f
 	}
 
-	return 0.0
-}
-
-func (c BoundValueCollection) BindString(name string) CustomPredicateForKey {
-	if _, ok := c[name]; !ok {
-		s := ""
-		c[name] = &s
+	if n, ok := v.(*int64); ok {
+		return float64(*n)
 	}
 
-	return Bind(c[name])
+	return 0
 }
 
-func (c BoundValueCollection) GetString(name string) string {
-	if v, ok := c[name]; ok {
-		if s, ok := v.(*string); ok {
-			return *s
-		}
+func (c Values) BindString(name string) CustomPredicateForKey {
+	v, ok := c[name]
+	if !ok {
+		c[name] = new(string)
+	}
 
+	if s, ok := c[name].(*string); ok {
+		return Bind(s)
+	}
+
+	return func(string, interface{}) error {
+		return fmt.Errorf("can't bind string value to %q (previously bound as %T)", name, v)
+	}
+}
+
+func (c Values) GetString(name string) string {
+	v, ok := c[name]
+	if !ok {
 		return ""
+	}
+
+	if s, ok := v.(*string); ok {
+		return *s
+	}
+
+	if b, ok := v.(*[]byte); ok {
+		return string(*b)
 	}
 
 	return ""
 }
 
-func (c BoundValueCollection) BindJSONArray(name string) CustomPredicateForKey {
-	if _, ok := c[name]; !ok {
-		c[name] = &[]interface{}{}
+func (c Values) BindJSONArray(name string) CustomPredicateForKey {
+	v, ok := c[name]
+	if !ok {
+		c[name] = new([]interface{})
 	}
 
-	return Bind(c[name])
+	if s, ok := c[name].(*[]interface{}); ok {
+		return Bind(s)
+	}
+
+	return func(string, interface{}) error {
+		return fmt.Errorf("can't bind JSON array to %q (previously bound as %T)", name, v)
+	}
 }
 
-func (c BoundValueCollection) GetJSONArray(name string) []interface{} {
-	if v, ok := c[name]; ok {
-		if a, ok := v.(*[]interface{}); ok {
-			return *a
-		}
-
+func (c Values) GetJSONArray(name string) []interface{} {
+	v, ok := c[name]
+	if !ok {
 		return nil
+	}
+
+	if s, ok := v.(*[]interface{}); ok {
+		return *s
 	}
 
 	return nil
 }
 
-func (c BoundValueCollection) BindJSONObject(name string) CustomPredicateForKey {
-	if _, ok := c[name]; !ok {
-		c[name] = &map[string]interface{}{}
+func (c Values) BindJSONObject(name string) CustomPredicateForKey {
+	v, ok := c[name]
+	if !ok {
+		c[name] = new(map[string]interface{})
 	}
 
-	return Bind(c[name])
+	if s, ok := c[name].(*map[string]interface{}); ok {
+		return Bind(s)
+	}
+
+	return func(string, interface{}) error {
+		return fmt.Errorf("can't bind JSON object to %q (previously bound as %T)", name, v)
+	}
 }
 
-func (c BoundValueCollection) GetJSONObject(name string) map[string]interface{} {
-	if v, ok := c[name]; ok {
-		if o, ok := v.(*map[string]interface{}); ok {
-			return *o
-		}
-
+func (c Values) GetJSONObject(name string) map[string]interface{} {
+	v, ok := c[name]
+	if !ok {
 		return nil
+	}
+
+	if o, ok := v.(*map[string]interface{}); ok {
+		return *o
 	}
 
 	return nil

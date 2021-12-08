@@ -60,7 +60,7 @@ func FullExample() {
 	runner := mt.NewTestRunner().WithContinueOnFailure(true).WithRequestTimeout(1 * time.Second)
 
 	// boundNumber := float64(0)
-	store := expect.BoundValueCollection{}
+	store := expect.Values{}
 
 	// Defining a test group allows you to group related tests together with associated metadata.
 	group := mt.NewTestGroup("E2E Test for Sample API").AddTests(
