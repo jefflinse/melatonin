@@ -131,7 +131,7 @@ func (tc *HTTPTestCase) Execute() TestResult {
 
 	if tc.BeforeFunc != nil {
 		if err := tc.BeforeFunc(); err != nil {
-			return result.addFailures(fmt.Errorf("before(): %w", err))
+			return result.addFailures(err)
 		}
 	}
 
@@ -156,7 +156,7 @@ func (tc *HTTPTestCase) Execute() TestResult {
 
 	if tc.AfterFunc != nil {
 		if err := tc.AfterFunc(); err != nil {
-			result.addFailures(fmt.Errorf("after(): %w", err))
+			result.addFailures(err)
 		}
 	}
 
