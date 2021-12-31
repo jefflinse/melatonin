@@ -175,28 +175,14 @@ func String(expected ...string) Predicate {
 func CompareValues(expected, actual interface{}, exactJSON bool) []error {
 	switch expectedValue := expected.(type) {
 
-	case mtjson.Object, map[string]interface{}:
-		ev, ok := expectedValue.(map[string]interface{})
-		if !ok {
-			ev = map[string]interface{}(expectedValue.(mtjson.Object))
-		}
-		return compareMapValues(ev, actual, exactJSON)
-
-	case mtjson.Array, []interface{}:
-		ev, ok := expectedValue.([]interface{})
-		if !ok {
-			ev = []interface{}(expectedValue.(mtjson.Array))
-		}
-		return compareSliceValues(ev, actual, exactJSON)
-
-	case string:
-		err := compareStringValues(expectedValue, actual)
+	case bool:
+		err := compareBoolValues(expectedValue, actual)
 		if err != nil {
 			return []error{err}
 		}
 
-	case *string:
-		err := compareStringValues(*expectedValue, actual)
+	case *bool:
+		err := compareBoolValues(*expectedValue, actual)
 		if err != nil {
 			return []error{err}
 		}
@@ -225,17 +211,31 @@ func CompareValues(expected, actual interface{}, exactJSON bool) []error {
 			return []error{err}
 		}
 
-	case bool:
-		err := compareBoolValues(expectedValue, actual)
+	case string:
+		err := compareStringValues(expectedValue, actual)
 		if err != nil {
 			return []error{err}
 		}
 
-	case *bool:
-		err := compareBoolValues(*expectedValue, actual)
+	case *string:
+		err := compareStringValues(*expectedValue, actual)
 		if err != nil {
 			return []error{err}
 		}
+
+	case mtjson.Object, map[string]interface{}:
+		ev, ok := expectedValue.(map[string]interface{})
+		if !ok {
+			ev = map[string]interface{}(expectedValue.(mtjson.Object))
+		}
+		return compareMapValues(ev, actual, exactJSON)
+
+	case mtjson.Array, []interface{}:
+		ev, ok := expectedValue.([]interface{})
+		if !ok {
+			ev = []interface{}(expectedValue.(mtjson.Array))
+		}
+		return compareSliceValues(ev, actual, exactJSON)
 
 	case Predicate:
 		if err := expectedValue(actual); err != nil {
@@ -293,20 +293,6 @@ func compareInt64Values(expected int64, actual interface{}) error {
 	}
 
 	if n != expected {
-		return wrongValueError([]interface{}{expected}, actual)
-	}
-
-	return nil
-}
-
-// compareStringValues compares an expected string to an actual string.
-func compareStringValues(expected string, actual interface{}) error {
-	s, ok := actual.(string)
-	if !ok {
-		return wrongTypeError(expected, actual)
-	}
-
-	if s != expected {
 		return wrongValueError([]interface{}{expected}, actual)
 	}
 
@@ -374,6 +360,20 @@ func compareSliceValues(expected []interface{}, actual interface{}, exact bool) 
 	}
 
 	return errs
+}
+
+// compareStringValues compares an expected string to an actual string.
+func compareStringValues(expected string, actual interface{}) error {
+	s, ok := actual.(string)
+	if !ok {
+		return wrongTypeError(expected, actual)
+	}
+
+	if s != expected {
+		return wrongValueError([]interface{}{expected}, actual)
+	}
+
+	return nil
 }
 
 func wrongTypeError(expected, actual interface{}) error {
