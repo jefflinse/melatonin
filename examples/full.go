@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/jefflinse/melatonin/bind"
 	"github.com/jefflinse/melatonin/expect"
 	"github.com/jefflinse/melatonin/json"
 	"github.com/jefflinse/melatonin/mt"
@@ -59,8 +60,8 @@ func FullExample() {
 	//
 	runner := mt.NewTestRunner().WithContinueOnFailure(true).WithRequestTimeout(1 * time.Second)
 
-	// boundNumber := float64(0)
-	store := expect.Values{}
+	// A variable to which we will bind a test result value.
+	someNumber := int64(0)
 
 	// Defining a test group allows you to group related tests together with associated metadata.
 	group := mt.NewTestGroup("E2E Test for Sample API").AddTests(
@@ -118,11 +119,11 @@ func FullExample() {
 		// // Use a custom predicate to match an expected value
 		myURL.GET("/foo", "Fetch foo run a custom predicate while matching the body content").
 			Before(func() error {
-				fmt.Println("bound int before:", store.GetInt("some_int"))
+				fmt.Println("bound int before:", someNumber)
 				return nil
 			}).
 			After(func() error {
-				fmt.Println("bound int after:", store.GetInt("some_int"))
+				fmt.Println("bound int after:", someNumber)
 				return nil
 			}).
 			WithHeader("Accept", "application/json").
@@ -134,14 +135,14 @@ func FullExample() {
 					}
 					return errors.New("expected string to equal 'Hello, universe!'")
 				}),
-				"a_number":       store.BindInt("some_int"),
-				"another_number": store.BindFloat("some_float"),
-				"a_bool":         true,
+				"a_number":       bind.Int64(&someNumber),
+				"another_number": expect.Float64(1, 2.2, 4.234),
+				"a_bool":         expect.Bool(true),
 			}),
 
 		myURL.GET("/bar?first=foo&second=bar", "Fetch bar specifying a query string directly").
 			Before(func() error {
-				fmt.Println("bound int before:", store.GetInt("some_int"))
+				fmt.Println("bound int before:", someNumber)
 				return nil
 			}).
 			ExpectStatus(404),

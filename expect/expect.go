@@ -1,7 +1,6 @@
 package expect
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,80 +9,163 @@ import (
 	mtjson "github.com/jefflinse/melatonin/json"
 )
 
-// A CustomPredicate is a function that takes a test result value and possibly returns an error.
-type CustomPredicate func(interface{}) error
+// A Predicate is a function that takes a test result value and possibly returns an error.
+type Predicate func(interface{}) error
 
-// A CustomPredicateForKey is a function that takes a key and a value and possibly returns an error.
-type CustomPredicateForKey func(string, interface{}) error
+// Then creates a new predicate by chaining the given predicates.
+func (p Predicate) Then(next Predicate) Predicate {
+	if next == nil {
+		return p
+	}
 
-// Bind binds a value to the provided target variable.
-func Bind(target interface{}) CustomPredicateForKey {
-	return func(key string, actual interface{}) error {
+	return func(actual interface{}) error {
+		if err := p(actual); err != nil {
+			return err
+		}
 
-		switch typedTarget := target.(type) {
+		return next(actual)
+	}
+}
 
-		case *string:
-			typedActual, ok := actual.(string)
-			if !ok {
-				return fmt.Errorf("expected to bind string, found %T", actual)
-			}
+// Bool creates a predicate requiring a value to be a bool, optionally matching
+// against a set of values.
+func Bool(values ...bool) Predicate {
+	return func(actual interface{}) error {
+		n, ok := actual.(bool)
+		if !ok {
+			return fmt.Errorf("expected bool, got %T", actual)
+		}
 
-			*typedTarget = typedActual
-
-		case *float64:
-			typedActual, ok := actual.(float64)
-			if !ok {
-				return fmt.Errorf("expected to bind float64, found %T", actual)
-			}
-
-			*typedTarget = typedActual
-
-		case *int64:
-			if typedActual, ok := actual.(int64); ok {
-				*typedTarget = typedActual
-			} else if typedActual, ok := actual.(float64); ok {
-				if n, ok := floatToInt(typedActual); ok {
-					*typedTarget = n
+		if len(values) > 0 {
+			for _, value := range values {
+				if errs := Value(value, n, true); len(errs) == 0 {
 					return nil
 				}
-
-				return fmt.Errorf("expected to bind int64, found float64: %f", typedActual)
 			}
 
-			return fmt.Errorf("expected to bind int64, found %T", actual)
-
-		case *bool:
-			typedActual, ok := actual.(bool)
-			if !ok {
-				return fmt.Errorf("expected to bind bool, found %T", actual)
-			}
-
-			*typedTarget = typedActual
-
-		case nil:
-			return fmt.Errorf("bind target is nil")
-
-		// struct, map, or slice
-		default:
-			b, err := json.Marshal(actual)
-			if err != nil {
-				return fmt.Errorf("failed to bind %T to %T: %s", actual, typedTarget, err)
-			}
-
-			if err := json.Unmarshal(b, target); err != nil {
-				return fmt.Errorf("failed to bind %T to %T: %s", actual, typedTarget, err)
-			}
+			return fmt.Errorf("expected one of %v, got %v", values, n)
 		}
 
 		return nil
 	}
 }
 
-// Predicate runs a custom predicate against an value.
-func Predicate(fn CustomPredicate) CustomPredicateForKey {
-	return func(key string, actual interface{}) error {
-		if err := fn(actual); err != nil {
-			return failedPredicateError(key, err)
+// Float64 creates a predicate requiring a value to be a float64, optionally matching
+// against a set of values.
+func Float64(values ...float64) Predicate {
+	return func(actual interface{}) error {
+		n, ok := actual.(float64)
+		if !ok {
+			return fmt.Errorf("expected float64, got %T", actual)
+		}
+
+		if len(values) > 0 {
+			for _, value := range values {
+				if errs := Value(value, n, true); len(errs) == 0 {
+					return nil
+				}
+			}
+
+			return fmt.Errorf("expected one of %v, got %v", values, n)
+		}
+
+		return nil
+	}
+}
+
+// Int64 creates a predicate requiring a value to be an int64, optionally matching
+// against a set of values.
+func Int64(values ...int64) Predicate {
+	return func(actual interface{}) error {
+		n, ok := actual.(int64)
+		if !ok {
+			f, ok := actual.(float64)
+			if !ok {
+				return fmt.Errorf("expected int64, got %T", actual)
+			}
+
+			if n, ok = floatToInt(f); !ok {
+				return fmt.Errorf("expected int64, got %T", actual)
+			}
+		}
+
+		if len(values) > 0 {
+			for _, value := range values {
+				if n == value {
+					return nil
+				}
+			}
+
+			return fmt.Errorf("expected one of %v, got %d", values, n)
+		}
+
+		return nil
+	}
+}
+
+// Map creates a predicate requiring a value to be a map, optionally matching
+// against a set of values.
+func Map(values ...map[string]interface{}) Predicate {
+	return func(actual interface{}) error {
+		m, ok := actual.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("expected map, got %T", actual)
+		}
+
+		if len(values) > 0 {
+			for _, value := range values {
+				if errs := Value(value, m, true); len(errs) == 0 {
+					return nil
+				}
+			}
+
+			return fmt.Errorf("expected one of %v, got %v", values, m)
+		}
+
+		return nil
+	}
+}
+
+// Slice creates a predicate requiring a value to be a slice, optionally matching
+// against a set of values.
+func Slice(values ...[]interface{}) Predicate {
+	return func(actual interface{}) error {
+		s, ok := actual.([]interface{})
+		if !ok {
+			return fmt.Errorf("expected slice, got %T", actual)
+		}
+
+		if len(values) > 0 {
+			for _, value := range values {
+				if errs := Value(value, s, true); len(errs) == 0 {
+					return nil
+				}
+			}
+
+			return fmt.Errorf("expected one of %v, got %v", values, s)
+		}
+
+		return nil
+	}
+}
+
+// String creates a predicate requiring a value to be a string, optionally matching
+// against a set of values.
+func String(values ...string) Predicate {
+	return func(actual interface{}) error {
+		s, ok := actual.(string)
+		if !ok {
+			return fmt.Errorf("expected string, got %T", actual)
+		}
+
+		if len(values) > 0 {
+			for _, value := range values {
+				if s == value {
+					return nil
+				}
+			}
+
+			return fmt.Errorf("expected one of %v, got %q", values, s)
 		}
 
 		return nil
@@ -93,19 +175,19 @@ func Predicate(fn CustomPredicate) CustomPredicateForKey {
 // Headers compares a set of expected headers against a set of actual headers,
 func Headers(expected http.Header, actual http.Header) []error {
 	var errs []error
-	for key, expectedValuesForKey := range expected {
-		actualValuesForKey, ok := actual[key]
+	for key, expectedValues := range expected {
+		actualValues, ok := actual[key]
 		if !ok {
 			errs = append(errs, fmt.Errorf("expected header %q, got nothing", key))
 			continue
 		}
 
-		sort.Strings(expectedValuesForKey)
-		sort.Strings(actualValuesForKey)
+		sort.Strings(expectedValues)
+		sort.Strings(actualValues)
 
-		for _, expectedValue := range expectedValuesForKey {
+		for _, expectedValue := range expectedValues {
 			found := false
-			for _, actualValue := range actualValuesForKey {
+			for _, actualValue := range actualValues {
 				if actualValue == expectedValue {
 					found = true
 					break
@@ -113,7 +195,7 @@ func Headers(expected http.Header, actual http.Header) []error {
 			}
 
 			if !found {
-				errs = append(errs, fmt.Errorf("expected header %q to contain %q, got %q", key, expectedValue, actualValuesForKey))
+				errs = append(errs, fmt.Errorf("expected header %q to contain %q, got %q", key, expectedValue, actualValues))
 			}
 		}
 	}
@@ -129,8 +211,8 @@ func Status(expected, actual int) error {
 	return nil
 }
 
-// ValueForKey compares an expected value to an actual value.
-func ValueForKey(key string, expected, actual interface{}, exactJSON bool) []error {
+// Value compares an expected value to an actual value.
+func Value(expected, actual interface{}, exactJSON bool) []error {
 	switch expectedValue := expected.(type) {
 
 	case mtjson.Object, map[string]interface{}:
@@ -138,17 +220,17 @@ func ValueForKey(key string, expected, actual interface{}, exactJSON bool) []err
 		if !ok {
 			ev = map[string]interface{}(expectedValue.(mtjson.Object))
 		}
-		return mapValForKey(key, ev, actual, exactJSON)
+		return mapVal(ev, actual, exactJSON)
 
 	case mtjson.Array, []interface{}:
 		ev, ok := expectedValue.([]interface{})
 		if !ok {
 			ev = []interface{}(expectedValue.(mtjson.Array))
 		}
-		return arrayValForKey(key, ev, actual, exactJSON)
+		return arrayVal(ev, actual, exactJSON)
 
 	case string:
-		err := strValForKey(key, expectedValue, actual)
+		err := strVal(expectedValue, actual)
 		if err != nil {
 			return []error{err}
 		}
@@ -157,13 +239,13 @@ func ValueForKey(key string, expected, actual interface{}, exactJSON bool) []err
 		return []error{errors.New("bar")}
 
 	case float64:
-		err := numValForKey(key, expectedValue, actual)
+		err := numVal(expectedValue, actual)
 		if err != nil {
 			return []error{err}
 		}
 
 	case *float64:
-		err := numValForKey(key, *expectedValue, actual)
+		err := numVal(*expectedValue, actual)
 		if err != nil {
 			return []error{err}
 		}
@@ -174,7 +256,7 @@ func ValueForKey(key string, expected, actual interface{}, exactJSON bool) []err
 			ev = int64(expectedValue.(int))
 		}
 
-		err := numValForKey(key, float64(ev), actual)
+		err := numVal(float64(ev), actual)
 		if err != nil {
 			return []error{err}
 		}
@@ -183,70 +265,70 @@ func ValueForKey(key string, expected, actual interface{}, exactJSON bool) []err
 		return []error{errors.New("foo")}
 
 	case bool:
-		err := boolValForKey(key, expectedValue, actual)
+		err := boolVal(expectedValue, actual)
 		if err != nil {
 			return []error{err}
 		}
 
-	case CustomPredicateForKey:
-		if err := expectedValue(key, actual); err != nil {
+	case Predicate:
+		if err := expectedValue(actual); err != nil {
 			return []error{err}
 		}
 
 	default:
-		return []error{fmt.Errorf("unexpected value type for field %q: %T", key, actual)}
+		return []error{fmt.Errorf("unexpected value type: %T", actual)}
 	}
 
 	return nil
 }
 
-// boolValForKey compares an expected bool to an actual bool.
-func boolValForKey(key string, expected bool, actual interface{}) error {
+// boolVal compares an expected bool to an actual bool.
+func boolVal(expected bool, actual interface{}) error {
 	b, ok := actual.(bool)
 	if !ok {
-		return wrongTypeError(key, expected, actual)
+		return wrongTypeError(expected, actual)
 	}
 
 	if b != expected {
-		return wrongValueError(key, expected, actual)
+		return wrongValueError([]interface{}{expected}, actual)
 	}
 
 	return nil
 }
 
-// numValForKey compares an expected float64 to an actual float64.
-func numValForKey(key string, expected float64, actual interface{}) error {
+// numVal compares an expected float64 to an actual float64.
+func numVal(expected float64, actual interface{}) error {
 	n, ok := actual.(float64)
 	if !ok {
-		return wrongTypeError(key, expected, actual)
+		return wrongTypeError(expected, actual)
 	}
 
 	if n != expected {
-		return wrongValueError(key, expected, actual)
+		return wrongValueError([]interface{}{expected}, actual)
 	}
 
 	return nil
 }
 
-// strValForKey compares an expected string to an actual string.
-func strValForKey(key string, expected string, actual interface{}) error {
+// strVal compares an expected string to an actual string.
+func strVal(expected string, actual interface{}) error {
 	s, ok := actual.(string)
 	if !ok {
-		return wrongTypeError(key, expected, actual)
+		return wrongTypeError(expected, actual)
 	}
 
 	if s != expected {
-		return wrongValueError(key, expected, actual)
+		return wrongValueError([]interface{}{expected}, actual)
 	}
 
 	return nil
 }
 
-// mapValForKey compares an expected JSON object to an actual JSON object.
-func mapValForKey(key string, expected map[string]interface{}, actual interface{}, exact bool) []error {
+// mapVal compares an expected JSON object to an actual JSON object.
+func mapVal(expected map[string]interface{}, actual interface{}, exact bool) []error {
 	m, ok := actual.(map[string]interface{})
 	if !ok {
-		return []error{wrongTypeError(key, expected, actual)}
+		return []error{wrongTypeError(expected, actual)}
 	}
 
 	if exact {
@@ -276,7 +358,7 @@ func mapValForKey(key string, expected map[string]interface{}, actual interface{
 
 	errs := []error{}
 	for k, v := range expected {
-		if elemErrs := ValueForKey(fmt.Sprintf("%s.%s", key, k), v, m[k], exact); len(elemErrs) > 0 {
+		if elemErrs := Value(v, m[k], exact); len(elemErrs) > 0 {
 			errs = append(errs, elemErrs...)
 		}
 	}
@@ -284,11 +366,11 @@ func mapValForKey(key string, expected map[string]interface{}, actual interface{
 	return errs
 }
 
-// arrayValForKey compares an expected JSON array to an actual JSON array.
-func arrayValForKey(key string, expected []interface{}, actual interface{}, exact bool) []error {
+// arrayVal compares an expected JSON array to an actual JSON array.
+func arrayVal(expected []interface{}, actual interface{}, exact bool) []error {
 	a, ok := actual.([]interface{})
 	if !ok {
-		return []error{wrongTypeError(key, expected, actual)}
+		return []error{wrongTypeError(expected, actual)}
 	}
 
 	if exact && len(a) != len(expected) {
@@ -297,7 +379,7 @@ func arrayValForKey(key string, expected []interface{}, actual interface{}, exac
 
 	errs := []error{}
 	for i, v := range expected {
-		if elemErrs := ValueForKey(fmt.Sprintf("%s[%d]", key, i), v, a[i], exact); len(elemErrs) > 0 {
+		if elemErrs := Value(v, a[i], exact); len(elemErrs) > 0 {
 			errs = append(errs, elemErrs...)
 		}
 	}
@@ -305,40 +387,31 @@ func arrayValForKey(key string, expected []interface{}, actual interface{}, exac
 	return errs
 }
 
-func failedPredicateError(key string, err error) error {
-	msg := fmt.Sprintf("predicate failed: %s", err)
-	if key != "" {
-		msg = fmt.Sprintf("%s: %s", key, msg)
-	}
-
-	return errors.New(msg)
+func failedPredicateError(err error) error {
+	return err
 }
 
-func wrongTypeError(key string, expected, actual interface{}) error {
+func wrongTypeError(expected, actual interface{}) error {
 	var msg string
 	if expected != nil && actual == nil {
 		msg = fmt.Sprintf("expected %T, got nothing", expected)
 	} else {
-		msg = fmt.Sprintf(`expected type "%T", got '%T"`, expected, actual)
-	}
-
-	if key != "" {
-		msg = fmt.Sprintf("%s: %s", key, msg)
+		msg = fmt.Sprintf("expected type %T, got %T", expected, actual)
 	}
 
 	return errors.New(msg)
 }
 
-func wrongValueError(key string, expected, actual interface{}) error {
+func wrongValueError(expected []interface{}, actual interface{}) error {
 	var msg string
-	if expected != nil && actual == nil {
+	if len(expected) > 0 && actual == nil {
 		msg = fmt.Sprintf("expected %v, got nothing", expected)
 	} else {
-		msg = fmt.Sprintf(`expected "%v", got "%v"`, expected, actual)
-	}
-
-	if key != "" {
-		msg = fmt.Sprintf("%s: %s", key, msg)
+		if len(expected) > 1 {
+			msg = fmt.Sprintf("expected one of %v, got %v", expected, actual)
+		} else {
+			msg = fmt.Sprintf("expected %v, got %v", expected[0], actual)
+		}
 	}
 
 	return errors.New(msg)
