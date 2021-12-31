@@ -111,21 +111,13 @@ func FullExample() {
 			ExpectStatus(201).
 			ExpectBody(json.Object{
 				"a_string":       "Hello, world!",
-				"a_number":       43,
+				"a_number":       bind.Int64(&someNumber),
 				"another_number": 3.15,
 				"a_bool":         false,
 			}),
 
-		// // Use a custom predicate to match an expected value
+		// Use a custom predicate to match an expected value
 		myURL.GET("/foo", "Fetch foo run a custom predicate while matching the body content").
-			Before(func() error {
-				fmt.Println("bound int before:", someNumber)
-				return nil
-			}).
-			After(func() error {
-				fmt.Println("bound int after:", someNumber)
-				return nil
-			}).
 			WithHeader("Accept", "application/json").
 			ExpectStatus(200).
 			ExpectBody(json.Object{
@@ -135,16 +127,12 @@ func FullExample() {
 					}
 					return errors.New("expected string to equal 'Hello, universe!'")
 				}),
-				"a_number":       bind.Int64(&someNumber),
+				"a_number":       &someNumber,
 				"another_number": expect.Float64(1, 2.2, 4.234),
 				"a_bool":         expect.Bool(true),
 			}),
 
 		myURL.GET("/bar?first=foo&second=bar", "Fetch bar specifying a query string directly").
-			Before(func() error {
-				fmt.Println("bound int before:", someNumber)
-				return nil
-			}).
 			ExpectStatus(404),
 
 		myHandler.GET("/foo", "Fetch foo by testing a local handler").

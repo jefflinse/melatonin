@@ -7,9 +7,6 @@ import (
 	"github.com/jefflinse/melatonin/expect"
 )
 
-// no-op predicate
-var noop = func(interface{}) error { return nil }
-
 // Bool creates a predicate requiring a value to be a bool,
 // binding the value to a target variable.
 func Bool(target *bool) expect.Predicate {

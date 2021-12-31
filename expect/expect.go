@@ -38,7 +38,7 @@ func Bool(values ...bool) Predicate {
 
 		if len(values) > 0 {
 			for _, value := range values {
-				if errs := Value(value, n, true); len(errs) == 0 {
+				if err := boolVal(value, n); err == nil {
 					return nil
 				}
 			}
@@ -236,36 +236,43 @@ func Value(expected, actual interface{}, exactJSON bool) []error {
 		}
 
 	case *string:
-		return []error{errors.New("bar")}
+		err := strVal(*expectedValue, actual)
+		if err != nil {
+			return []error{err}
+		}
 
 	case float64:
-		err := numVal(expectedValue, actual)
+		err := floatVal(expectedValue, actual)
 		if err != nil {
 			return []error{err}
 		}
 
 	case *float64:
-		err := numVal(*expectedValue, actual)
+		err := floatVal(*expectedValue, actual)
 		if err != nil {
 			return []error{err}
 		}
 
-	case int, int64:
-		ev, ok := expectedValue.(int64)
-		if !ok {
-			ev = int64(expectedValue.(int))
-		}
-
-		err := numVal(float64(ev), actual)
+	case int64:
+		err := intVal(expectedValue, actual)
 		if err != nil {
 			return []error{err}
 		}
 
-	case *int, *int64:
-		return []error{errors.New("foo")}
+	case *int64:
+		err := intVal(*expectedValue, actual)
+		if err != nil {
+			return []error{err}
+		}
 
 	case bool:
 		err := boolVal(expectedValue, actual)
+		if err != nil {
+			return []error{err}
+		}
+
+	case *bool:
+		err := boolVal(*expectedValue, actual)
 		if err != nil {
 			return []error{err}
 		}
@@ -282,6 +289,17 @@ func Value(expected, actual interface{}, exactJSON bool) []error {
 	return nil
 }
 
+// BoundBool creates a predicate requiring a value to match a target bool variable.
+func BoundBool(target *bool) Predicate {
+	return Bool().Then(func(actual interface{}) error {
+		if target == nil {
+			return fmt.Errorf("expected a bound bool, got nil")
+		}
+
+		return boolVal(*target, actual)
+	})
+}
+
 // boolVal compares an expected bool to an actual bool.
 func boolVal(expected bool, actual interface{}) error {
 	b, ok := actual.(bool)
@@ -296,11 +314,33 @@ func boolVal(expected bool, actual interface{}) error {
 	return nil
 }
 
-// numVal compares an expected float64 to an actual float64.
-func numVal(expected float64, actual interface{}) error {
+// floatVal compares an expected float64 to an actual float64.
+func floatVal(expected float64, actual interface{}) error {
 	n, ok := actual.(float64)
 	if !ok {
 		return wrongTypeError(expected, actual)
+	}
+
+	if n != expected {
+		return wrongValueError([]interface{}{expected}, actual)
+	}
+
+	return nil
+}
+
+// intVal compares an expected int64 to an actual int64.
+func intVal(expected int64, actual interface{}) error {
+	n, ok := actual.(int64)
+	if !ok {
+		f, ok := actual.(float64)
+		if !ok {
+			return wrongTypeError(expected, actual)
+		}
+
+		n, ok = floatToInt(f)
+		if !ok {
+			return wrongTypeError(expected, actual)
+		}
 	}
 
 	if n != expected {
