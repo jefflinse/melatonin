@@ -1,7 +1,9 @@
 package mt
 
 import (
+	"fmt"
 	"net/http"
+	"sort"
 
 	"github.com/jefflinse/melatonin/expect"
 )
@@ -43,21 +45,60 @@ func (r *HTTPTestCaseResult) addFailures(errs ...error) *HTTPTestCaseResult {
 func (r *HTTPTestCaseResult) validateExpectations() {
 	tc := r.TestCase().(*HTTPTestCase)
 	if tc.Expectations.Status != 0 {
-		if err := expect.Status(tc.Expectations.Status, r.Status); err != nil {
+		if err := compareStatus(tc.Expectations.Status, r.Status); err != nil {
 			r.addFailures(err)
 		}
 	}
 
 	if tc.Expectations.Headers != nil {
-		if errs := expect.Headers(tc.Expectations.Headers, r.Headers); len(errs) > 0 {
+		if errs := compareHeaders(tc.Expectations.Headers, r.Headers); len(errs) > 0 {
 			r.addFailures(errs...)
 		}
 	}
 
 	if tc.Expectations.Body != nil {
 		body := toInterface(r.Body)
-		if errs := expect.Value(tc.Expectations.Body, body, tc.Expectations.WantExactJSONBody); len(errs) > 0 {
+		if errs := expect.CompareValues(tc.Expectations.Body, body, tc.Expectations.WantExactJSONBody); len(errs) > 0 {
 			r.addFailures(errs...)
 		}
 	}
+}
+
+// Compares a set of expected headers against a set of actual headers,
+func compareHeaders(expected http.Header, actual http.Header) []error {
+	var errs []error
+	for key, expectedValues := range expected {
+		actualValues, ok := actual[key]
+		if !ok {
+			errs = append(errs, fmt.Errorf("expected header %q, got nothing", key))
+			continue
+		}
+
+		sort.Strings(expectedValues)
+		sort.Strings(actualValues)
+
+		for _, expectedValue := range expectedValues {
+			found := false
+			for _, actualValue := range actualValues {
+				if actualValue == expectedValue {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				errs = append(errs, fmt.Errorf("expected header %q to contain %q, got %q", key, expectedValue, actualValues))
+			}
+		}
+	}
+
+	return errs
+}
+
+// Compares an expected status code to an actual status code.
+func compareStatus(expected, actual int) error {
+	if expected != actual {
+		return fmt.Errorf(`expected status %d, got %d`, expected, actual)
+	}
+	return nil
 }
