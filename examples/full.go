@@ -60,8 +60,9 @@ func FullExample() {
 	//
 	runner := mt.NewTestRunner().WithContinueOnFailure(true).WithRequestTimeout(1 * time.Second)
 
-	// A variable to which we will bind a test result value.
-	someNumber := int64(0)
+	// Some variables to which we will bind test result values.
+	someInt := int64(0)
+	someFloat := float64(0)
 
 	// Defining a test group allows you to group related tests together with associated metadata.
 	group := mt.NewTestGroup("E2E Test for Sample API").AddTests(
@@ -111,7 +112,7 @@ func FullExample() {
 			ExpectStatus(201).
 			ExpectBody(json.Object{
 				"a_string":       "Hello, world!",
-				"a_number":       bind.Int64(&someNumber),
+				"a_number":       bind.Int64(&someInt),
 				"another_number": 3.15,
 				"a_bool":         false,
 			}),
@@ -127,12 +128,15 @@ func FullExample() {
 					}
 					return errors.New("expected string to equal 'Hello, universe!'")
 				}),
-				"a_number":       &someNumber,
-				"another_number": expect.Float64(1, 2.2, 4.234),
+				"a_number":       &someInt,
+				"another_number": expect.Float64(1, 2.2, 3.14).Then(bind.Float64(&someFloat)),
 				"a_bool":         expect.Bool(true),
 			}),
 
 		myURL.GET("/bar?first=foo&second=bar", "Fetch bar specifying a query string directly").
+			Before(func() error {
+				return fmt.Errorf("found and bound %f from previous test's result", someFloat)
+			}).
 			ExpectStatus(404),
 
 		myHandler.GET("/foo", "Fetch foo by testing a local handler").
