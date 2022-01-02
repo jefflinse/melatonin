@@ -237,8 +237,12 @@ func CompareValues(expected, actual interface{}, exactJSON bool) []error {
 		}
 		return compareSliceValues(ev, actual, exactJSON)
 
-	case Predicate:
-		if err := expectedValue(actual); err != nil {
+	case Predicate, func(interface{}) error:
+		f, ok := expectedValue.(Predicate)
+		if !ok {
+			f = Predicate(expectedValue.(func(interface{}) error))
+		}
+		if err := f(actual); err != nil {
 			return []error{err}
 		}
 
