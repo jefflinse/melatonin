@@ -135,7 +135,7 @@ func FullExample() {
 
 		myURL.GET("/bar?first=foo&second=bar", "Fetch bar specifying a query string directly").
 			Before(func() error {
-				return fmt.Errorf("found and bound %f from previous test's result", someFloat)
+				return fmt.Errorf("found and bound %g from previous test's result", someFloat)
 			}).
 			ExpectStatus(404),
 
