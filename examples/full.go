@@ -144,15 +144,15 @@ func FullExample() {
 			ExpectBody("Hello, world!"),
 
 		myURL.GET("/bar/:first/:second", "Fetch bar specifying path parameters all at once").
-			WithPathParams(map[string]string{
+			WithPathParams(map[string]interface{}{
 				"first":  "foo",
-				"second": "bar",
+				"second": &someInt,
 			}).
 			ExpectStatus(404),
 
 		myURL.GET("/bar/:first/:second", "Fetch bar specifying path parameters individually").
 			WithPathParam("first", "foo").
-			WithPathParam("second", "bar").
+			WithPathParam("second", &someInt).
 			ExpectStatus(404),
 
 		myURL.GET("/bar", "Fetch bar specifying query parameters all at once").

@@ -50,7 +50,7 @@ type HTTPTestCase struct {
 	GoldenFilePath string
 
 	// Path parameters to be mapped into the request path.
-	pathParams map[string]string
+	pathParams pathParameters
 
 	// Configuration for the test
 	tctx *HTTPTestContext
@@ -139,13 +139,13 @@ func (tc *HTTPTestCase) Execute() TestResult {
 	}
 
 	// apply path parameters
-	for key, value := range tc.pathParams {
-		tc.request.URL.Path = strings.Replace(tc.request.URL.Path, ":"+key, value, 1)
+	expandedPath, err := tc.pathParams.Apply(tc.request.URL.Path)
+	if err != nil {
+		return result.addFailures(err)
 	}
 
-	log.Println("URL: ", tc.request.URL.String())
+	tc.request.URL.Path = expandedPath
 
-	var err error
 	if tc.tctx.Handler != nil {
 		result.Status, result.Headers, result.Body, err = handleRequest(tc.tctx.Handler, tc.request)
 		if err != nil {
@@ -207,13 +207,13 @@ func (tc *HTTPTestCase) WithHeaders(headers http.Header) *HTTPTestCase {
 }
 
 // WithPathParam adds a request path parameter to the test case.
-func (tc *HTTPTestCase) WithPathParam(key, value string) *HTTPTestCase {
+func (tc *HTTPTestCase) WithPathParam(key string, value interface{}) *HTTPTestCase {
 	tc.pathParams[key] = value
 	return tc
 }
 
 // WithPathParams sets the request path parameters for the test case.
-func (tc *HTTPTestCase) WithPathParams(params map[string]string) *HTTPTestCase {
+func (tc *HTTPTestCase) WithPathParams(params map[string]interface{}) *HTTPTestCase {
 	tc.pathParams = params
 	return tc
 }

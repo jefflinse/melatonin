@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -143,4 +144,54 @@ func toInterface(body []byte) interface{} {
 	}
 
 	return nil
+}
+
+type pathParameters map[string]interface{}
+
+// Apply maps the path parameters to a request path.
+//
+//
+func (p pathParameters) Apply(path string) (string, error) {
+	var err error
+	for k, v := range p {
+		path, err = p.applyPathParam(path, k, v)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return path, nil
+}
+
+func (p pathParameters) applyPathParam(path, k string, v interface{}) (string, error) {
+	expanded := ""
+	switch value := v.(type) {
+	case string:
+		expanded = value
+	case *string:
+		if value == nil {
+			return "", fmt.Errorf("path parameter %q: cannot be nil", k)
+		}
+		return p.applyPathParam(path, k, *value)
+	case int:
+		return p.applyPathParam(path, k, int64(value))
+	case *int:
+		return p.applyPathParam(path, k, int64(*value))
+	case *int64:
+		if value == nil {
+			return "", fmt.Errorf("path parameter %q: cannot be nil", k)
+		}
+		return p.applyPathParam(path, k, *value)
+	case int64:
+		expanded = fmt.Sprintf("%d", value)
+	case *float64:
+		if value == nil {
+			return "", fmt.Errorf("path parameter %q: cannot be nil", k)
+		}
+		return p.applyPathParam(path, k, *value)
+	case float64:
+		expanded = fmt.Sprintf("%g", value)
+	}
+
+	return strings.ReplaceAll(path, ":"+k, expanded), nil
 }
