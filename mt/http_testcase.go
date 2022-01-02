@@ -49,6 +49,9 @@ type HTTPTestCase struct {
 	// values from the golden file.
 	GoldenFilePath string
 
+	// Path parameters to be mapped into the request path.
+	pathParams map[string]string
+
 	// Configuration for the test
 	tctx *HTTPTestContext
 
@@ -135,6 +138,13 @@ func (tc *HTTPTestCase) Execute() TestResult {
 		}
 	}
 
+	// apply path parameters
+	for key, value := range tc.pathParams {
+		tc.request.URL.Path = strings.Replace(tc.request.URL.Path, ":"+key, value, 1)
+	}
+
+	log.Println("URL: ", tc.request.URL.String())
+
 	var err error
 	if tc.tctx.Handler != nil {
 		result.Status, result.Headers, result.Body, err = handleRequest(tc.tctx.Handler, tc.request)
@@ -193,6 +203,18 @@ func (tc *HTTPTestCase) WithHeader(key, value string) *HTTPTestCase {
 // WithHeaders sets the request headers for the test case.
 func (tc *HTTPTestCase) WithHeaders(headers http.Header) *HTTPTestCase {
 	tc.request.Header = headers
+	return tc
+}
+
+// WithPathParam adds a request path parameter to the test case.
+func (tc *HTTPTestCase) WithPathParam(key, value string) *HTTPTestCase {
+	tc.pathParams[key] = value
+	return tc
+}
+
+// WithPathParams sets the request path parameters for the test case.
+func (tc *HTTPTestCase) WithPathParams(params map[string]string) *HTTPTestCase {
+	tc.pathParams = params
 	return tc
 }
 
