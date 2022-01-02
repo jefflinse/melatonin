@@ -50,7 +50,7 @@ type HTTPTestCase struct {
 	GoldenFilePath string
 
 	// Path parameters to be mapped into the request path.
-	pathParams pathParameters
+	pathParams valueMap
 
 	// Configuration for the test
 	tctx *HTTPTestContext
@@ -139,7 +139,7 @@ func (tc *HTTPTestCase) Execute() TestResult {
 	}
 
 	// apply path parameters
-	expandedPath, err := tc.pathParams.Apply(tc.request.URL.Path)
+	expandedPath, err := tc.pathParams.apply(tc.request.URL.Path)
 	if err != nil {
 		return result.addFailures(err)
 	}

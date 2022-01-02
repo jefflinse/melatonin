@@ -146,24 +146,24 @@ func toInterface(body []byte) interface{} {
 	return nil
 }
 
-type pathParameters map[string]interface{}
+type valueMap map[string]interface{}
 
-// Apply maps the path parameters to a request path.
+// Apply maps the values to a target string.
 //
 //
-func (p pathParameters) Apply(path string) (string, error) {
-	var err error
+func (p valueMap) apply(s string) (result string, err error) {
+	result = s
 	for k, v := range p {
-		path, err = p.applyPathParam(path, k, v)
+		result, err = p.applyValue(result, k, v)
 		if err != nil {
 			return "", err
 		}
 	}
 
-	return path, nil
+	return
 }
 
-func (p pathParameters) applyPathParam(path, k string, v interface{}) (string, error) {
+func (p valueMap) applyValue(s, k string, v interface{}) (string, error) {
 	expanded := ""
 	switch value := v.(type) {
 	case string:
@@ -172,26 +172,26 @@ func (p pathParameters) applyPathParam(path, k string, v interface{}) (string, e
 		if value == nil {
 			return "", fmt.Errorf("path parameter %q: cannot be nil", k)
 		}
-		return p.applyPathParam(path, k, *value)
+		return p.applyValue(s, k, *value)
 	case int:
-		return p.applyPathParam(path, k, int64(value))
+		return p.applyValue(s, k, int64(value))
 	case *int:
-		return p.applyPathParam(path, k, int64(*value))
+		return p.applyValue(s, k, int64(*value))
 	case *int64:
 		if value == nil {
 			return "", fmt.Errorf("path parameter %q: cannot be nil", k)
 		}
-		return p.applyPathParam(path, k, *value)
+		return p.applyValue(s, k, *value)
 	case int64:
 		expanded = fmt.Sprintf("%d", value)
 	case *float64:
 		if value == nil {
 			return "", fmt.Errorf("path parameter %q: cannot be nil", k)
 		}
-		return p.applyPathParam(path, k, *value)
+		return p.applyValue(s, k, *value)
 	case float64:
 		expanded = fmt.Sprintf("%g", value)
 	}
 
-	return strings.ReplaceAll(path, ":"+k, expanded), nil
+	return strings.ReplaceAll(s, ":"+k, expanded), nil
 }

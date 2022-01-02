@@ -129,7 +129,7 @@ func (c *HTTPTestContext) newHTTPTestCase(method, path string, description ...st
 	return &HTTPTestCase{
 		Desc:       strings.Join(description, " "),
 		tctx:       c,
-		pathParams: pathParameters{},
+		pathParams: valueMap{},
 		request:    req,
 		cancel:     cancel,
 	}
