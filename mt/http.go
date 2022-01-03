@@ -10,6 +10,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	mtjson "github.com/jefflinse/melatonin/json"
 )
 
 var (
@@ -146,14 +148,17 @@ func toInterface(body []byte) interface{} {
 	return nil
 }
 
-type valueMap map[string]interface{}
+type pathParameters map[string]interface{}
 
 // Apply maps the values to a target string.
-//
-//
-func (p valueMap) apply(s string) (result string, err error) {
+func (p pathParameters) apply(s string) (result string, err error) {
+	resolved, err := mtjson.ResolveDeferred(map[string]interface{}(p))
+	if err != nil {
+		return "", err
+	}
+
 	result = s
-	for k, v := range p {
+	for k, v := range resolved.(map[string]interface{}) {
 		result, err = p.applyValue(result, k, v)
 		if err != nil {
 			return "", err
@@ -163,34 +168,19 @@ func (p valueMap) apply(s string) (result string, err error) {
 	return
 }
 
-func (p valueMap) applyValue(s, k string, v interface{}) (string, error) {
+func (p pathParameters) applyValue(s, k string, v interface{}) (string, error) {
 	expanded := ""
 	switch value := v.(type) {
+	case bool:
+		expanded = fmt.Sprintf("%t", value)
+	case float32, float64:
+		expanded = fmt.Sprintf("%g", value)
+	case int, int32, int64, uint, uint32, uint64:
+		expanded = fmt.Sprintf("%d", value)
 	case string:
 		expanded = value
-	case *string:
-		if value == nil {
-			return "", fmt.Errorf("path parameter %q: cannot be nil", k)
-		}
-		return p.applyValue(s, k, *value)
-	case int:
-		return p.applyValue(s, k, int64(value))
-	case *int:
-		return p.applyValue(s, k, int64(*value))
-	case *int64:
-		if value == nil {
-			return "", fmt.Errorf("path parameter %q: cannot be nil", k)
-		}
-		return p.applyValue(s, k, *value)
-	case int64:
-		expanded = fmt.Sprintf("%d", value)
-	case *float64:
-		if value == nil {
-			return "", fmt.Errorf("path parameter %q: cannot be nil", k)
-		}
-		return p.applyValue(s, k, *value)
-	case float64:
-		expanded = fmt.Sprintf("%g", value)
+	default:
+		return "", fmt.Errorf("unsupported path parameter type: %T", value)
 	}
 
 	return strings.ReplaceAll(s, ":"+k, expanded), nil

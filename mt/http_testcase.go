@@ -50,7 +50,7 @@ type HTTPTestCase struct {
 	GoldenFilePath string
 
 	// Path parameters to be mapped into the request path.
-	pathParams valueMap
+	pathParams pathParameters
 
 	// Body for the HTTP request. May contain deferred values.
 	requestBody interface{}
