@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"testing"
 	"time"
 
@@ -120,7 +119,7 @@ func TestFullExample(t *testing.T) {
 			ExpectBody("Hello, world!"),
 
 		myURL.GET("/bar", "Fetch bar specifying query parameters all at once").
-			WithQueryParams(url.Values{
+			WithQueryParams(map[string]interface{}{
 				"first":  []string{"foo"},
 				"second": []string{"bar"},
 			}).

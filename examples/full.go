@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"time"
 
 	"github.com/jefflinse/melatonin/bind"
@@ -130,7 +129,7 @@ func FullExample() {
 				}),
 				"a_number":       &someInt,
 				"another_number": expect.Float64(1, 2.2, 3.14).Then(bind.Float64(&someFloat)),
-				"a_bool":         expect.Bool(true),
+				"a_bool":         true,
 			}),
 
 		myURL.GET("/bar/:first/:second", "Fetch bar specifying path parameters all at once").
@@ -156,15 +155,15 @@ func FullExample() {
 			ExpectBody("Hello, world!"),
 
 		myURL.GET("/bar", "Fetch bar specifying query parameters all at once").
-			WithQueryParams(url.Values{
+			WithQueryParams(map[string]interface{}{
 				"first":  []string{"foo"},
-				"second": []string{"bar"},
+				"second": &someInt,
 			}).
 			ExpectStatus(404),
 
 		myURL.GET("/bar", "Fetch bar specifying query parameters individually").
 			WithQueryParam("first", "foo").
-			WithQueryParam("second", "bar").
+			WithQueryParam("second", &someInt).
 			ExpectStatus(404),
 
 		myURL.POST("/foo", "Create a new foo specifying a Go map as the body").

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"path/filepath"
 	"strings"
 	"time"
@@ -50,7 +49,10 @@ type HTTPTestCase struct {
 	GoldenFilePath string
 
 	// Path parameters to be mapped into the request path.
-	pathParams pathParameters
+	pathParams parameters
+
+	// Query parameters to be mapped into the request query.
+	queryParams parameters
 
 	// Body for the HTTP request. May contain deferred values.
 	requestBody interface{}
@@ -142,12 +144,17 @@ func (tc *HTTPTestCase) Execute() TestResult {
 	}
 
 	// apply path parameters
-	expandedPath, err := tc.pathParams.apply(tc.request.URL.Path)
+	expandedPath, err := tc.pathParams.applyTo(tc.request.URL.Path)
 	if err != nil {
 		return result.addFailures(err)
 	}
-
 	tc.request.URL.Path = expandedPath
+
+	rawQuery, err := tc.queryParams.asRawQuery()
+	if err != nil {
+		return result.addFailures(err)
+	}
+	tc.request.URL.RawQuery = rawQuery
 
 	// resolve deferred values
 	resolvedBody, err := mtjson.ResolveDeferred(tc.requestBody)
@@ -230,16 +237,14 @@ func (tc *HTTPTestCase) WithPathParams(params map[string]interface{}) *HTTPTestC
 }
 
 // WithQueryParam adds a request query parameter to the test case.
-func (tc *HTTPTestCase) WithQueryParam(key, value string) *HTTPTestCase {
-	q := tc.request.URL.Query()
-	q.Add(key, value)
-	tc.request.URL.RawQuery = q.Encode()
+func (tc *HTTPTestCase) WithQueryParam(key string, value interface{}) *HTTPTestCase {
+	tc.queryParams[key] = value
 	return tc
 }
 
 // WithQueryParams sets the request query parameters for the test case.
-func (tc *HTTPTestCase) WithQueryParams(params url.Values) *HTTPTestCase {
-	tc.request.URL.RawQuery = params.Encode()
+func (tc *HTTPTestCase) WithQueryParams(params map[string]interface{}) *HTTPTestCase {
+	tc.queryParams = params
 	return tc
 }
 

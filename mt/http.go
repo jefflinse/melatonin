@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -148,40 +149,65 @@ func toInterface(body []byte) interface{} {
 	return nil
 }
 
-type pathParameters map[string]interface{}
+type parameters map[string]interface{}
 
-// Apply maps the values to a target string.
-func (p pathParameters) apply(s string) (result string, err error) {
+// Apply maps the values to a target path.
+func (p parameters) applyTo(path string) (string, error) {
 	resolved, err := mtjson.ResolveDeferred(map[string]interface{}(p))
 	if err != nil {
 		return "", err
 	}
 
-	result = s
+	result := path
 	for k, v := range resolved.(map[string]interface{}) {
-		result, err = p.applyValue(result, k, v)
+		str, err := paramString(v)
+		if err != nil {
+			return "", err
+		}
+
+		result = strings.ReplaceAll(result, ":"+k, str)
 		if err != nil {
 			return "", err
 		}
 	}
 
-	return
+	return result, nil
 }
 
-func (p pathParameters) applyValue(s, k string, v interface{}) (string, error) {
-	expanded := ""
+func paramString(v interface{}) (string, error) {
+	str := ""
 	switch value := v.(type) {
 	case bool:
-		expanded = fmt.Sprintf("%t", value)
+		str = fmt.Sprintf("%t", value)
 	case float32, float64:
-		expanded = fmt.Sprintf("%g", value)
+		str = fmt.Sprintf("%g", value)
 	case int, int32, int64, uint, uint32, uint64:
-		expanded = fmt.Sprintf("%d", value)
+		str = fmt.Sprintf("%d", value)
 	case string:
-		expanded = value
+		str = value
+	case []string:
+		str = strings.Join(value, ",")
 	default:
-		return "", fmt.Errorf("unsupported path parameter type: %T", value)
+		return "", fmt.Errorf("unsupported parameter type: %T", value)
 	}
 
-	return strings.ReplaceAll(s, ":"+k, expanded), nil
+	return str, nil
+}
+
+func (p parameters) asRawQuery() (string, error) {
+	resolved, err := mtjson.ResolveDeferred(map[string]interface{}(p))
+	if err != nil {
+		return "", err
+	}
+
+	params := url.Values{}
+	for k, v := range resolved.(map[string]interface{}) {
+		str, err := paramString(v)
+		if err != nil {
+			return "", err
+		}
+		params.Add(k, str)
+	}
+
+	return params.Encode(), nil
 }
