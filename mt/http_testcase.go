@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	"github.com/jefflinse/melatonin/golden"
+	mtjson "github.com/jefflinse/melatonin/json"
 )
 
 // An HTTPTestCase tests a single call to an HTTP endpoint.
@@ -51,6 +51,9 @@ type HTTPTestCase struct {
 
 	// Path parameters to be mapped into the request path.
 	pathParams valueMap
+
+	// Body for the HTTP request. May contain deferred values.
+	requestBody interface{}
 
 	// Configuration for the test
 	tctx *HTTPTestContext
@@ -146,6 +149,19 @@ func (tc *HTTPTestCase) Execute() TestResult {
 
 	tc.request.URL.Path = expandedPath
 
+	// resolve deferred values
+	resolvedBody, err := mtjson.ResolveDeferred(tc.requestBody)
+	if err != nil {
+		return result.addFailures(err)
+	}
+
+	b, err := toBytes(resolvedBody)
+	if err != nil {
+		return result.addFailures(err)
+	}
+
+	tc.request.Body = io.NopCloser(bytes.NewReader(b))
+
 	if tc.tctx.Handler != nil {
 		result.Status, result.Headers, result.Body, err = handleRequest(tc.tctx.Handler, tc.request)
 		if err != nil {
@@ -185,12 +201,7 @@ func (tc *HTTPTestCase) Target() string {
 
 // WithBody sets the request body for the test case.
 func (tc *HTTPTestCase) WithBody(body interface{}) *HTTPTestCase {
-	b, err := toBytes(body)
-	if err != nil {
-		log.Fatalf("failed to marshal request body: %s", err)
-	}
-
-	tc.request.Body = io.NopCloser(bytes.NewReader(b))
+	tc.requestBody = body
 	return tc
 }
 

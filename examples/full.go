@@ -133,16 +133,6 @@ func FullExample() {
 				"a_bool":         expect.Bool(true),
 			}),
 
-		myURL.GET("/bar?first=foo&second=bar", "Fetch bar specifying a query string directly").
-			Before(func() error {
-				return fmt.Errorf("found and bound %g from previous test's result", someFloat)
-			}).
-			ExpectStatus(404),
-
-		myHandler.GET("/foo", "Fetch foo by testing a local handler").
-			ExpectStatus(200).
-			ExpectBody("Hello, world!"),
-
 		myURL.GET("/bar/:first/:second", "Fetch bar specifying path parameters all at once").
 			WithPathParams(map[string]interface{}{
 				"first":  "foo",
@@ -154,6 +144,16 @@ func FullExample() {
 			WithPathParam("first", "foo").
 			WithPathParam("second", &someInt).
 			ExpectStatus(404),
+
+		myURL.GET("/bar?first=foo&second=bar", "Fetch bar specifying a query string directly").
+			Before(func() error {
+				return fmt.Errorf("found and bound %g from previous test's result", someFloat)
+			}).
+			ExpectStatus(404),
+
+		myHandler.GET("/foo", "Fetch foo by testing a local handler").
+			ExpectStatus(200).
+			ExpectBody("Hello, world!"),
 
 		myURL.GET("/bar", "Fetch bar specifying query parameters all at once").
 			WithQueryParams(url.Values{
