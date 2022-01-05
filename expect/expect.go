@@ -173,6 +173,10 @@ func String(expected ...string) Predicate {
 
 // CompareValues compares an expected value to an actual value.
 func CompareValues(expected, actual interface{}, exactJSON bool) []error {
+	if expected == nil && actual != nil {
+		return []error{fmt.Errorf("expected nil, got %T: %+v", actual, actual)}
+	}
+
 	switch expectedValue := expected.(type) {
 
 	case bool:
