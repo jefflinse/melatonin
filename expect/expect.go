@@ -385,7 +385,7 @@ func wrongTypeError(expected, actual interface{}) error {
 	if expected != nil && actual == nil {
 		msg = fmt.Sprintf("expected %T, got nothing", expected)
 	} else {
-		msg = fmt.Sprintf("expected type %T, got %T", expected, actual)
+		msg = fmt.Sprintf("expected type %T, got %T: %+v", expected, actual, actual)
 	}
 
 	return errors.New(msg)
