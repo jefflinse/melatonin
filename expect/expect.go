@@ -330,7 +330,7 @@ func compareMapValues(expected map[string]interface{}, actual interface{}, exact
 
 		for i := range expectedKeys {
 			if expectedKeys[i] != actualKeys[i] {
-				return []error{fmt.Errorf("expected key %q, got %q", expectedKeys[i], actualKeys[i])}
+				return []error{fmt.Errorf("expected key %q, got %q: %+v", expectedKeys[i], actualKeys[i], m[actualKeys[i]])}
 			}
 		}
 	}
@@ -353,7 +353,7 @@ func compareSliceValues(expected []interface{}, actual interface{}, exact bool) 
 	}
 
 	if exact && len(a) != len(expected) {
-		return []error{fmt.Errorf("expected %d elements, got %d", len(expected), len(a))}
+		return []error{fmt.Errorf("expected %d elements, got %d: %+v", len(expected), len(a), a)}
 	}
 
 	errs := []error{}
