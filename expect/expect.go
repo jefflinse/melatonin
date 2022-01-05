@@ -55,7 +55,7 @@ func Float64(expected ...float64) Predicate {
 	return func(actual interface{}) error {
 		n, ok := actual.(float64)
 		if !ok {
-			return fmt.Errorf("expected float64, got %T", actual)
+			return fmt.Errorf("expected float64, got %T: %+v", actual, actual)
 		}
 
 		if len(expected) > 0 {
@@ -80,11 +80,11 @@ func Int64(expected ...int64) Predicate {
 		if !ok {
 			f, ok := actual.(float64)
 			if !ok {
-				return fmt.Errorf("expected int64, got %T", actual)
+				return fmt.Errorf("expected int64, got %T: %+v", actual, actual)
 			}
 
 			if n, ok = floatToInt(f); !ok {
-				return fmt.Errorf("expected int64, got %T", actual)
+				return fmt.Errorf("expected int64, got %T: %+v", actual, actual)
 			}
 		}
 
@@ -108,7 +108,7 @@ func Map(expected ...map[string]interface{}) Predicate {
 	return func(actual interface{}) error {
 		m, ok := actual.(map[string]interface{})
 		if !ok {
-			return fmt.Errorf("expected map, got %T", actual)
+			return fmt.Errorf("expected map, got %T: %+v", actual, actual)
 		}
 
 		if len(expected) > 0 {
@@ -131,7 +131,7 @@ func Slice(expected ...[]interface{}) Predicate {
 	return func(actual interface{}) error {
 		s, ok := actual.([]interface{})
 		if !ok {
-			return fmt.Errorf("expected slice, got %T", actual)
+			return fmt.Errorf("expected slice, got %T: %+v", actual, actual)
 		}
 
 		if len(expected) > 0 {
@@ -154,7 +154,7 @@ func String(expected ...string) Predicate {
 	return func(actual interface{}) error {
 		s, ok := actual.(string)
 		if !ok {
-			return fmt.Errorf("expected string, got %T", actual)
+			return fmt.Errorf("expected string, got %T: %+v", actual, actual)
 		}
 
 		if len(expected) > 0 {
@@ -312,7 +312,7 @@ func compareMapValues(expected map[string]interface{}, actual interface{}, exact
 
 	if exact {
 		if len(m) != len(expected) {
-			return []error{fmt.Errorf("expected %d fields, got %d", len(expected), len(m))}
+			return []error{fmt.Errorf("expected %d fields, got %d: %+v", len(expected), len(m), m)}
 		}
 
 		expectedKeys := make([]string, 0, len(expected))
