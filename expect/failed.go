@@ -29,7 +29,7 @@ func (e *FailedPredicateError) PushField(field string) {
 
 // FieldString returns a dot-delimited string representation of the field stack.
 func (e *FailedPredicateError) FieldString() string {
-	return strings.Join(e.FieldStack, ".")
+	return strings.ReplaceAll(strings.Join(e.FieldStack, "."), ".[", "[")
 }
 
 func failedPredicate(cause error) *FailedPredicateError {

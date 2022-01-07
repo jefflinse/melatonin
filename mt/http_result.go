@@ -59,7 +59,7 @@ func (r *HTTPTestCaseResult) validateExpectations() {
 	if tc.Expectations.Body != nil {
 		body := toInterface(r.Body)
 		for _, err := range expect.CompareValues(tc.Expectations.Body, body, tc.Expectations.WantExactJSONBody) {
-			err.PushField("body")
+			err.PushField("") // enables a leading dot in the error message field stack string
 			r.addFailures(err)
 		}
 	}

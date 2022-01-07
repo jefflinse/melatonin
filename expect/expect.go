@@ -10,7 +10,7 @@ import (
 // A Predicate is a function that takes a test result value and possibly returns an error.
 type Predicate func(interface{}) error
 
-// Then creates a new predicate by chaining the given predicates.
+// Then chains a new Predicate to run after the current Predicate.
 func (p Predicate) Then(next Predicate) Predicate {
 	if next == nil {
 		return p
@@ -25,6 +25,12 @@ func (p Predicate) Then(next Predicate) Predicate {
 	}
 }
 
+// And chains a new Predicate to run after the current Predicate if the current Predicate succeeds.
+func (p Predicate) And(next Predicate) Predicate {
+	return p.Then(next)
+}
+
+// Or chains a new Predicate to run after the current Predicate if the current Predicate fails.
 func (p Predicate) Or(next Predicate) Predicate {
 	if next == nil {
 		return p
