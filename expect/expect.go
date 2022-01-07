@@ -2,6 +2,7 @@ package expect
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 
 	mtjson "github.com/jefflinse/melatonin/json"
@@ -135,6 +136,32 @@ func Map(expected ...map[string]interface{}) Predicate {
 
 		return nil
 	}
+}
+
+// Pattern creates a predicate requiring a value to be a string that matches a
+// regular expression, optionally matching against a set of values.
+func Pattern(regex string) Predicate {
+	r, err := regexp.Compile(regex)
+	if err != nil {
+		return func(interface{}) error {
+			return fmt.Errorf("invalid regex: %q", regex)
+		}
+	}
+
+	return Regex(r)
+}
+
+// Regex creates a predicate requiring a value to be a string that matches a
+// regular expression, optionally matching against a set of values.
+func Regex(regex *regexp.Regexp) Predicate {
+	return String().Then(func(actual interface{}) error {
+		s, _ := actual.(string)
+		if !regex.MatchString(s) {
+			return fmt.Errorf("expected to match pattern %q, got %q", regex.String(), s)
+		}
+
+		return nil
+	})
 }
 
 // Slice creates a predicate requiring a value to be a slice, optionally matching
