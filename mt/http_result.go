@@ -58,8 +58,9 @@ func (r *HTTPTestCaseResult) validateExpectations() {
 
 	if tc.Expectations.Body != nil {
 		body := toInterface(r.Body)
-		if errs := expect.CompareValues(tc.Expectations.Body, body, tc.Expectations.WantExactJSONBody); len(errs) > 0 {
-			r.addFailures(errs...)
+		for _, err := range expect.CompareValues(tc.Expectations.Body, body, tc.Expectations.WantExactJSONBody) {
+			err.PushField("body")
+			r.addFailures(err)
 		}
 	}
 }

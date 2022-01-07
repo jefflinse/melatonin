@@ -20,14 +20,14 @@ func Bool(target *bool) expect.Predicate {
 	})
 }
 
-// Int64 creates a predicate requiring a value to be an int64,
+// Int creates a predicate requiring a value to be an integer,
 // binding the value to a target variable.
-func Int64(target *int64) expect.Predicate {
+func Int(target *int64) expect.Predicate {
 	if target == nil {
-		return expect.Int64()
+		return expect.Int()
 	}
 
-	return expect.Int64().Then(func(actual interface{}) error {
+	return expect.Int().Then(func(actual interface{}) error {
 		if v, ok := actual.(int64); ok {
 			*target = v
 		} else if v, ok := actual.(float64); ok {
@@ -40,14 +40,14 @@ func Int64(target *int64) expect.Predicate {
 	})
 }
 
-// Float64 creates a predicate requiring a value to be a float64,
+// Float creates a predicate requiring a value to be a floating point number,
 // binding the value to a target variable.
-func Float64(target *float64) expect.Predicate {
+func Float(target *float64) expect.Predicate {
 	if target == nil {
-		return expect.Float64()
+		return expect.Float()
 	}
 
-	return expect.Float64().Then(func(actual interface{}) error {
+	return expect.Float().Then(func(actual interface{}) error {
 		*target = actual.(float64)
 		return nil
 	})

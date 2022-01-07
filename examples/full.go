@@ -111,7 +111,7 @@ func FullExample() {
 			ExpectStatus(201).
 			ExpectBody(json.Object{
 				"a_string":       "Hello, world!",
-				"a_number":       bind.Int64(&someInt),
+				"a_number":       bind.Int(&someInt),
 				"another_number": 3.15,
 				"a_bool":         false,
 			}),
@@ -128,7 +128,7 @@ func FullExample() {
 					return errors.New("expected string to equal 'Hello, universe!'")
 				}),
 				"a_number":       &someInt,
-				"another_number": expect.Float64(1, 2.2, 3.14).Then(bind.Float64(&someFloat)),
+				"another_number": expect.Float(1, 2.2, 3.14).Then(bind.Float(&someFloat)),
 				"a_bool":         true,
 			}),
 
