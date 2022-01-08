@@ -55,7 +55,6 @@ func printFormattedResults(results *GroupRunResult) {
 
 // fprintFormattedResults prints the results of a group run as a formatted table to the given io.Writer.
 func fprintFormattedResults(cw *columnWriter, groupResult *GroupRunResult, depth int) {
-
 	cw.printGroupHeader(groupResult.Group.Name, depth)
 
 	for i := range groupResult.TestResults {
@@ -66,22 +65,23 @@ func fprintFormattedResults(cw *columnWriter, groupResult *GroupRunResult, depth
 		}
 	}
 
-	if len(groupResult.SubgroupResults) > 0 {
+	// print a newline between last test result and first group result
+	if len(groupResult.TestResults) > 0 {
 		cw.printLine(depth+1, "")
 	}
 	for i := range groupResult.SubgroupResults {
 		fprintFormattedResults(cw, groupResult.SubgroupResults[i], depth+1)
+		// print a newline after each subgroup
 		cw.printLine(depth+1, "")
 	}
 
-	stats := fmt.Sprintf(
+	cw.printGroupFooter(groupResult.Group.Name, depth, fmt.Sprintf(
 		"%d passed, %d failed, %d skipped %s",
 		groupResult.Passed,
 		groupResult.Failed,
 		groupResult.Skipped,
-		faintFG(fmt.Sprintf("in %s", groupResult.Duration.String())),
-	)
-	cw.printGroupFooter(groupResult.Group.Name, depth, stats)
+		faintFG(fmt.Sprintf("in %s", groupResult.Duration.String()))))
+
 	if depth == 0 {
 		cw.Flush()
 	}
@@ -252,7 +252,7 @@ func (w *columnWriter) printGroupHeader(groupName string, depth int) {
 }
 
 func (w *columnWriter) printGroupFooter(groupName string, depth int, stats string) {
-	line := cyanFG(fmt.Sprintf("%s└╴  ", strings.Repeat("│  ", depth)))
+	line := cyanFG(fmt.Sprintf("%s└╴ ", strings.Repeat("│  ", depth)))
 	line = fmt.Sprintf("%s%s", line, stats)
 	w.nonTableLines[w.currentLineNum] = append(w.nonTableLines[w.currentLineNum], line)
 }
