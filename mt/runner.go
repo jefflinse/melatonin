@@ -25,10 +25,10 @@ type GroupRunResult struct {
 	Group *TestGroup `json:"-"`
 
 	// GroupRunResults is a list of group run results for each subgroup that was run.
-	GroupResults []GroupRunResult `json:"-"`
+	SubgroupResults []GroupRunResult `json:"group_results,omitempty"`
 
 	// Results is a list of test run results for each test in the group that was run.
-	TestResults []TestRunResult `json:"results"`
+	TestResults []TestRunResult `json:"test_results,omitempty"`
 
 	// Passed is the number of tests that passed.
 	Passed int `json:"passed"`
@@ -103,7 +103,7 @@ func (r *TestRunner) RunTestGroup(group *TestGroup) GroupRunResult {
 //
 // To run tests as a standalone binary without a testing context, use RunTests().
 func (r *TestRunner) RunTestGroupT(t *testing.T, group *TestGroup) GroupRunResult {
-	groupRunResult := GroupRunResult{
+	groupResult := GroupRunResult{
 		Group: group,
 	}
 
@@ -119,12 +119,12 @@ func (r *TestRunner) RunTestGroupT(t *testing.T, group *TestGroup) GroupRunResul
 			Duration:   end.Sub(start),
 		}
 
-		groupRunResult.Total++
-		groupRunResult.Duration += runResult.Duration
-		groupRunResult.TestResults = append(groupRunResult.TestResults, runResult)
+		groupResult.Total++
+		groupResult.Duration += runResult.Duration
+		groupResult.TestResults = append(groupResult.TestResults, runResult)
 
 		if len(testResult.Failures()) > 0 {
-			groupRunResult.Failed++
+			groupResult.Failed++
 			if t != nil {
 				t.Run(test.Description(), func(t *testing.T) {
 					for _, err := range testResult.Failures() {
@@ -136,12 +136,12 @@ func (r *TestRunner) RunTestGroupT(t *testing.T, group *TestGroup) GroupRunResul
 			}
 
 			if !r.ContinueOnFailure {
-				groupRunResult.Skipped = len(group.Tests) - groupRunResult.Total
+				groupResult.Skipped = len(group.Tests) - groupResult.Total
 				break
 			}
 
 		} else {
-			groupRunResult.Passed++
+			groupResult.Passed++
 			if t != nil {
 				t.Run(test.Description(), func(t *testing.T) {
 					t.Log(testResult.TestCase().Description())
@@ -150,7 +150,27 @@ func (r *TestRunner) RunTestGroupT(t *testing.T, group *TestGroup) GroupRunResul
 		}
 	}
 
-	return groupRunResult
+	for _, group := range group.Groups {
+		subgroupResult := r.RunTestGroupT(t, group)
+		groupResult.Total += subgroupResult.Total
+		groupResult.Duration += subgroupResult.Duration
+		groupResult.SubgroupResults = append(groupResult.SubgroupResults, subgroupResult)
+	}
+
+	return groupResult
+}
+
+// RunTestGroups runs a set of test groups using the default test runner.
+func (r *TestRunner) RunTestGroups(groups []*TestGroup) GroupRunResult {
+	group := NewTestGroup("").AddGroups(groups...)
+	return r.RunTestGroup(group)
+}
+
+// RunTestGroupsT runs a set of test groups within the context of a Go test
+// using the default test runner.
+func (r *TestRunner) RunTestGroupsT(t *testing.T, groups []*TestGroup) GroupRunResult {
+	group := NewTestGroup("").AddGroups(groups...)
+	return r.RunTestGroupT(t, group)
 }
 
 // RunTests runs a set of tests using the default test runner.
@@ -173,4 +193,15 @@ func RunTestGroup(group *TestGroup) GroupRunResult {
 // using the default test runner.
 func RunTestGroupT(t *testing.T, group *TestGroup) GroupRunResult {
 	return NewTestRunner().RunTestGroupT(t, group)
+}
+
+// RunTestGroups runs a set of test groups using the default test runner.
+func RunTestGroups(groups []*TestGroup) GroupRunResult {
+	return NewTestRunner().RunTestGroups(groups)
+}
+
+// RunTestGroupsT runs a set of test groups within the context of a Go test
+// using the default test runner.
+func RunTestGroupsT(t *testing.T, groups []*TestGroup) GroupRunResult {
+	return NewTestRunner().RunTestGroupsT(t, groups)
 }

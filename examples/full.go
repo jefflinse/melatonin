@@ -63,8 +63,8 @@ func FullExample() {
 	someInt := int64(0)
 	someFloat := float64(0)
 
-	// Defining a test group allows you to group related tests together with associated metadata.
-	group := mt.NewTestGroup("E2E Test for Sample API").AddTests(
+	// Defining test group sallows you to group related tests together with associated metadata.
+	group1 := mt.NewTestGroup("E2E Test for Sample API").AddTests(
 
 		myURL.GET("/foo", "Fetch foo with a custom timeout").
 			WithTimeout(1*time.Second). // specify a timeout for the test case
@@ -105,6 +105,9 @@ func FullExample() {
 				return errors.New("the after-func failed")
 			}).
 			ExpectStatus(200),
+	)
+
+	group2 := mt.NewTestGroup("Data Binding Examples").AddTests(
 
 		myURL.GET("/foo", "Fetch foo and expect a subset of JSON in response body").
 			WithHeader("Accept", "application/json").
@@ -199,7 +202,7 @@ func FullExample() {
 			ExpectGolden("golden/expect-headers-and-json-body.golden"),
 	)
 
-	results := runner.RunTestGroup(group)
+	results := runner.RunTestGroups([]*mt.TestGroup{group1, group2})
 
 	// Print the results of the test run.
 	mt.PrintResults(results)

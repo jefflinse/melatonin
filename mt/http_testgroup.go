@@ -6,7 +6,7 @@ package mt
 // of tests.
 type TestGroup struct {
 	Name   string
-	Groups []TestGroup
+	Groups []*TestGroup
 	Tests  []TestCase
 }
 
@@ -14,13 +14,13 @@ type TestGroup struct {
 func NewTestGroup(name string) *TestGroup {
 	return &TestGroup{
 		Name:   name,
-		Groups: []TestGroup{},
+		Groups: []*TestGroup{},
 		Tests:  []TestCase{},
 	}
 }
 
 // AddGroups adds one or more TestGroups to the TestGroup.
-func (g *TestGroup) AddGroups(groups ...TestGroup) *TestGroup {
+func (g *TestGroup) AddGroups(groups ...*TestGroup) *TestGroup {
 	g.Groups = append(g.Groups, groups...)
 	return g
 }

@@ -58,8 +58,8 @@ func FPrintFormattedResults(w io.Writer, groupResult GroupRunResult) {
 		cw.printLine(cyanFG(groupResult.Group.Name))
 	}
 
-	for i := range groupResult.GroupResults {
-		FPrintFormattedResults(w, groupResult.GroupResults[i])
+	for i := range groupResult.SubgroupResults {
+		FPrintFormattedResults(w, groupResult.SubgroupResults[i])
 	}
 
 	for i := range groupResult.TestResults {
