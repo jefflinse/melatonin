@@ -242,30 +242,30 @@ func (w *columnWriter) printColumns(decorators map[int]decoratorFunc, columns ..
 }
 
 func (w *columnWriter) printGroupHeader(groupName string, depth int) {
-	line := fmt.Sprintf("%s", strings.Repeat("│ ", depth))
 	if groupName == "" {
-		groupName = "Group"
+		return
 	}
+	line := fmt.Sprintf("%s", strings.Repeat("│  ", depth))
 	line = fmt.Sprintf("%s%s", line, groupName)
 	line = cyanFG(line)
 	w.nonTableLines[w.currentLineNum] = append(w.nonTableLines[w.currentLineNum], line)
 }
 
 func (w *columnWriter) printGroupFooter(groupName string, depth int, stats string) {
-	line := cyanFG(fmt.Sprintf("%s└╴ ", strings.Repeat("│ ", depth)))
+	line := cyanFG(fmt.Sprintf("%s└╴  ", strings.Repeat("│  ", depth)))
 	line = fmt.Sprintf("%s%s", line, stats)
 	w.nonTableLines[w.currentLineNum] = append(w.nonTableLines[w.currentLineNum], line)
 }
 
 func (w *columnWriter) printLine(depth int, str string, args ...interface{}) {
-	line := cyanFG(strings.Repeat("│ ", depth)) + str
+	line := cyanFG(strings.Repeat("│  ", depth)) + str
 	w.nonTableLines[w.currentLineNum] = append(w.nonTableLines[w.currentLineNum], line)
 }
 
 func (w *columnWriter) printTestSuccess(testNum int, result TestRunResult, depth int) {
 	w.printColumns(map[int]decoratorFunc{1: blueBG, 3: faintFG},
 		fmt.Sprintf("%s%s %s",
-			cyanFG(strings.Repeat("│ ", depth+1)),
+			cyanFG(strings.Repeat("│  ", depth+1)),
 			greenFG(fmt.Sprintf("✔ %d", testNum)),
 			whiteFG(result.TestCase.Description())),
 		fmt.Sprintf("%7s ", result.TestCase.Action()),
@@ -276,7 +276,7 @@ func (w *columnWriter) printTestSuccess(testNum int, result TestRunResult, depth
 func (w *columnWriter) printTestFailure(testNum int, result TestRunResult, depth int) {
 	w.printColumns(map[int]decoratorFunc{1: blueBG, 3: faintFG},
 		fmt.Sprintf("%s%s %s",
-			cyanFG(strings.Repeat("│ ", depth+1)),
+			cyanFG(strings.Repeat("│  ", depth+1)),
 			redFG(fmt.Sprintf("✘ %d", testNum)),
 			whiteFG(result.TestCase.Description())),
 		fmt.Sprintf("%7s ", result.TestCase.Action()),
@@ -285,10 +285,12 @@ func (w *columnWriter) printTestFailure(testNum int, result TestRunResult, depth
 
 	failures := result.TestResult.Failures()
 	for i := 0; i < len(failures)-1; i++ {
-		w.printLine(depth+1, redFG(fmt.Sprintf("├╴  %s", failures[i])))
+		// w.printLine(depth+1, redFG(fmt.Sprintf("├╴  %s", failures[i])))
+		w.printLine(depth+1, redFG(fmt.Sprintf("  %s", failures[i])))
 	}
 
-	w.printLine(depth+1, redFG(fmt.Sprintf("└╴  %s", failures[len(failures)-1])))
+	w.printLine(depth+1, redFG(fmt.Sprintf("  %s", failures[len(failures)-1])))
+	// w.printLine(depth+1, redFG(fmt.Sprintf("└╴  %s", failures[len(failures)-1])))
 }
 
 func getTerminalWidth() int {
