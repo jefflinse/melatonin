@@ -42,14 +42,14 @@ func FPrintResults(w io.Writer, results *GroupRunResult) {
 	case outputTypeJSON:
 		fprintJSONResults(w, results, false)
 	default:
-		cw := newColumnWriter(w, 4, 1)
+		cw := newColumnWriter(w, 4, 0)
 		fprintFormattedResults(cw, results, 0)
 	}
 }
 
 // printFormattedResults prints the results of a group run as a formatted table to stdout.
 func printFormattedResults(results *GroupRunResult) {
-	cw := newColumnWriter(os.Stdout, 4, 1)
+	cw := newColumnWriter(os.Stdout, 4, 0)
 	fprintFormattedResults(cw, results, 0)
 }
 
