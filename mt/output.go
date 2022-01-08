@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -27,7 +28,7 @@ var (
 // By default, the output is formatted as a table and colors are used if possible.
 // The behavior can be controlled by setting the MELATONIN_OUTPUT environment
 // variable to "json" to produce JSON output, or "none" to disable output all together.
-func PrintResults(results GroupRunResult) {
+func PrintResults(results *GroupRunResult) {
 	FPrintResults(cfg.Stdout, results)
 }
 
@@ -36,30 +37,33 @@ func PrintResults(results GroupRunResult) {
 // By default, the output is formatted as a table and colors are used if possible.
 // The behavior can be controlled by setting the MELATONIN_OUTPUT environment
 // variable to "json" to produce JSON output, or "none" to disable output all together.
-func FPrintResults(w io.Writer, results GroupRunResult) {
+func FPrintResults(w io.Writer, results *GroupRunResult) {
 	switch cfg.OutputType {
 	case outputTypeJSON:
-		FPrintJSONResults(w, results, false)
+		fprintJSONResults(w, results, false)
 	default:
-		FPrintFormattedResults(w, results)
+		cw := newColumnWriter(w, 5, 1)
+		fprintFormattedResults(cw, results, 0)
 	}
 }
 
-// PrintFormattedResults prints the results of a group run as a formatted table to stdout.
-func PrintFormattedResults(results GroupRunResult) {
-	FPrintFormattedResults(cfg.Stdout, results)
+// printFormattedResults prints the results of a group run as a formatted table to stdout.
+func printFormattedResults(results *GroupRunResult) {
+	cw := newColumnWriter(os.Stdout, 5, 1)
+	fprintFormattedResults(cw, results, 0)
 }
 
-// FPrintFormattedResults prints the results of a group run as a formatted table to the given io.Writer.
-func FPrintFormattedResults(w io.Writer, groupResult GroupRunResult) {
-	cw := newColumnWriter(w, 5, 1)
+// fprintFormattedResults prints the results of a group run as a formatted table to the given io.Writer.
+func fprintFormattedResults(cw *columnWriter, groupResult *GroupRunResult, depth int) {
 
+	groupName := ""
 	if groupResult.Group.Name != "" {
-		cw.printLine(cyanFG(groupResult.Group.Name))
+		groupName = groupResult.Group.Name
 	}
 
-	for i := range groupResult.SubgroupResults {
-		FPrintFormattedResults(w, groupResult.SubgroupResults[i])
+	if groupName != "" {
+		groupName = fmt.Sprintf("[%s]", groupName)
+		cw.printLine(cyanFG(groupName))
 	}
 
 	for i := range groupResult.TestResults {
@@ -70,10 +74,15 @@ func FPrintFormattedResults(w io.Writer, groupResult GroupRunResult) {
 		}
 	}
 
-	cw.printLine("")
-	cw.printLine(fmt.Sprintf("%d passed, %d failed, %d skipped %s", groupResult.Passed, groupResult.Failed, groupResult.Skipped,
-		faintFG(fmt.Sprintf("in %s", groupResult.Duration.String()))))
-	cw.Flush()
+	for i := range groupResult.SubgroupResults {
+		fprintFormattedResults(cw, groupResult.SubgroupResults[i], i+1)
+	}
+
+	if depth == 0 {
+		cw.printLine(fmt.Sprintf("%d passed, %d failed, %d skipped %s", groupResult.Passed, groupResult.Failed, groupResult.Skipped,
+			faintFG(fmt.Sprintf("in %s", groupResult.Duration.String()))))
+		cw.Flush()
+	}
 }
 
 type jsonOutputObj struct {
@@ -107,12 +116,12 @@ type jsonResult struct {
 }
 
 // PrintJSONResults prints the results of a group run as JSON to the given io.Writer.
-func PrintJSONResults(results GroupRunResult, deep bool) error {
-	return FPrintJSONResults(cfg.Stdout, results, deep)
+func PrintJSONResults(results *GroupRunResult, deep bool) error {
+	return fprintJSONResults(cfg.Stdout, results, deep)
 }
 
-// FPrintJSONResults prints the results of a group run as JSON to the given io.Writer.
-func FPrintJSONResults(w io.Writer, result GroupRunResult, deep bool) error {
+// fprintJSONResults prints the results of a group run as JSON to the given io.Writer.
+func fprintJSONResults(w io.Writer, result *GroupRunResult, deep bool) error {
 	groupResultObj := jsonGroupRunResult{
 		Name:     result.Group.Name,
 		Duration: result.Duration,
@@ -261,7 +270,6 @@ func (w *columnWriter) printTestFailure(testNum int, result TestRunResult) {
 	}
 
 	w.printLine(redFG(fmt.Sprintf("└╴ %s", failures[len(failures)-1])))
-	w.printLine("")
 }
 
 func getTerminalWidth() int {

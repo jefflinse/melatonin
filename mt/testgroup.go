@@ -5,23 +5,23 @@ package mt
 // Test groups are nestable, and can be used to create a hierarchy
 // of tests.
 type TestGroup struct {
-	Name   string
-	Groups []*TestGroup
-	Tests  []TestCase
+	Name      string
+	Tests     []TestCase
+	Subgroups []*TestGroup
 }
 
 // NewTestGroup creates a new TestGroup with the given name.
 func NewTestGroup(name string) *TestGroup {
 	return &TestGroup{
-		Name:   name,
-		Groups: []*TestGroup{},
-		Tests:  []TestCase{},
+		Name:      name,
+		Subgroups: []*TestGroup{},
+		Tests:     []TestCase{},
 	}
 }
 
 // AddGroups adds one or more TestGroups to the TestGroup.
 func (g *TestGroup) AddGroups(groups ...*TestGroup) *TestGroup {
-	g.Groups = append(g.Groups, groups...)
+	g.Subgroups = append(g.Subgroups, groups...)
 	return g
 }
 

@@ -107,7 +107,7 @@ func FullExample() {
 			ExpectStatus(200),
 	)
 
-	group2 := mt.NewTestGroup("Data Binding Examples").AddTests(
+	group2 := mt.NewTestGroup("Data Binding").AddTests(
 
 		myURL.GET("/foo", "Fetch foo and expect a subset of JSON in response body").
 			WithHeader("Accept", "application/json").
@@ -156,7 +156,9 @@ func FullExample() {
 		myHandler.GET("/foo", "Fetch foo by testing a local handler").
 			ExpectStatus(200).
 			ExpectBody("Hello, world!"),
+	)
 
+	group2.AddGroups(mt.NewTestGroup("Query Parameters").AddTests(
 		myURL.GET("/bar", "Fetch bar specifying query parameters all at once").
 			WithQueryParams(map[string]interface{}{
 				"first":  []string{"foo"},
@@ -168,7 +170,9 @@ func FullExample() {
 			WithQueryParam("first", "foo").
 			WithQueryParam("second", &someInt).
 			ExpectStatus(404),
+	))
 
+	group3 := mt.NewTestGroup("More Tests").AddTests(
 		myURL.POST("/foo", "Create a new foo specifying a Go map as the body").
 			WithHeader("Accept", "application/json"). // add a single header
 			WithBody(map[string]interface{}{          // specify the body using Go types
@@ -202,7 +206,7 @@ func FullExample() {
 			ExpectGolden("golden/expect-headers-and-json-body.golden"),
 	)
 
-	results := runner.RunTestGroups([]*mt.TestGroup{group1, group2})
+	results := runner.RunTestGroups([]*mt.TestGroup{group1, group2, group3})
 
 	// Print the results of the test run.
 	mt.PrintResults(results)
