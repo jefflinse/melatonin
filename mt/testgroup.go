@@ -5,9 +5,11 @@ package mt
 // Test groups are nestable, and can be used to create a hierarchy
 // of tests.
 type TestGroup struct {
-	Name      string
-	Tests     []TestCase
-	Subgroups []*TestGroup
+	Name       string
+	BeforeFunc func()
+	AfterFunc  func()
+	Tests      []TestCase
+	Subgroups  []*TestGroup
 }
 
 // NewTestGroup creates a new TestGroup with the given name.
@@ -19,6 +21,12 @@ func NewTestGroup(name string) *TestGroup {
 	}
 }
 
+// After adds a function to be called after all tests in the group have been run.
+func (g *TestGroup) After(fn func()) *TestGroup {
+	g.AfterFunc = fn
+	return g
+}
+
 // AddGroups adds one or more TestGroups to the TestGroup.
 func (g *TestGroup) AddGroups(groups ...*TestGroup) *TestGroup {
 	g.Subgroups = append(g.Subgroups, groups...)
@@ -28,5 +36,11 @@ func (g *TestGroup) AddGroups(groups ...*TestGroup) *TestGroup {
 // AddTests adds one or more Tests to the TestGroup.
 func (g *TestGroup) AddTests(tc ...TestCase) *TestGroup {
 	g.Tests = append(g.Tests, tc...)
+	return g
+}
+
+// Before adds a function to be called before any tests in the group are run.
+func (g *TestGroup) Before(fn func()) *TestGroup {
+	g.BeforeFunc = fn
 	return g
 }

@@ -120,6 +120,10 @@ func (r *TestRunner) RunTestGroupT(t *testing.T, group *TestGroup) *GroupRunResu
 		Group: group,
 	}
 
+	if group.BeforeFunc != nil {
+		group.BeforeFunc()
+	}
+
 	if r.GroupExecutionPriority == ExecuteSubgroupsFirst {
 		r.runSubgroups(t, groupResult)
 	}
@@ -169,6 +173,10 @@ func (r *TestRunner) RunTestGroupT(t *testing.T, group *TestGroup) *GroupRunResu
 
 	if r.GroupExecutionPriority == ExecuteTestsFirst {
 		r.runSubgroups(t, groupResult)
+	}
+
+	if group.AfterFunc != nil {
+		group.AfterFunc()
 	}
 
 	return groupResult
