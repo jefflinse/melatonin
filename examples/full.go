@@ -166,6 +166,13 @@ func FullExample() {
 			}).
 			ExpectStatus(404),
 
+		myURL.GET("/bar", "Fetch bar specifying query parameters all at once").
+			WithQueryParams(map[string]interface{}{
+				"first":  []string{"foo"},
+				"second": &someInt,
+			}).
+			ExpectStatus(200),
+
 		myURL.GET("/bar", "Fetch bar specifying query parameters individually").
 			WithQueryParam("first", "foo").
 			WithQueryParam("second", &someInt).
