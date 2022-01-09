@@ -15,12 +15,13 @@ import (
 )
 
 var (
-	cyanFG  = color.New(color.FgHiCyan, color.Bold).SprintFunc()
-	greenFG = color.New(color.FgHiGreen, color.Bold).SprintFunc()
-	redFG   = color.New(color.FgHiRed, color.Bold).SprintFunc()
-	whiteFG = color.New(color.Bold).SprintFunc()
-	faintFG = color.New(color.Faint).SprintFunc()
-	blueBG  = color.New(color.BgBlue, color.FgHiWhite).SprintFunc()
+	cyanFG          = color.New(color.FgHiCyan, color.Bold).SprintFunc()
+	cyanFGUnderline = color.New(color.FgHiCyan, color.Bold, color.Underline).SprintFunc()
+	greenFG         = color.New(color.FgHiGreen, color.Bold).SprintFunc()
+	redFG           = color.New(color.FgHiRed, color.Bold).SprintFunc()
+	whiteFG         = color.New(color.Bold).SprintFunc()
+	faintFG         = color.New(color.Faint).SprintFunc()
+	blueBG          = color.New(color.BgBlue, color.FgHiWhite).SprintFunc()
 )
 
 // PrintResults prints the results of a group run to stdout.
@@ -246,8 +247,7 @@ func (w *columnWriter) printGroupHeader(groupName string, depth int) {
 		return
 	}
 	line := fmt.Sprintf("%s", strings.Repeat("│  ", depth))
-	line = fmt.Sprintf("%s%s", line, groupName)
-	line = cyanFG(line)
+	line = fmt.Sprintf("%s%s", cyanFG(line), cyanFGUnderline(groupName))
 	w.nonTableLines[w.currentLineNum] = append(w.nonTableLines[w.currentLineNum], line)
 }
 
