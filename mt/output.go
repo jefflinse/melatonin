@@ -15,13 +15,25 @@ import (
 )
 
 var (
-	cyanFG          = color.New(color.FgHiCyan, color.Bold).SprintFunc()
-	cyanFGUnderline = color.New(color.FgHiCyan, color.Bold, color.Underline).SprintFunc()
-	greenFG         = color.New(color.FgHiGreen, color.Bold).SprintFunc()
-	redFG           = color.New(color.FgHiRed, color.Bold).SprintFunc()
-	whiteFG         = color.New(color.Bold).SprintFunc()
-	faintFG         = color.New(color.Faint).SprintFunc()
-	blueBG          = color.New(color.BgBlue, color.FgHiWhite).SprintFunc()
+	cyanFG              = color.New(color.FgHiCyan).SprintFunc()
+	cyanFGBold          = color.New(color.FgHiCyan, color.Bold).SprintFunc()
+	cyanFGUnderline     = color.New(color.FgHiCyan, color.Underline).SprintFunc()
+	cyanFGBoldUnderline = color.New(color.FgHiCyan, color.Bold, color.Underline).SprintFunc()
+	greenFG             = color.New(color.FgHiGreen).SprintFunc()
+	greenFGBold         = color.New(color.FgHiGreen, color.Bold).SprintFunc()
+	redFG               = color.New(color.FgHiRed).SprintFunc()
+	redFGBold           = color.New(color.FgHiRed, color.Bold).SprintFunc()
+	whiteFG             = color.New(color.FgWhite).SprintFunc()
+	whiteFGBold         = color.New(color.FgWhite, color.Bold).SprintFunc()
+	faintFG             = color.New(color.Faint).SprintFunc()
+	blueBG              = color.New(color.BgBlue, color.FgHiWhite).SprintFunc()
+)
+
+const (
+	indentationPrefix = "│ "
+	// indentationPrefix = "  "
+	groupFooterPrefix = "└╴ "
+	// groupFooterPrefix = "  "
 )
 
 // PrintResults prints the results of a group run to stdout.
@@ -246,26 +258,26 @@ func (w *columnWriter) printGroupHeader(groupName string, depth int) {
 	if groupName == "" {
 		return
 	}
-	line := fmt.Sprintf("%s", strings.Repeat("│  ", depth))
-	line = fmt.Sprintf("%s%s", cyanFG(line), cyanFGUnderline(groupName))
+	line := fmt.Sprintf("%s", strings.Repeat(indentationPrefix, depth))
+	line = fmt.Sprintf("%s%s", faintFG(line), cyanFG(groupName))
 	w.nonTableLines[w.currentLineNum] = append(w.nonTableLines[w.currentLineNum], line)
 }
 
 func (w *columnWriter) printGroupFooter(groupName string, depth int, stats string) {
-	line := cyanFG(fmt.Sprintf("%s└╴ ", strings.Repeat("│  ", depth)))
+	line := faintFG(fmt.Sprintf("%s%s", strings.Repeat(indentationPrefix, depth), groupFooterPrefix))
 	line = fmt.Sprintf("%s%s", line, stats)
 	w.nonTableLines[w.currentLineNum] = append(w.nonTableLines[w.currentLineNum], line)
 }
 
 func (w *columnWriter) printLine(depth int, str string, args ...interface{}) {
-	line := cyanFG(strings.Repeat("│  ", depth)) + str
+	line := faintFG(strings.Repeat(indentationPrefix, depth)) + str
 	w.nonTableLines[w.currentLineNum] = append(w.nonTableLines[w.currentLineNum], line)
 }
 
 func (w *columnWriter) printTestSuccess(testNum int, result TestRunResult, depth int) {
 	w.printColumns(map[int]decoratorFunc{1: blueBG, 3: faintFG},
 		fmt.Sprintf("%s%s %s",
-			cyanFG(strings.Repeat("│  ", depth+1)),
+			faintFG(strings.Repeat(indentationPrefix, depth+1)),
 			greenFG(fmt.Sprintf("✔ %d", testNum)),
 			whiteFG(result.TestCase.Description())),
 		fmt.Sprintf("%7s ", result.TestCase.Action()),
@@ -276,9 +288,9 @@ func (w *columnWriter) printTestSuccess(testNum int, result TestRunResult, depth
 func (w *columnWriter) printTestFailure(testNum int, result TestRunResult, depth int) {
 	w.printColumns(map[int]decoratorFunc{1: blueBG, 3: faintFG},
 		fmt.Sprintf("%s%s %s",
-			cyanFG(strings.Repeat("│  ", depth+1)),
-			redFG(fmt.Sprintf("✘ %d", testNum)),
-			whiteFG(result.TestCase.Description())),
+			faintFG(strings.Repeat(indentationPrefix, depth+1)),
+			redFGBold(fmt.Sprintf("✘ %d", testNum)),
+			whiteFGBold(result.TestCase.Description())),
 		fmt.Sprintf("%7s ", result.TestCase.Action()),
 		result.TestCase.Target(),
 		result.Duration.String())
