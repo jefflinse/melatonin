@@ -184,7 +184,6 @@ type columnWriter struct {
 	tabWriter          *tabwriter.Writer
 	currentLineNum     int
 	nonTableLines      map[int][]string
-	termWidth          int
 }
 
 type decoratorFunc func(...interface{}) string
@@ -200,7 +199,6 @@ func newColumnWriter(output io.Writer, columns int, elasticColumnIndex int) *col
 		tabWriter:          tabwriter.NewWriter(buf, 0, 0, 2, ' ', 0),
 		currentLineNum:     -1,
 		nonTableLines:      map[int][]string{},
-		termWidth:          getTerminalWidth() - 2,
 	}
 }
 
@@ -227,25 +225,6 @@ func (w *columnWriter) Flush() {
 func (w *columnWriter) printColumns(columns ...interface{}) {
 	if len(columns) > w.columns {
 		panic(fmt.Sprintf("PrintColumns() called with %d columns, expected at most %d", len(columns), w.columns))
-	}
-
-	noColor := color.NoColor
-	color.NoColor = true
-	buf := &strings.Builder{}
-	temp := tabwriter.NewWriter(buf, 0, 0, 2, ' ', 0)
-	n, _ := fmt.Fprintf(temp, w.format, columns...)
-	color.NoColor = noColor
-
-	if diff := n - w.termWidth; w.termWidth > 0 && diff > 0 {
-		str := columns[w.elasticColumnIndex].(string)
-		newLength := len(str) - diff - 5
-		if newLength > 0 {
-			str = str[:newLength]
-		} else {
-			str = ""
-		}
-
-		columns[w.elasticColumnIndex] = str + "..."
 	}
 
 	fmt.Fprintf(w.tabWriter, w.format, columns...)
