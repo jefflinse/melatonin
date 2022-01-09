@@ -29,6 +29,10 @@ var (
 	blueBG              = color.New(color.BgBlue, color.FgHiWhite).SprintFunc()
 )
 
+var (
+	groupHeaderColor = cyanFG
+)
+
 const (
 	indentationPrefix = "│ "
 	// indentationPrefix = "  "
@@ -259,7 +263,7 @@ func (w *columnWriter) printGroupHeader(groupName string, depth int) {
 		return
 	}
 	line := fmt.Sprintf("%s", strings.Repeat(indentationPrefix, depth))
-	line = fmt.Sprintf("%s%s", faintFG(line), cyanFG(groupName))
+	line = fmt.Sprintf("%s%s", faintFG(line), groupHeaderColor(groupName))
 	w.nonTableLines[w.currentLineNum] = append(w.nonTableLines[w.currentLineNum], line)
 }
 
