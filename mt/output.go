@@ -224,7 +224,7 @@ func (w *columnWriter) Flush() {
 	}
 }
 
-func (w *columnWriter) printColumns(decorators map[int]decoratorFunc, columns ...interface{}) {
+func (w *columnWriter) printColumns(columns ...interface{}) {
 	if len(columns) > w.columns {
 		panic(fmt.Sprintf("PrintColumns() called with %d columns, expected at most %d", len(columns), w.columns))
 	}
@@ -246,12 +246,6 @@ func (w *columnWriter) printColumns(decorators map[int]decoratorFunc, columns ..
 		}
 
 		columns[w.elasticColumnIndex] = str + "..."
-	}
-
-	if !color.NoColor {
-		for k, fn := range decorators {
-			columns[k] = fn(columns[k])
-		}
 	}
 
 	fmt.Fprintf(w.tabWriter, w.format, columns...)
@@ -279,25 +273,25 @@ func (w *columnWriter) printLine(depth int, str string, args ...interface{}) {
 }
 
 func (w *columnWriter) printTestSuccess(testNum int, result TestRunResult, depth int) {
-	w.printColumns(map[int]decoratorFunc{1: blueBG, 3: faintFG},
+	w.printColumns(
 		fmt.Sprintf("%s%s %s",
 			faintFG(strings.Repeat(indentationPrefix, depth+1)),
 			fmt.Sprintf("%s %s", greenFG("✔"), whiteFG(testNum)),
 			whiteFG(result.TestCase.Description())),
-		fmt.Sprintf("%7s ", result.TestCase.Action()),
+		blueBG(fmt.Sprintf("%7s ", result.TestCase.Action())),
 		result.TestCase.Target(),
-		result.Duration.String())
+		faintFG(result.Duration.String()))
 }
 
 func (w *columnWriter) printTestFailure(testNum int, result TestRunResult, depth int) {
-	w.printColumns(map[int]decoratorFunc{1: blueBG, 3: faintFG},
+	w.printColumns(
 		fmt.Sprintf("%s%s %s",
 			faintFG(strings.Repeat(indentationPrefix, depth+1)),
-			fmt.Sprintf("%s %s", redFGBold("✘"), whiteFGBold(testNum)),
+			fmt.Sprintf("%s %s", redFGBold("✘"), whiteFG(testNum)),
 			whiteFGBold(result.TestCase.Description())),
-		fmt.Sprintf("%7s ", result.TestCase.Action()),
+		blueBG(fmt.Sprintf("%7s ", result.TestCase.Action())),
 		result.TestCase.Target(),
-		result.Duration.String())
+		faintFG(result.Duration.String()))
 
 	failures := result.TestResult.Failures()
 	for i := 0; i < len(failures)-1; i++ {
