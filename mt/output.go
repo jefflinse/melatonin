@@ -200,7 +200,7 @@ func printTestSuccess(table *tablecloth.Table, testNum int, result TestRunResult
 			Values: []tablecloth.FormattableCellValue{
 				{Value: strings.Repeat(indentationPrefix, depth+1), Format: faintFG},
 				{Value: "✔", Format: greenFG},
-				{Value: testNum, Format: whiteFG},
+				{Value: testNum, Format: greenFG},
 				{Value: result.TestCase.Description(), Format: whiteFG},
 			},
 		},
@@ -239,7 +239,7 @@ func printTestFailure(table *tablecloth.Table, testNum int, result TestRunResult
 			Values: []tablecloth.FormattableCellValue{
 				{Value: strings.Repeat(indentationPrefix, depth+1), Format: faintFG},
 				{Value: "✘", Format: redFGBold},
-				{Value: testNum, Format: whiteFG},
+				{Value: testNum, Format: redFGBold},
 				{Value: result.TestCase.Description(), Format: whiteFGBold},
 			},
 		},
