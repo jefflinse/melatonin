@@ -220,15 +220,6 @@ func printTestSuccess(table *tablecloth.Table, testNum int, result TestRunResult
 			},
 		},
 	)
-
-	// w.printColumns(
-	// 	fmt.Sprintf("%s%s %s",
-	// 		faintFG(strings.Repeat(indentationPrefix, depth+1)),
-	// 		fmt.Sprintf("%s %s", greenFG("✔"), whiteFG(testNum)),
-	// 		whiteFG(result.TestCase.Description())),
-	// 	blueBG(fmt.Sprintf("%7s ", result.TestCase.Action())),
-	// 	result.TestCase.Target(),
-	// 	faintFG(result.Duration.String()))
 }
 
 func printTestFailure(table *tablecloth.Table, testNum int, result TestRunResult, depth int) {
@@ -259,15 +250,6 @@ func printTestFailure(table *tablecloth.Table, testNum int, result TestRunResult
 			},
 		},
 	)
-
-	// w.printColumns(
-	// 	fmt.Sprintf("%s%s %s",
-	// 		faintFG(strings.Repeat(indentationPrefix, depth+1)),
-	// 		fmt.Sprintf("%s %s", redFGBold("✘"), whiteFG(testNum)),
-	// 		whiteFGBold(result.TestCase.Description())),
-	// 	blueBG(fmt.Sprintf("%7s ", result.TestCase.Action())),
-	// 	result.TestCase.Target(),
-	// 	faintFG(result.Duration.String()))
 
 	failures := result.TestResult.Failures()
 	for i := 0; i < len(failures)-1; i++ {
