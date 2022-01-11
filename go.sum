@@ -2,6 +2,10 @@ github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/fatih/color v1.13.0 h1:8LOYc1KYPPmyKMuN8QV2DNRWNbLo6LZ0iLs8+mlH53w=
 github.com/fatih/color v1.13.0/go.mod h1:kLAiJbzzSOZDVNGyDpeOxJ47H46qBXwg5ILebYFFOfk=
+github.com/jefflinse/tablecloth v0.0.1 h1:3xv7fAKMMY03bbMwfdidp9Rc7wVLqgrnGmf9rZRYQ6s=
+github.com/jefflinse/tablecloth v0.0.1/go.mod h1:0+XSItVyvsQbMdZdWejr9Jqw8B5R8xVlZulwon98B78=
+github.com/jefflinse/tablecloth v0.0.2 h1:t0Z95DQhC9vnvruWLFj2mY5EBDQ/npcJ9FTpC0g0Xlo=
+github.com/jefflinse/tablecloth v0.0.2/go.mod h1:0+XSItVyvsQbMdZdWejr9Jqw8B5R8xVlZulwon98B78=
 github.com/kr/fs v0.1.0/go.mod h1:FFnZGqtBN9Gxj7eW1uZ42v5BccTP0vu6NEaFoC2HwRg=
 github.com/mattn/go-colorable v0.1.9 h1:sqDoxXbdeALODt0DAeJCVp38ps9ZogZEAXjus69YV3U=
 github.com/mattn/go-colorable v0.1.9/go.mod h1:u6P/XSegPjTcexA+o6vUJrdnUu04hMope9wVRipJSqc=

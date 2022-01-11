@@ -1,17 +1,15 @@
 package mt
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"strings"
-	"text/tabwriter"
 	"time"
 
 	"github.com/fatih/color"
-	"golang.org/x/term"
+	"github.com/jefflinse/tablecloth"
 )
 
 var (
@@ -59,40 +57,40 @@ func FPrintResults(w io.Writer, results *GroupRunResult) {
 	case outputTypeJSON:
 		fprintJSONResults(w, results, false)
 	default:
-		cw := newColumnWriter(w, 4, 0)
-		fprintFormattedResults(cw, results, 0)
+		table := tablecloth.NewTable(4)
+		fprintFormattedResults(table, results, 0)
 	}
 }
 
 // printFormattedResults prints the results of a group run as a formatted table to stdout.
 func printFormattedResults(results *GroupRunResult) {
-	cw := newColumnWriter(os.Stdout, 4, 0)
-	fprintFormattedResults(cw, results, 0)
+	table := tablecloth.NewTable(4)
+	fprintFormattedResults(table, results, 0)
 }
 
 // fprintFormattedResults prints the results of a group run as a formatted table to the given io.Writer.
-func fprintFormattedResults(cw *columnWriter, groupResult *GroupRunResult, depth int) {
-	cw.printGroupHeader(groupResult.Group.Name, depth)
+func fprintFormattedResults(table *tablecloth.Table, groupResult *GroupRunResult, depth int) {
+	printGroupHeader(table, groupResult.Group.Name, depth)
 
 	for i := range groupResult.TestResults {
 		if len(groupResult.TestResults[i].TestResult.Failures()) > 0 {
-			cw.printTestFailure(i+1, groupResult.TestResults[i], depth)
+			printTestFailure(table, i+1, groupResult.TestResults[i], depth)
 		} else {
-			cw.printTestSuccess(i+1, groupResult.TestResults[i], depth)
+			printTestSuccess(table, i+1, groupResult.TestResults[i], depth)
 		}
 	}
 
 	// print a newline between last test result and first group result
 	if len(groupResult.TestResults) > 0 {
-		cw.printLine(depth+1, "")
+		printLine(table, depth+1, "")
 	}
 	for i := range groupResult.SubgroupResults {
-		fprintFormattedResults(cw, groupResult.SubgroupResults[i], depth+1)
+		fprintFormattedResults(table, groupResult.SubgroupResults[i], depth+1)
 		// print a newline after each subgroup
-		cw.printLine(depth+1, "")
+		printLine(table, depth+1, "")
 	}
 
-	cw.printGroupFooter(groupResult.Group.Name, depth, fmt.Sprintf(
+	printGroupFooter(table, groupResult.Group.Name, depth, fmt.Sprintf(
 		"%d passed, %d failed, %d skipped %s",
 		groupResult.Passed,
 		groupResult.Failed,
@@ -100,7 +98,7 @@ func fprintFormattedResults(cw *columnWriter, groupResult *GroupRunResult, depth
 		faintFG(fmt.Sprintf("in %s", groupResult.Duration.String()))))
 
 	if depth == 0 {
-		cw.Flush()
+		table.Write(os.Stdout)
 	}
 }
 
@@ -175,122 +173,108 @@ func fprintJSONResults(w io.Writer, result *GroupRunResult, deep bool) error {
 	})
 }
 
-type columnWriter struct {
-	columns            int
-	elasticColumnIndex int
-	format             string
-	dest               io.Writer
-	buf                *strings.Builder
-	tabWriter          *tabwriter.Writer
-	currentLineNum     int
-	nonTableLines      map[int][]string
-}
-
-type decoratorFunc func(...interface{}) string
-
-func newColumnWriter(output io.Writer, columns int, elasticColumnIndex int) *columnWriter {
-	buf := &strings.Builder{}
-	return &columnWriter{
-		columns:            columns,
-		elasticColumnIndex: elasticColumnIndex,
-		format:             strings.Repeat("%s\t", columns) + "\n",
-		buf:                buf,
-		dest:               output,
-		tabWriter:          tabwriter.NewWriter(buf, 0, 0, 2, ' ', 0),
-		currentLineNum:     -1,
-		nonTableLines:      map[int][]string{},
-	}
-}
-
-func (w *columnWriter) Flush() {
-	w.tabWriter.Flush()
-	if lines, ok := w.nonTableLines[-1]; ok {
-		fmt.Fprintln(w.dest, strings.Join(lines, "\n"))
-	}
-
-	s := bufio.NewScanner(strings.NewReader(w.buf.String()))
-	i := 0
-	for ; s.Scan(); i++ {
-		fmt.Fprintln(w.dest, s.Text())
-		if lines, ok := w.nonTableLines[i]; ok {
-			fmt.Fprintln(w.dest, strings.Join(lines, "\n"))
-		}
-	}
-
-	if lines, ok := w.nonTableLines[i]; ok {
-		fmt.Fprintln(w.dest, strings.Join(lines, "\n"))
-	}
-}
-
-func (w *columnWriter) printColumns(columns ...interface{}) {
-	if len(columns) > w.columns {
-		panic(fmt.Sprintf("PrintColumns() called with %d columns, expected at most %d", len(columns), w.columns))
-	}
-
-	fmt.Fprintf(w.tabWriter, w.format, columns...)
-	w.currentLineNum++
-}
-
-func (w *columnWriter) printGroupHeader(groupName string, depth int) {
+func printGroupHeader(table *tablecloth.Table, groupName string, depth int) {
 	if groupName == "" {
 		return
 	}
 	line := fmt.Sprintf("%s", strings.Repeat(indentationPrefix, depth))
 	line = fmt.Sprintf("%s%s", faintFG(line), groupHeaderColor(groupName))
-	w.nonTableLines[w.currentLineNum] = append(w.nonTableLines[w.currentLineNum], line)
+	table.AddLine(line)
 }
 
-func (w *columnWriter) printGroupFooter(groupName string, depth int, stats string) {
-	line := faintFG(fmt.Sprintf("%s%s", strings.Repeat(indentationPrefix, depth), groupFooterPrefix))
-	line = fmt.Sprintf("%s%s", line, stats)
-	w.nonTableLines[w.currentLineNum] = append(w.nonTableLines[w.currentLineNum], line)
+func printGroupFooter(table *tablecloth.Table, groupName string, depth int, stats string) {
+	line := fmt.Sprintf("%s%s", faintFG(groupFooterPrefix), stats)
+	printLine(table, depth, line)
 }
 
-func (w *columnWriter) printLine(depth int, str string, args ...interface{}) {
+func printLine(table *tablecloth.Table, depth int, str string, args ...interface{}) {
 	line := faintFG(strings.Repeat(indentationPrefix, depth)) + str
-	w.nonTableLines[w.currentLineNum] = append(w.nonTableLines[w.currentLineNum], line)
+	table.AddLine(line)
 }
 
-func (w *columnWriter) printTestSuccess(testNum int, result TestRunResult, depth int) {
-	w.printColumns(
-		fmt.Sprintf("%s%s %s",
-			faintFG(strings.Repeat(indentationPrefix, depth+1)),
-			fmt.Sprintf("%s %s", greenFG("✔"), whiteFG(testNum)),
-			whiteFG(result.TestCase.Description())),
-		blueBG(fmt.Sprintf("%7s ", result.TestCase.Action())),
-		result.TestCase.Target(),
-		faintFG(result.Duration.String()))
+func printTestSuccess(table *tablecloth.Table, testNum int, result TestRunResult, depth int) {
+
+	table.AddRow(
+		tablecloth.Cell{
+			Format: "%s%s %s %s",
+			Values: []tablecloth.FormattableCellValue{
+				{Value: strings.Repeat(indentationPrefix, depth+1), Format: faintFG},
+				{Value: "✔", Format: greenFG},
+				{Value: testNum, Format: whiteFG},
+				{Value: result.TestCase.Description(), Format: whiteFG},
+			},
+		},
+		tablecloth.Cell{
+			Format: "%s",
+			Values: []tablecloth.FormattableCellValue{
+				{Value: fmt.Sprintf("%7s ", result.TestCase.Action()), Format: blueBG},
+			},
+		},
+		tablecloth.Cell{
+			Format: result.TestCase.Target(),
+		},
+		tablecloth.Cell{
+			Format: "%7s ",
+			Values: []tablecloth.FormattableCellValue{
+				{Value: result.Duration.String(), Format: faintFG},
+			},
+		},
+	)
+
+	// w.printColumns(
+	// 	fmt.Sprintf("%s%s %s",
+	// 		faintFG(strings.Repeat(indentationPrefix, depth+1)),
+	// 		fmt.Sprintf("%s %s", greenFG("✔"), whiteFG(testNum)),
+	// 		whiteFG(result.TestCase.Description())),
+	// 	blueBG(fmt.Sprintf("%7s ", result.TestCase.Action())),
+	// 	result.TestCase.Target(),
+	// 	faintFG(result.Duration.String()))
 }
 
-func (w *columnWriter) printTestFailure(testNum int, result TestRunResult, depth int) {
-	w.printColumns(
-		fmt.Sprintf("%s%s %s",
-			faintFG(strings.Repeat(indentationPrefix, depth+1)),
-			fmt.Sprintf("%s %s", redFGBold("✘"), whiteFG(testNum)),
-			whiteFGBold(result.TestCase.Description())),
-		blueBG(fmt.Sprintf("%7s ", result.TestCase.Action())),
-		result.TestCase.Target(),
-		faintFG(result.Duration.String()))
+func printTestFailure(table *tablecloth.Table, testNum int, result TestRunResult, depth int) {
+
+	table.AddRow(
+		tablecloth.Cell{
+			Format: "%s%s %s %s",
+			Values: []tablecloth.FormattableCellValue{
+				{Value: strings.Repeat(indentationPrefix, depth+1), Format: faintFG},
+				{Value: "✘", Format: redFGBold},
+				{Value: testNum, Format: whiteFG},
+				{Value: result.TestCase.Description(), Format: whiteFGBold},
+			},
+		},
+		tablecloth.Cell{
+			Format: "%s",
+			Values: []tablecloth.FormattableCellValue{
+				{Value: fmt.Sprintf("%7s ", result.TestCase.Action()), Format: blueBG},
+			},
+		},
+		tablecloth.Cell{
+			Format: result.TestCase.Target(),
+		},
+		tablecloth.Cell{
+			Format: "%s",
+			Values: []tablecloth.FormattableCellValue{
+				{Value: result.Duration.String(), Format: faintFG},
+			},
+		},
+	)
+
+	// w.printColumns(
+	// 	fmt.Sprintf("%s%s %s",
+	// 		faintFG(strings.Repeat(indentationPrefix, depth+1)),
+	// 		fmt.Sprintf("%s %s", redFGBold("✘"), whiteFG(testNum)),
+	// 		whiteFGBold(result.TestCase.Description())),
+	// 	blueBG(fmt.Sprintf("%7s ", result.TestCase.Action())),
+	// 	result.TestCase.Target(),
+	// 	faintFG(result.Duration.String()))
 
 	failures := result.TestResult.Failures()
 	for i := 0; i < len(failures)-1; i++ {
 		// w.printLine(depth+1, redFG(fmt.Sprintf("├╴  %s", failures[i])))
-		w.printLine(depth+1, redFG(fmt.Sprintf("  %s", failures[i])))
+		printLine(table, depth+1, redFG(fmt.Sprintf("  %s", failures[i])))
 	}
 
-	w.printLine(depth+1, redFG(fmt.Sprintf("  %s", failures[len(failures)-1])))
+	printLine(table, depth+1, redFG(fmt.Sprintf("  %s", failures[len(failures)-1])))
 	// w.printLine(depth+1, redFG(fmt.Sprintf("└╴  %s", failures[len(failures)-1])))
-}
-
-func getTerminalWidth() int {
-	if !term.IsTerminal(0) {
-		return 0
-	}
-
-	width, _, err := term.GetSize(0)
-	if err != nil {
-		return 0
-	}
-
-	return width
 }
