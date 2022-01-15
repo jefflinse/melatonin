@@ -16,7 +16,7 @@ func SimpleExample() {
 	mux := createSimpleServeMux()
 	myHandler := mt.NewHandlerContext(mux)
 
-	result := mt.RunTests([]mt.TestCase{
+	result := mt.RunTests(
 
 		myURL.GET("/foo", "Fetch /foo from a URL").
 			WithHeader("Some-Header", "foo").
@@ -29,7 +29,7 @@ func SimpleExample() {
 			WithBody("Hello, world!").
 			ExpectStatus(200).
 			ExpectBody("Hello, world!"),
-	})
+	)
 
 	mt.PrintResults(result)
 }

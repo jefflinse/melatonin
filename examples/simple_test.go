@@ -17,7 +17,7 @@ func SimpleExampleTest(t *testing.T) {
 	mux := createSimpleServeMux()
 	myHandler := mt.NewHandlerContext(mux)
 
-	mt.RunTestsT(t, []mt.TestCase{
+	mt.RunTestsT(t,
 
 		myURL.GET("/foo", "Fetch /foo from a URL").
 			ExpectStatus(200).
@@ -26,7 +26,7 @@ func SimpleExampleTest(t *testing.T) {
 		myHandler.GET("/foo", "Fetch /foo from a handler").
 			ExpectStatus(200).
 			ExpectBody("Hello, world!"),
-	})
+	)
 }
 
 func createSimpleServeMux() *http.ServeMux {

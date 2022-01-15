@@ -213,7 +213,7 @@ func FullExample() {
 			ExpectGolden("golden/expect-headers-and-json-body.golden"),
 	)
 
-	results := runner.RunTestGroups([]*mt.TestGroup{group1, group2, group3})
+	results := runner.RunTestGroups(group1, group2, group3)
 
 	// Print the results of the test run.
 	mt.PrintResults(results)

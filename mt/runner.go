@@ -93,14 +93,14 @@ func (r *TestRunner) WithRequestTimeout(timeout time.Duration) *TestRunner {
 // RunTests runs a set of tests.
 //
 // To run tests within a Go test context, use RunTestsT().
-func (r *TestRunner) RunTests(tests []TestCase) *GroupRunResult {
-	return r.RunTestsT(nil, tests)
+func (r *TestRunner) RunTests(tests ...TestCase) *GroupRunResult {
+	return r.RunTestsT(nil, tests...)
 }
 
 // RunTestsT runs a set of tests within a Go test context.
 //
 // To run tests standalone to print or examine results, use RunTests().
-func (r *TestRunner) RunTestsT(t *testing.T, tests []TestCase) *GroupRunResult {
+func (r *TestRunner) RunTestsT(t *testing.T, tests ...TestCase) *GroupRunResult {
 	group := NewTestGroup("").AddTests(tests...)
 	return r.RunTestGroupT(t, group)
 }
@@ -194,27 +194,27 @@ func (r *TestRunner) runSubgroups(t *testing.T, groupResult *GroupRunResult) {
 }
 
 // RunTestGroups runs a set of test groups using the default test runner.
-func (r *TestRunner) RunTestGroups(groups []*TestGroup) *GroupRunResult {
+func (r *TestRunner) RunTestGroups(groups ...*TestGroup) *GroupRunResult {
 	group := NewTestGroup("").AddGroups(groups...)
 	return r.RunTestGroup(group)
 }
 
 // RunTestGroupsT runs a set of test groups within the context of a Go test
 // using the default test runner.
-func (r *TestRunner) RunTestGroupsT(t *testing.T, groups []*TestGroup) *GroupRunResult {
+func (r *TestRunner) RunTestGroupsT(t *testing.T, groups ...*TestGroup) *GroupRunResult {
 	group := NewTestGroup("").AddGroups(groups...)
 	return r.RunTestGroupT(t, group)
 }
 
 // RunTests runs a set of tests using the default test runner.
-func RunTests(tests []TestCase) *GroupRunResult {
-	return NewTestRunner().RunTests(tests)
+func RunTests(tests ...TestCase) *GroupRunResult {
+	return NewTestRunner().RunTests(tests...)
 }
 
 // RunTestsT runs a set of tests within a Go test context
 // using the default test runner.
-func RunTestsT(t *testing.T, tests []TestCase) *GroupRunResult {
-	return NewTestRunner().RunTestsT(t, tests)
+func RunTestsT(t *testing.T, tests ...TestCase) *GroupRunResult {
+	return NewTestRunner().RunTestsT(t, tests...)
 }
 
 // RunTestGroup runs a test group using the default test runner.
@@ -229,12 +229,12 @@ func RunTestGroupT(t *testing.T, group *TestGroup) *GroupRunResult {
 }
 
 // RunTestGroups runs a set of test groups using the default test runner.
-func RunTestGroups(groups []*TestGroup) *GroupRunResult {
-	return NewTestRunner().RunTestGroups(groups)
+func RunTestGroups(groups ...*TestGroup) *GroupRunResult {
+	return NewTestRunner().RunTestGroups(groups...)
 }
 
 // RunTestGroupsT runs a set of test groups within the context of a Go test
 // using the default test runner.
-func RunTestGroupsT(t *testing.T, groups []*TestGroup) *GroupRunResult {
-	return NewTestRunner().RunTestGroupsT(t, groups)
+func RunTestGroupsT(t *testing.T, groups ...*TestGroup) *GroupRunResult {
+	return NewTestRunner().RunTestGroupsT(t, groups...)
 }
