@@ -405,7 +405,10 @@ func compareSliceValues(expected []interface{}, actual interface{}, exact bool) 
 		return errs
 	}
 
-	if exact && len(a) != len(expected) {
+	if len(a) < len(expected) {
+		errs = append(errs, failedPredicate(fmt.Errorf("expected at least %d elements, got %d: %+v", len(expected), len(a), a)))
+		return errs
+	} else if exact && len(a) > len(expected) {
 		errs = append(errs, failedPredicate(fmt.Errorf("expected %d elements, got %d: %+v", len(expected), len(a), a)))
 		return errs
 	}
