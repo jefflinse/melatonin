@@ -1,6 +1,7 @@
 package expect
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"sort"
@@ -361,7 +362,12 @@ func compareMapValues(expected map[string]interface{}, actual interface{}, exact
 
 	if exact {
 		if len(m) != len(expected) {
-			errs = append(errs, failedPredicate(fmt.Errorf("expected %d fields, got %d: %+v", len(expected), len(m), m)))
+			j, err := json.MarshalIndent(m, "", "  ")
+			if err != nil {
+				errs = append(errs, failedPredicate(err))
+			}
+
+			errs = append(errs, failedPredicate(fmt.Errorf("expected %d fields, got %d:\n%+v", len(expected), len(m), string(j))))
 			return errs
 		}
 
