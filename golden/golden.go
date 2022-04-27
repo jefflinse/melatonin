@@ -29,7 +29,7 @@ type Golden struct {
 	// and MatchBodyJSONExactly is set to true, the JSON is expected to exactly
 	// match exactly, and any unexpected JSON keys or values will cause the test
 	// utilizing this golden file to fail.
-	WantBody interface{}
+	WantBody any
 
 	// MatchHeadersExactly determines whether or not unexpected headers will cause
 	// a test utilizing this golden file to fail.
@@ -166,7 +166,7 @@ func (g *Golden) SaveFile(path string) error {
 		switch bodyVal := g.WantBody.(type) {
 		case string:
 			content = bodyVal
-		case map[string]interface{}, []interface{}:
+		case map[string]any, []any:
 			bodyDirectives = append(bodyDirectives, "json")
 			if g.MatchBodyJSONExactly {
 				bodyDirectives = append(bodyDirectives, "exact")
@@ -295,7 +295,7 @@ func (g *Golden) parseBodyLines(lines []string, asJSON bool) error {
 	return nil
 }
 
-func bodyContentToString(body interface{}) (string, error) {
+func bodyContentToString(body any) (string, error) {
 	b, err := json.Marshal(body)
 	if err != nil {
 		return "", fmt.Errorf("unable to marshal body content: %w", err)

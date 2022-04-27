@@ -106,7 +106,7 @@ func handleRequest(h http.Handler, req *http.Request) (int, http.Header, []byte,
 	return resp.StatusCode, resp.Header, b, err
 }
 
-func toBytes(body interface{}) ([]byte, error) {
+func toBytes(body any) ([]byte, error) {
 	var b []byte
 	if body != nil {
 		var err error
@@ -131,14 +131,14 @@ func toBytes(body interface{}) ([]byte, error) {
 	return b, nil
 }
 
-func toInterface(body []byte) interface{} {
+func toInterface(body []byte) any {
 	if len(body) > 0 {
-		var bodyMap map[string]interface{}
+		var bodyMap map[string]any
 		if err := json.Unmarshal(body, &bodyMap); err == nil {
 			return bodyMap
 		}
 
-		var bodyArray []interface{}
+		var bodyArray []any
 		if err := json.Unmarshal(body, &bodyArray); err == nil {
 			return bodyArray
 		}
@@ -149,17 +149,17 @@ func toInterface(body []byte) interface{} {
 	return nil
 }
 
-type parameters map[string]interface{}
+type parameters map[string]any
 
 // Apply maps the values to a target path.
 func (p parameters) applyTo(path string) (string, error) {
-	resolved, err := mtjson.ResolveDeferred(map[string]interface{}(p))
+	resolved, err := mtjson.ResolveDeferred(map[string]any(p))
 	if err != nil {
 		return "", err
 	}
 
 	result := path
-	for k, v := range resolved.(map[string]interface{}) {
+	for k, v := range resolved.(map[string]any) {
 		str, err := paramString(v)
 		if err != nil {
 			return "", err
@@ -174,7 +174,7 @@ func (p parameters) applyTo(path string) (string, error) {
 	return result, nil
 }
 
-func paramString(v interface{}) (string, error) {
+func paramString(v any) (string, error) {
 	str := ""
 	switch value := v.(type) {
 	case bool:
@@ -195,13 +195,13 @@ func paramString(v interface{}) (string, error) {
 }
 
 func (p parameters) asRawQuery() (string, error) {
-	resolved, err := mtjson.ResolveDeferred(map[string]interface{}(p))
+	resolved, err := mtjson.ResolveDeferred(map[string]any(p))
 	if err != nil {
 		return "", err
 	}
 
 	params := url.Values{}
-	for k, v := range resolved.(map[string]interface{}) {
+	for k, v := range resolved.(map[string]any) {
 		str, err := paramString(v)
 		if err != nil {
 			return "", err

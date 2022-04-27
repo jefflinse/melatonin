@@ -55,7 +55,7 @@ type HTTPTestCase struct {
 	queryParams parameters
 
 	// Body for the HTTP request. May contain deferred values.
-	requestBody interface{}
+	requestBody any
 
 	// Configuration for the test
 	tctx *HTTPTestContext
@@ -70,7 +70,7 @@ type HTTPTestCase struct {
 // expectatons represents the expected values for single HTTP response.
 type expectatons struct {
 	// Body is the expected HTTP response body content.
-	Body interface{}
+	Body any
 
 	// ExactHeaders indicates whether or not any unexpected response headers
 	// should be treated as a test failure.
@@ -207,7 +207,7 @@ func (tc *HTTPTestCase) Target() string {
 //
 
 // WithBody sets the request body for the test case.
-func (tc *HTTPTestCase) WithBody(body interface{}) *HTTPTestCase {
+func (tc *HTTPTestCase) WithBody(body any) *HTTPTestCase {
 	tc.requestBody = body
 	return tc
 }
@@ -225,25 +225,25 @@ func (tc *HTTPTestCase) WithHeaders(headers http.Header) *HTTPTestCase {
 }
 
 // WithPathParam adds a request path parameter to the test case.
-func (tc *HTTPTestCase) WithPathParam(key string, value interface{}) *HTTPTestCase {
+func (tc *HTTPTestCase) WithPathParam(key string, value any) *HTTPTestCase {
 	tc.pathParams[key] = value
 	return tc
 }
 
 // WithPathParams sets the request path parameters for the test case.
-func (tc *HTTPTestCase) WithPathParams(params map[string]interface{}) *HTTPTestCase {
+func (tc *HTTPTestCase) WithPathParams(params map[string]any) *HTTPTestCase {
 	tc.pathParams = params
 	return tc
 }
 
 // WithQueryParam adds a request query parameter to the test case.
-func (tc *HTTPTestCase) WithQueryParam(key string, value interface{}) *HTTPTestCase {
+func (tc *HTTPTestCase) WithQueryParam(key string, value any) *HTTPTestCase {
 	tc.queryParams[key] = value
 	return tc
 }
 
 // WithQueryParams sets the request query parameters for the test case.
-func (tc *HTTPTestCase) WithQueryParams(params map[string]interface{}) *HTTPTestCase {
+func (tc *HTTPTestCase) WithQueryParams(params map[string]any) *HTTPTestCase {
 	tc.queryParams = params
 	return tc
 }
@@ -261,7 +261,7 @@ func (tc *HTTPTestCase) WithTimeout(timeout time.Duration) *HTTPTestCase {
 //
 
 // ExpectBody sets the expected HTTP response body for the test case.
-func (tc *HTTPTestCase) ExpectBody(body interface{}) *HTTPTestCase {
+func (tc *HTTPTestCase) ExpectBody(body any) *HTTPTestCase {
 	tc.Expectations.Body = body
 	return tc
 }
@@ -273,7 +273,7 @@ func (tc *HTTPTestCase) ExpectBody(body interface{}) *HTTPTestCase {
 // additional fields or values not present in the expected JSON content.
 //
 // For non-JSON values, ExpectExactBody behaves identically to ExpectBody.
-func (tc *HTTPTestCase) ExpectExactBody(body interface{}) *HTTPTestCase {
+func (tc *HTTPTestCase) ExpectExactBody(body any) *HTTPTestCase {
 	tc.Expectations.WantExactJSONBody = true
 	return tc.ExpectBody(body)
 }
@@ -348,14 +348,14 @@ func (tc *HTTPTestCase) Validate() error {
 
 type jsonTestCase struct {
 	Headers      http.Header              `json:"headers,omitempty"`
-	Body         interface{}              `json:"body,omitempty"`
+	Body         any                      `json:"body,omitempty"`
 	Expectations jsonTestCaseExpectations `json:"expectations,omitempty"`
 }
 
 type jsonTestCaseExpectations struct {
 	Status            int         `json:"status,omitempty"`
 	Headers           http.Header `json:"headers,omitempty"`
-	Body              interface{} `json:"body,omitempty"`
+	Body              any         `json:"body,omitempty"`
 	WantExactHeaders  bool        `json:"want_exact_headers"`
 	WantExactJSONBody bool        `json:"want_exact_json_body"`
 }

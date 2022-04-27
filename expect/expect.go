@@ -10,7 +10,7 @@ import (
 )
 
 // A Predicate is a function that takes a test result value and possibly returns an error.
-type Predicate func(interface{}) error
+type Predicate func(any) error
 
 // Then chains a new Predicate to run after the current Predicate.
 func (p Predicate) Then(next Predicate) Predicate {
@@ -18,7 +18,7 @@ func (p Predicate) Then(next Predicate) Predicate {
 		return p
 	}
 
-	return func(actual interface{}) error {
+	return func(actual any) error {
 		if err := p(actual); err != nil {
 			return err
 		}
@@ -38,7 +38,7 @@ func (p Predicate) Or(next Predicate) Predicate {
 		return p
 	}
 
-	return func(actual interface{}) error {
+	return func(actual any) error {
 		if err := p(actual); err != nil {
 			return next(actual)
 		}
@@ -50,7 +50,7 @@ func (p Predicate) Or(next Predicate) Predicate {
 // Bool creates a predicate requiring a value to be a bool, optionally matching
 // against a set of values.
 func Bool(expected ...bool) Predicate {
-	return func(actual interface{}) error {
+	return func(actual any) error {
 		n, ok := actual.(bool)
 		if !ok {
 			return wrongTypeError(true, actual)
@@ -73,7 +73,7 @@ func Bool(expected ...bool) Predicate {
 // Float creates a predicate requiring a value to be an floating point number,
 // optionally matching against a set of values.
 func Float(expected ...float64) Predicate {
-	return func(actual interface{}) error {
+	return func(actual any) error {
 		n, ok := toFloat(actual)
 		if !ok {
 			return wrongTypeError(float64(0), actual)
@@ -96,7 +96,7 @@ func Float(expected ...float64) Predicate {
 // Int creates a predicate requiring a value to be an integer, optionally matching
 // against a set of values.
 func Int(expected ...int64) Predicate {
-	return func(actual interface{}) error {
+	return func(actual any) error {
 		n, ok := toInt(actual)
 		if !ok {
 			return wrongTypeError(expected, actual)
@@ -118,9 +118,9 @@ func Int(expected ...int64) Predicate {
 
 // Map creates a predicate requiring a value to be a map, optionally matching
 // against a set of values.
-func Map(expected ...map[string]interface{}) Predicate {
-	return func(actual interface{}) error {
-		m, ok := actual.(map[string]interface{})
+func Map(expected ...map[string]any) Predicate {
+	return func(actual any) error {
+		m, ok := actual.(map[string]any)
 		if !ok {
 			return fmt.Errorf("expected map, got %T: %+v", actual, actual)
 		}
@@ -144,7 +144,7 @@ func Map(expected ...map[string]interface{}) Predicate {
 func Pattern(regex string) Predicate {
 	r, err := regexp.Compile(regex)
 	if err != nil {
-		return func(interface{}) error {
+		return func(any) error {
 			return fmt.Errorf("invalid regex: %q", regex)
 		}
 	}
@@ -155,7 +155,7 @@ func Pattern(regex string) Predicate {
 // Regex creates a predicate requiring a value to be a string that matches a
 // regular expression, optionally matching against a set of values.
 func Regex(regex *regexp.Regexp) Predicate {
-	return String().Then(func(actual interface{}) error {
+	return String().Then(func(actual any) error {
 		s, _ := actual.(string)
 		if !regex.MatchString(s) {
 			return fmt.Errorf("expected to match pattern %q, got %q", regex.String(), s)
@@ -167,9 +167,9 @@ func Regex(regex *regexp.Regexp) Predicate {
 
 // Slice creates a predicate requiring a value to be a slice, optionally matching
 // against a set of values.
-func Slice(expected ...[]interface{}) Predicate {
-	return func(actual interface{}) error {
-		s, ok := actual.([]interface{})
+func Slice(expected ...[]any) Predicate {
+	return func(actual any) error {
+		s, ok := actual.([]any)
 		if !ok {
 			return fmt.Errorf("expected slice, got %T: %+v", actual, actual)
 		}
@@ -191,7 +191,7 @@ func Slice(expected ...[]interface{}) Predicate {
 // String creates a predicate requiring a value to be a string, optionally matching
 // against a set of values.
 func String(expected ...string) Predicate {
-	return func(actual interface{}) error {
+	return func(actual any) error {
 		s, ok := actual.(string)
 		if !ok {
 			return fmt.Errorf("expected string, got %T: %+v", actual, actual)
@@ -212,7 +212,7 @@ func String(expected ...string) Predicate {
 }
 
 // CompareValues compares an expected value to an actual value.
-func CompareValues(expected, actual interface{}, exactJSON bool) []*FailedPredicateError {
+func CompareValues(expected, actual any, exactJSON bool) []*FailedPredicateError {
 	errs := []*FailedPredicateError{}
 
 	if expected == nil && actual != nil {
@@ -269,24 +269,24 @@ func CompareValues(expected, actual interface{}, exactJSON bool) []*FailedPredic
 			return errs
 		}
 
-	case mtjson.Object, map[string]interface{}:
-		ev, ok := expectedValue.(map[string]interface{})
+	case mtjson.Object, map[string]any:
+		ev, ok := expectedValue.(map[string]any)
 		if !ok {
-			ev = map[string]interface{}(expectedValue.(mtjson.Object))
+			ev = map[string]any(expectedValue.(mtjson.Object))
 		}
 		return compareMapValues(ev, actual, exactJSON)
 
-	case mtjson.Array, []interface{}:
-		ev, ok := expectedValue.([]interface{})
+	case mtjson.Array, []any:
+		ev, ok := expectedValue.([]any)
 		if !ok {
-			ev = []interface{}(expectedValue.(mtjson.Array))
+			ev = []any(expectedValue.(mtjson.Array))
 		}
 		return compareSliceValues(ev, actual, exactJSON)
 
-	case Predicate, func(interface{}) error:
+	case Predicate, func(any) error:
 		f, ok := expectedValue.(Predicate)
 		if !ok {
-			f = Predicate(expectedValue.(func(interface{}) error))
+			f = Predicate(expectedValue.(func(any) error))
 		}
 		if err := f(actual); err != nil {
 			errs = append(errs, failedPredicate(err))
@@ -301,35 +301,35 @@ func CompareValues(expected, actual interface{}, exactJSON bool) []*FailedPredic
 }
 
 // compareBoolValues compares an expected bool to an actual bool.
-func compareBoolValues(expected bool, actual interface{}) *FailedPredicateError {
+func compareBoolValues(expected bool, actual any) *FailedPredicateError {
 	b, ok := actual.(bool)
 	if !ok {
 		return wrongTypeError(expected, actual)
 	}
 
 	if b != expected {
-		return wrongValueError([]interface{}{expected}, actual)
+		return wrongValueError([]any{expected}, actual)
 	}
 
 	return nil
 }
 
 // compareFloat64Values compares an expected float64 to an actual float64.
-func compareFloat64Values(expected float64, actual interface{}) *FailedPredicateError {
+func compareFloat64Values(expected float64, actual any) *FailedPredicateError {
 	n, ok := actual.(float64)
 	if !ok {
 		return wrongTypeError(expected, actual)
 	}
 
 	if n != expected {
-		return wrongValueError([]interface{}{expected}, actual)
+		return wrongValueError([]any{expected}, actual)
 	}
 
 	return nil
 }
 
 // compareInt64Values compares an expected int64 to an actual int64.
-func compareInt64Values(expected int64, actual interface{}) *FailedPredicateError {
+func compareInt64Values(expected int64, actual any) *FailedPredicateError {
 	n, ok := actual.(int64)
 	if !ok {
 		f, ok := actual.(float64)
@@ -344,17 +344,17 @@ func compareInt64Values(expected int64, actual interface{}) *FailedPredicateErro
 	}
 
 	if n != expected {
-		return wrongValueError([]interface{}{expected}, actual)
+		return wrongValueError([]any{expected}, actual)
 	}
 
 	return nil
 }
 
 // compareMapValues compares an expected JSON object to an actual JSON object.
-func compareMapValues(expected map[string]interface{}, actual interface{}, exact bool) []*FailedPredicateError {
+func compareMapValues(expected map[string]any, actual any, exact bool) []*FailedPredicateError {
 	errs := []*FailedPredicateError{}
 
-	m, ok := actual.(map[string]interface{})
+	m, ok := actual.(map[string]any)
 	if !ok {
 		errs = append(errs, wrongTypeError(expected, actual))
 		return errs
@@ -402,10 +402,10 @@ func compareMapValues(expected map[string]interface{}, actual interface{}, exact
 }
 
 // compareSliceValues compares an expected slice to an actual slice.
-func compareSliceValues(expected []interface{}, actual interface{}, exact bool) []*FailedPredicateError {
+func compareSliceValues(expected []any, actual any, exact bool) []*FailedPredicateError {
 	errs := []*FailedPredicateError{}
 
-	a, ok := actual.([]interface{})
+	a, ok := actual.([]any)
 	if !ok {
 		errs = append(errs, wrongTypeError(expected, actual))
 		return errs
@@ -438,14 +438,14 @@ func compareSliceValues(expected []interface{}, actual interface{}, exact bool) 
 }
 
 // compareStringValues compares an expected string to an actual string.
-func compareStringValues(expected string, actual interface{}) *FailedPredicateError {
+func compareStringValues(expected string, actual any) *FailedPredicateError {
 	s, ok := actual.(string)
 	if !ok {
 		return wrongTypeError(expected, actual)
 	}
 
 	if s != expected {
-		return wrongValueError([]interface{}{expected}, actual)
+		return wrongValueError([]any{expected}, actual)
 	}
 
 	return nil
@@ -456,7 +456,7 @@ func floatToInt(f float64) (int64, bool) {
 	return n, float64(n) == f
 }
 
-func toInt(v interface{}) (int64, bool) {
+func toInt(v any) (int64, bool) {
 	switch v := v.(type) {
 	case int64:
 		return v, true
@@ -477,7 +477,7 @@ func toInt(v interface{}) (int64, bool) {
 	}
 }
 
-func toFloat(v interface{}) (float64, bool) {
+func toFloat(v any) (float64, bool) {
 	switch v := v.(type) {
 	case float64:
 		return v, true

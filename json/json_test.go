@@ -12,8 +12,8 @@ import (
 func TestGetDeferredValue(t *testing.T) {
 	for _, test := range []struct {
 		name    string
-		have    interface{}
-		want    interface{}
+		have    any
+		want    any
 		wantErr string
 	}{
 		{
@@ -39,70 +39,70 @@ func TestGetDeferredValue(t *testing.T) {
 		},
 		{
 			"resolve a deferred map",
-			map[string]interface{}{"foo": strPtr("bar")},
-			map[string]interface{}{"foo": "bar"},
+			map[string]any{"foo": strPtr("bar")},
+			map[string]any{"foo": "bar"},
 			"",
 		},
 		{
 			"resolve a deferred map with error",
-			map[string]interface{}{"foo": func() (interface{}, error) { return nil, fmt.Errorf("error") }},
+			map[string]any{"foo": func() (any, error) { return nil, fmt.Errorf("error") }},
 			nil,
 			"foo: error",
 		},
 		{
 			"resolve a deferred slice",
-			[]interface{}{strPtr("foo")},
-			[]interface{}{"foo"},
+			[]any{strPtr("foo")},
+			[]any{"foo"},
 			"",
 		},
 		{
 			"resolve a deferred slice with error",
-			[]interface{}{func() (interface{}, error) { return nil, fmt.Errorf("error") }},
+			[]any{func() (any, error) { return nil, fmt.Errorf("error") }},
 			nil,
 			"[0]: error",
 		},
 		{
 			"resolve a deferred slice with slice with error",
-			[]interface{}{[]interface{}{func() (interface{}, error) { return nil, fmt.Errorf("error") }}},
+			[]any{[]any{func() (any, error) { return nil, fmt.Errorf("error") }}},
 			nil,
 			"[0][0]: error",
 		},
 		{
 			"resolve a deferred map with slice with error",
-			map[string]interface{}{"foo": []interface{}{func() (interface{}, error) { return nil, fmt.Errorf("error") }}},
+			map[string]any{"foo": []any{func() (any, error) { return nil, fmt.Errorf("error") }}},
 			nil,
 			"foo[0]: error",
 		},
 
 		{
 			"resolve a deferred map with map with error",
-			map[string]interface{}{"foo": map[string]interface{}{"bar": func() (interface{}, error) { return nil, fmt.Errorf("error") }}},
+			map[string]any{"foo": map[string]any{"bar": func() (any, error) { return nil, fmt.Errorf("error") }}},
 			nil,
 			"foo.bar: error",
 		},
 
 		{
 			"resolve a deferred map with map with slice with error",
-			map[string]interface{}{"foo": map[string]interface{}{"bar": []interface{}{func() (interface{}, error) { return nil, fmt.Errorf("error") }}}},
+			map[string]any{"foo": map[string]any{"bar": []any{func() (any, error) { return nil, fmt.Errorf("error") }}}},
 			nil,
 			"foo.bar[0]: error",
 		},
 
 		{
 			"resolve a deferred function",
-			func() interface{} { return "foo" },
+			func() any { return "foo" },
 			"foo",
 			"",
 		},
 		{
 			"resolve a deferred function with no error",
-			func() (interface{}, error) { return "foo", nil },
+			func() (any, error) { return "foo", nil },
 			"foo",
 			"",
 		},
 		{
 			"resolve a deferred function with error",
-			func() (interface{}, error) { return nil, fmt.Errorf("foo") },
+			func() (any, error) { return nil, fmt.Errorf("foo") },
 			nil,
 			"foo",
 		},

@@ -82,7 +82,7 @@ func TestLoadFile(t *testing.T) {
 			content: "200\n--- body     json\n{}",
 			wantGolden: &golden.Golden{
 				WantStatus: 200,
-				WantBody:   map[string]interface{}{},
+				WantBody:   map[string]any{},
 			},
 		},
 		{
@@ -90,7 +90,7 @@ func TestLoadFile(t *testing.T) {
 			content: "200\n--- body json\n{\"foo\":[\"bar\"]}",
 			wantGolden: &golden.Golden{
 				WantStatus: 200,
-				WantBody:   map[string]interface{}{"foo": []interface{}{"bar"}},
+				WantBody:   map[string]any{"foo": []any{"bar"}},
 			},
 		},
 		{
@@ -98,7 +98,7 @@ func TestLoadFile(t *testing.T) {
 			content: "200\n--- body json exact\n{\"foo\":[\"bar\"]}",
 			wantGolden: &golden.Golden{
 				WantStatus:           200,
-				WantBody:             map[string]interface{}{"foo": []interface{}{"bar"}},
+				WantBody:             map[string]any{"foo": []any{"bar"}},
 				MatchBodyJSONExactly: true,
 			},
 		},
@@ -107,7 +107,7 @@ func TestLoadFile(t *testing.T) {
 			content: "200\n--- body exact json\n{\"foo\":[\"bar\"]}",
 			wantGolden: &golden.Golden{
 				WantStatus:           200,
-				WantBody:             map[string]interface{}{"foo": []interface{}{"bar"}},
+				WantBody:             map[string]any{"foo": []any{"bar"}},
 				MatchBodyJSONExactly: true,
 			},
 		},
@@ -258,14 +258,14 @@ func TestSaveFile(t *testing.T) {
 			name: "success, status and JSON body",
 			g: &golden.Golden{
 				WantStatus: 200,
-				WantBody:   map[string]interface{}{"foo": []interface{}{"bar"}},
+				WantBody:   map[string]any{"foo": []any{"bar"}},
 			},
 		},
 		{
 			name: "success, status and exact JSON body",
 			g: &golden.Golden{
 				WantStatus:           200,
-				WantBody:             map[string]interface{}{"foo": []interface{}{"bar"}},
+				WantBody:             map[string]any{"foo": []any{"bar"}},
 				MatchBodyJSONExactly: true,
 			},
 		},
@@ -297,7 +297,7 @@ func TestSaveFile(t *testing.T) {
 			name: "failure, invalid body JSON element",
 			g: &golden.Golden{
 				WantStatus: 200,
-				WantBody:   map[string]interface{}{"foo": make(chan int)},
+				WantBody:   map[string]any{"foo": make(chan int)},
 			},
 			wantError: "unable to marshal body content: json: unsupported type: chan int",
 		},

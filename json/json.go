@@ -5,11 +5,11 @@ import (
 	"strings"
 )
 
-// Object is a type alias for map[string]interface{}.
-type Object map[string]interface{}
+// Object is a type alias for map[string]any.
+type Object map[string]any
 
-// Array is a type alias for []interface{}.
-type Array []interface{}
+// Array is a type alias for []any.
+type Array []any
 
 // A DeferredValueError is an error type that is returned when a deferred value
 // cannot be resolved.
@@ -33,19 +33,19 @@ func (dve DeferredValueError) WithPrefix(prefix string) DeferredValueError {
 // ResolveDeferred resolves a concrete value from a number of different input types,
 // such as pointers, functions, and maps and slices potentially containing more
 // deferred values.
-func ResolveDeferred(v interface{}) (interface{}, error) {
+func ResolveDeferred(v any) (any, error) {
 	switch value := v.(type) {
-	case func() interface{}:
+	case func() any:
 		return value(), nil
-	case func() (interface{}, error):
+	case func() (any, error):
 		return value()
-	case map[string]interface{}:
+	case map[string]any:
 		mapVal, err := getDeferredMapValue(value)
 		if err != nil {
 			return nil, err
 		}
 		return mapVal, nil
-	case []interface{}:
+	case []any:
 		mapVal, err := getDeferredSliceValue(value)
 		if err != nil {
 			return nil, err
@@ -71,8 +71,8 @@ func ResolveDeferred(v interface{}) (interface{}, error) {
 	}
 }
 
-func getDeferredMapValue(m map[string]interface{}) (map[string]interface{}, error) {
-	result := make(map[string]interface{}, len(m))
+func getDeferredMapValue(m map[string]any) (map[string]any, error) {
+	result := make(map[string]any, len(m))
 	for k, v := range m {
 		value, err := ResolveDeferred(v)
 		if err != nil {
@@ -95,8 +95,8 @@ func getDeferredMapValue(m map[string]interface{}) (map[string]interface{}, erro
 	return result, nil
 }
 
-func getDeferredSliceValue(s []interface{}) ([]interface{}, error) {
-	result := make([]interface{}, len(s))
+func getDeferredSliceValue(s []any) ([]any, error) {
+	result := make([]any, len(s))
 	for i, v := range s {
 		value, err := ResolveDeferred(v)
 		if err != nil {

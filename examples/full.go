@@ -124,7 +124,7 @@ func FullExample() {
 			WithHeader("Accept", "application/json").
 			ExpectStatus(200).
 			ExpectBody(json.Object{
-				"a_string": expect.Predicate(func(v interface{}) error {
+				"a_string": expect.Predicate(func(v any) error {
 					if s, ok := v.(string); ok && s == "Hello, universe!" {
 						return nil
 					}
@@ -136,7 +136,7 @@ func FullExample() {
 			}),
 
 		myURL.GET("/bar/:first/:second", "Fetch bar specifying path parameters all at once").
-			WithPathParams(map[string]interface{}{
+			WithPathParams(map[string]any{
 				"first":  "foo",
 				"second": &someInt,
 			}).
@@ -160,14 +160,14 @@ func FullExample() {
 
 	group2.AddGroups(mt.NewTestGroup("Query Parameters").AddTests(
 		myURL.GET("/bar", "Fetch bar specifying query parameters all at once").
-			WithQueryParams(map[string]interface{}{
+			WithQueryParams(map[string]any{
 				"first":  []string{"foo"},
 				"second": &someInt,
 			}).
 			ExpectStatus(404),
 
 		myURL.GET("/bar", "Fetch bar specifying query parameters all at once").
-			WithQueryParams(map[string]interface{}{
+			WithQueryParams(map[string]any{
 				"first":  []string{"foo"},
 				"second": &someInt,
 			}).
@@ -182,7 +182,7 @@ func FullExample() {
 	group3 := mt.NewTestGroup("More Tests").AddTests(
 		myURL.POST("/foo", "Create a new foo specifying a Go map as the body").
 			WithHeader("Accept", "application/json"). // add a single header
-			WithBody(map[string]interface{}{          // specify the body using Go types
+			WithBody(map[string]any{                  // specify the body using Go types
 				"key": "value",
 			}).
 			ExpectStatus(201).

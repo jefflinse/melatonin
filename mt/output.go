@@ -187,7 +187,7 @@ func printGroupFooter(table *tablecloth.Table, groupName string, depth int, stat
 	printLine(table, depth, line)
 }
 
-func printLine(table *tablecloth.Table, depth int, str string, args ...interface{}) {
+func printLine(table *tablecloth.Table, depth int, str string, args ...any) {
 	line := faintFG(strings.Repeat(indentationPrefix, depth)) + str
 	table.AddLine(line)
 }

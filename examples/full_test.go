@@ -119,7 +119,7 @@ func TestFullExample(t *testing.T) {
 			ExpectBody("Hello, world!"),
 
 		myURL.GET("/bar", "Fetch bar specifying query parameters all at once").
-			WithQueryParams(map[string]interface{}{
+			WithQueryParams(map[string]any{
 				"first":  []string{"foo"},
 				"second": []string{"bar"},
 			}).
@@ -132,7 +132,7 @@ func TestFullExample(t *testing.T) {
 
 		myURL.POST("/foo", "Create a new foo specifying a Go map as the body").
 			WithHeader("Accept", "application/json"). // add a single header
-			WithBody(map[string]interface{}{          // specify the body using Go types
+			WithBody(map[string]any{                  // specify the body using Go types
 				"key": "value",
 			}).
 			ExpectStatus(201).

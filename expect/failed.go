@@ -39,7 +39,7 @@ func failedPredicate(cause error) *FailedPredicateError {
 	}
 }
 
-func wrongTypeError(expected, actual interface{}) *FailedPredicateError {
+func wrongTypeError(expected, actual any) *FailedPredicateError {
 	var msg string
 	if expected != nil && actual == nil {
 		msg = fmt.Sprintf("expected %T, got nothing", expected)
@@ -50,7 +50,7 @@ func wrongTypeError(expected, actual interface{}) *FailedPredicateError {
 	return failedPredicate(errors.New(msg))
 }
 
-func wrongValueError(expected []interface{}, actual interface{}) *FailedPredicateError {
+func wrongValueError(expected []any, actual any) *FailedPredicateError {
 	var msg string
 	if len(expected) > 0 && actual == nil {
 		msg = fmt.Sprintf("expected %+v, got nothing", expected)
