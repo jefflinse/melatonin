@@ -7,7 +7,17 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/jefflinse/melatonin/mt.svg)](https://pkg.go.dev/github.com/jefflinse/melatonin/mt)
 ![License](https://img.shields.io/github/license/jefflinse/melatonin)
 
-melatonin is a fluent, flexible REST API testing library for Go. It provides many of the benefits of a domain-specific test language but with the flexibililty of writing pure Go. Use it to write unit tests that test your `http.Handler`s routes directly, or E2E tests that target routes on a running service written in any language.
+**Melatonin is a flexible API testing library for Go.**
+
+It provides syntactic sugar for writing table-based API tests at any level of testing.
+
+Use it to write:
+
+- **Native Go tests** that test your `http.Handler`s routes directly. Mock out your dependencies and test your handler logic in isolation. [More »](#native-go-tests)
+
+- **Component tests** that target any running service. Spin up your service with stubbed dependencies and test the API surface. [More »](#component-tests)
+
+- **E2E test suites** that target APIs across multiple running services. Perform acceptance tests against your entire system. [More »](#e2e-test-suites)
 
 See the full [user guide](./USERGUIDE.md) and the [API documentation](https://pkg.go.dev/github.com/jefflinse/melatonin/mt) for more information.
 
@@ -17,14 +27,36 @@ See the full [user guide](./USERGUIDE.md) and the [API documentation](https://pk
 
 ## Usage
 
-Just create a context and write tests. The test runner will run the tests and return the results.
+### Native Go tests
+
+A `HandlerContext` wraps a Go `http.Handler` (such as a mux/router) and provides methods for defining tests that run against the it. This is useful, for example, for testing the logic of your mux and individual handlers in isolation with mocked dependencies.
+
+```go
+func TestMyAPI(t *testing.T) {
+    // myHandler can be anything implementing http.Handler
+    myAPI := mt.NewHandlerContext(myHandler)
+    mt.RunTestsT(t, []mt.TestCase{
+
+        myAPI.GET("/resource", "Fetch a resource successfully").
+            ExpectStatus(200).
+            ExpectBody("Hello, world!"),
+    })
+}
+```
+
+Run these tests with `go test`, just like any other Go tests.
+
+### Component tests
+
+A `URLContext` wraps a base URL and provides methods for defining tests that run against the API at that URL. This is useful for blackbox testing the API surface of a service, either with real or stubbed external dependencies.
 
 ```go
 func main() {
-    myAPI := mt.NewURLContext("http://example.com")
+    // myURL can be any valid base URL parsable by url.Parse()
+    myAPI := mt.NewURLContext(myURL)
     results := mt.RunTests([]mt.TestCase{
 
-        myAPI.GET("/resource", "Fetch a record successfully").
+        myAPI.GET("/resource", "Fetch a resource successfully").
             ExpectStatus(200).
             ExpectBody("Hello, world!"),
     })
@@ -33,54 +65,59 @@ func main() {
 }
 ```
 
-With the above, you'll get a nicely formatted table of results.
+### E2E test suites
 
-    $ go run example.go
-    1 ✔  Fetch a record successfully      GET   /foo  3.9252ms
-
-    1 passed, 0 failed, 0 skipped in 3.9252ms
-
-When run as a regular Go test, results will be reported through the standard `testing.T` context.
+Similar to component tests, it's easy to create multiple test contexts (i.e. one per service) and define test suites that execute high-level user stories across your entire system.
 
 ```go
-package mypackage_test
+func main() {
+    authAPI := mt.NewURLContext("https://myapi.example.com/auth")
+    usersAPI := mt.NewURLContext("https://myapi.example.com/users")
 
-import (
-    "testing"
-    "github.com/jefflinse/melatonin/mt"
-)
+    var uid, token string
 
-func TestAPI(t *testing.T) {
+    results := mt.RunTests([]mt.TestCase{
 
-    myAPI := mt.NewURLContext("http://example.com")
-    mt.RunTestsT(t, []mt.TestCase{
+        authAPI.POST("/login", "Can log in").
+            WithBody(json.Object{
+                "username": "someone@example.com",
+                "password": "password",
+            }).
+            ExpectStatus(200).
+            ExpectBody(json.Object{
+                "uid":           bind.String(&uid)
+                "access_token":  bind.String(&token),
+                "refresh_token": expect.String(),
+            }),
 
-        myAPI.GET("/resource", "Fetch a record successfully").
+        usersAPI.GET("/:id/profile}", "Can fetch own profile").
+            WithHeader("Authorization", "Bearer " + &token).
+            WithPathParam("id", &uid).
             ExpectStatus(200).
             ExpectBody("Hello, world!"),
     })
+
+    mt.PrintResults(results)
 }
 ```
 
-    $ go test
-    PASS
-    ok      github.com/my/api    0.144s
+More on data binding and expectations can be found in the [user guide](./USERGUIDE.md).
 
 ## Examples
 
 See the [examples](examples) directory for full, runnable examples.
 
-### Test a service running locally or remotely (E2E tests)
-
-```go
-myAPI := mt.NewURLContext("http://example.com")
-mt.RunTests(...)
-```
-
-### Test a Go HTTP handler directly (unit tests)
+### Test a Go HTTP handler
 
 ```go
 myAPI := mt.NewHandlerContext(http.NewServeMux())
+mt.RunTests(...)
+```
+
+### Test a base URL endpoint
+
+```go
+myAPI := mt.NewURLContext("http://example.com")
 mt.RunTests(...)
 ```
 
@@ -195,6 +232,9 @@ Golden files keep your test definitions short and concise by storing expectation
 
 - Output test results in different formats (e.g. JSON, XML, YAML)
 - Generate test cases from an OpenAPI specification
+- Support for testing GraphQL APIs
+- Support for testing gRPC APIs
+- Support for testing websockets
 
 See the full [V1 milestone](https://github.com/jefflinse/melatonin/milestone/1) for more.
 
